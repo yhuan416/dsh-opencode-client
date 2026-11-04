@@ -1,0 +1,6 @@
+# dsh-opencode-client bundle patch: inserts the client row into a web profile.
+- insert:
+    - id: opencode-client
+      name: dsh-opencode-client
+      config:
+        servers: []
