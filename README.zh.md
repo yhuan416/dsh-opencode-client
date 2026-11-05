@@ -74,6 +74,11 @@ dsh plugin --profile web add /path/to/dsh-opencode-client
         toolName: subagent_n100
 ```
 
+## 兼容性与版本
+
+见 [COMPATIBILITY.md](COMPATIBILITY.md)。插件采用独立语义化版本，已验证 dsh `0.2.1-rc.2` 与
+OpenCode `1.18.10/1.18.31/1.18.33`；暂不发布 npm（从 git 或本地路径安装）。
+
 ## 说明与限制
 
 - 远端 OpenCode 需从 dsh 宿主可达；`opencode serve` 默认绑 `127.0.0.1`，网络访问需绑

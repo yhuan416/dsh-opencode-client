@@ -8,7 +8,7 @@ import { promptBody, extractAssistant } from '../lib/delegate.js'
 import { parseStructured } from '../lib/run.js'
 
 assert.equal(entry.name, 'opencode-client')
-assert.deepEqual(entry.inject, ['connection', 'webServer'])
+assert.deepEqual(entry.inject, ['connection'])
 assert.equal(typeof entry.apply, 'function')
 
 assert.deepEqual(parseModel('deepseek/deepseek-chat'), { providerID: 'deepseek', modelID: 'deepseek-chat' })

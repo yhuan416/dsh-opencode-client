@@ -72,6 +72,12 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
         toolName: subagent_n100
 ```
 
+## Compatibility & versioning
+
+See [COMPATIBILITY.md](COMPATIBILITY.md). The plugin follows independent semantic versioning, is
+verified against dsh `0.2.1-rc.2` and OpenCode `1.18.10/1.18.31/1.18.33`, and is not published to
+npm for now (install from git or a local path).
+
 ## Notes
 
 - The remote OpenCode server must be reachable from the dsh host; `opencode serve` binds
