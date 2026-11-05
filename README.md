@@ -15,7 +15,9 @@ native dsh subagent backend.
 - **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages`
 - **Agent catalog** — tool `opencode_agents` + `GET /api/opencode-client/agents` (primary/subagent, native/custom)
-- **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`; optional `agent` and `model`); uses `prompt_async` + message polling with a blocking-prompt fallback
+- **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`; optional `agent`, `model` and prompt-enforced `schema`); uses `prompt_async` + message polling with a blocking-prompt fallback
+- **Session info** — tool `opencode_session_info` (title/summary/todos/diff) and `opencode_share` (share/unshare link)
+- **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh approval cards; `allow`/`reject` answer deterministically
 - **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast permission/question handling, live state, `GET /api/opencode-client/events` and `/status`
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
 - **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, messages, create session, open OpenCode UI
@@ -49,7 +51,10 @@ or add it manually to the profile and select it as a bundle:
         # directory: /home/yhuan/workspace   # default remote dir when the caller does not give one
         # agent: plan            # default OpenCode agent for delegation
         # model: deepseek/deepseek-chat      # default model "provider/model"
-    permission: allow            # allow (default) or reject for remote permission prompts
+      - id: m65
+        label: 4.65 opencode
+        url: http://192.168.4.65:4096
+    permission: ask              # ask (default, dsh approval card) | allow | reject
     question: reject             # reject (default) interactive questions or "ignore" them
     pathMap:                     # only when local and remote path layouts differ
       - { from: /home/yhuan, to: /home/yhuan }
@@ -75,10 +80,15 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
   execute once (matching Codex/Claude Code backends).
 - Interactive questions asked by the remote agent are forwarded to dsh's user-question UI when the
   run was started by `opencode_delegate` (an agent is in scope); otherwise they are rejected.
-- **Structured output is disabled** until upstream fixes `GET /session/{id}/message`: after a
-  prompt that carries `format: {type:"json_schema"}`, opencode 1.18.x persists a `retryCount`
-  field that makes its own message reader return 400 (BadRequest). The plugin therefore does not
-  send `format`, to keep sessions readable.
+- **Structured output is prompt-enforced, not `format=`-enforced**: opencode 1.18.x has an upstream
+  bug — after a prompt carrying `format: {type:"json_schema"}`, it persists a `retryCount` field
+  that makes `GET /session/{id}/message` return 400 (BadRequest), poisoning the session. The plugin
+  therefore appends a "return only JSON matching this schema" instruction and validates the result
+  locally (`schema` parameter), leaving the session readable.
+- **Permission cards need a tool-initiated run**: approval bridging uses the calling agent; a
+  delegation started over the HTTP endpoint (no agent in scope) falls back to `allow`/`reject`.
+- **Multiple servers** are configured as an array and aggregated by the client (opencode itself has
+  no server-side federation).
 - Permission/question requests are answered while a delegated run is active: SSE events are handled
   immediately, with a 15s polling fallback when the stream is unavailable.
 - The plugin page shows `live` (SSE connected) and the number of currently running sessions.
