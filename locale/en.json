@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "OpenCode Client",
+    "description": "Use remote OpenCode servers from dsh: list and read sessions, delegate work, continue sessions, and run OpenCode as a native subagent."
+  }
+}

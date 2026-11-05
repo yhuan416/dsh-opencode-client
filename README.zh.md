@@ -1,0 +1,87 @@
+# dsh-opencode-client
+
+一个 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 插件：把 **OpenCode server**
+接入 dsh，充当 OpenCode 的客户端。它连接一台或多台远端 `opencode serve`，向 dsh 暴露它们的
+projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注册为 dsh 的原生子代理后端。
+
+> OpenCode 的官方架构：`opencode serve` 暴露 OpenAPI HTTP 服务，"an opencode client can use"；
+> TUI / Web / SDK 都是它的客户端。本插件是另一个客户端，宿主在 dsh 里。
+
+## 功能
+
+- **服务配置**：`servers: [{ id, label?, url, password?, directory?, agent?, model? }]`，支持多台
+- **发现**：`GET /api/opencode-client/list`（健康状态、projects、按目录分组的 sessions）
+- **会话列表 / 消息**：工具 `opencode_sessions`、`opencode_messages`（含 tool / file part）
+- **会话信息 / 分享**：`opencode_session_info`（title/summary/todo/diff）、`opencode_share`
+- **委派**：`opencode_delegate`（新建或 `session=` 续用；可选 `agent`、`model`、prompt 级 `schema`）
+- **原生子代理**：provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 使用
+- **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）
+- **实时**：每台 server 常驻 SSE（`/global/event`），带重连；`/events`、`/status`、`live`/`running`
+- **异步提示**：`prompt_async` + 消息轮询等待，失败回退阻塞式 prompt
+- **插件页**：「OpenCode Client」分区：服务器/工作区/会话、查看消息、新建会话、打开 OpenCode UI
+
+## 安装
+
+```sh
+# 方式一：脚本写入 profile（deps + bundles + patch）
+bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
+
+# 方式二：dsh 插件管理
+dsh plugin --profile web add /path/to/dsh-opencode-client
+```
+
+手动方式（profile）：
+
+```json
+{
+  "dependencies": { "dsh-opencode-client": "file:/path/to/dsh-opencode-client" },
+  "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-opencode-client"] } }
+}
+```
+
+## 配置
+
+```yaml
+- id: opencode-client
+  name: dsh-opencode-client
+  config:
+    servers:
+      - id: n100
+        label: n100 opencode
+        url: http://192.168.4.50:4096
+        # password: xxx          # OPENCODE_SERVER_PASSWORD（Basic，用户名 opencode）
+        # directory: /home/yhuan/workspace   # 调用方未给目录时的默认远端目录
+        # agent: plan            # 委派默认 agent
+        # model: deepseek/deepseek-chat      # 默认模型 "provider/model"
+      - id: m65
+        label: 4.65 opencode
+        url: http://192.168.4.65:4096
+    permission: ask              # ask（默认，审批卡）| allow | reject
+    question: reject             # reject（默认）| ignore
+    pathMap:                     # 本地/远端路径布局不同时
+      - { from: /home/yhuan, to: /home/yhuan }
+```
+
+### 注册为原生 subagent
+
+```yaml
+- insert:
+    - id: tool-opencode-n100
+      name: "@deepseek-ai/dsh-tool-subagent"
+      config:
+        provider: opencode-n100   # "opencode-" + server id
+        maxDepth: provider-managed
+        toolName: subagent_n100
+```
+
+## 说明与限制
+
+- 远端 OpenCode 需从 dsh 宿主可达；`opencode serve` 默认绑 `127.0.0.1`，网络访问需绑
+  `0.0.0.0` 或走 SSH 隧道；建议设置 `OPENCODE_SERVER_PASSWORD`。
+- 会话续用通过 OpenCode HTTP API；原生外部子代理仍是一次性执行（与 Codex/Claude Code 后端一致）。
+- **结构化输出是 prompt 约束而非 `format=` 强约束**：opencode 1.18.x 使用
+  `format: {type:"json_schema"}` 后会把 `retryCount` 持久化，导致 `GET /session/{id}/message`
+  返回 400，会话不可读。插件因此不发送 `format`，而是追加"只返回 JSON"指令并本地校验（`schema`）。
+- 权限卡需要**工具发起的委派**（有 live agent）；HTTP 直接调用回落 allow/reject。
+- 多 server 由客户端聚合（OpenCode 服务端没有联邦 API）。
+- v1 是基线；v2（`/api/*`）可探测后增量使用（见 TODO.md）。

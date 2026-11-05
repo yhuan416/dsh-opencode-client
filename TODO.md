@@ -79,16 +79,16 @@
 
 对照 dsh 插件约定（`dsh-package-manifest` / `dsh-app-boot` / `dsh-client-modules`）：
 
-- [ ] `package.json`：补 `engines.dsh`（如 `>=0.2.1-rc.2`）、`dsh.manifestVersion: 1`、`main`、`exports["./package.json"]`、`exports["./cordis.patch.yml"]`
-- [ ] 移除 `dsh.client.inject`（非规范字段；注入应放在 client bundle 的 `exports.inject`，已存在）
-- [ ] `files` 补 `LICENSE`、`locale/*.json`、`icon.svg`
-- [ ] 增加 `icon.svg`、`locale/en.json`、`locale/zh.json`（`{meta:{title,description}}`）
-- [ ] 增加 `README.zh.md`（或中文段落）
-- [ ] 增加 `LICENSE`（MIT）
-- [ ] 增加 `.gitignore`
+- [x] `package.json`：补 `engines.dsh`（如 `>=0.2.1-rc.2`）、`dsh.manifestVersion: 1`、`main`、`exports["./package.json"]`、`exports["./cordis.patch.yml"]`
+- [x] 移除 `dsh.client.inject`（非规范字段；注入应放在 client bundle 的 `exports.inject`，已存在）
+- [x] `files` 补 `LICENSE`、`locale/*.json`、`icon.svg`
+- [x] 增加 `icon.svg`、`locale/en.json`、`locale/zh.json`（`{meta:{title,description}}`）
+- [x] 增加 `README.zh.md`（或中文段落）
+- [x] 增加 `LICENSE`（MIT）
+- [x] 增加 `.gitignore`
 - [ ] 拆分 `lib/index.js`：config/http/sessions/delegate/provider/sse/tools 模块化（保持单入口）
 - [ ] 增加 `scripts/check.mjs` 冒烟测试（语法 + 配置归一化 + 工具注册 + 假 ctx），`npm run check`
-- [ ] 增加 `repository` 字段；若发布 npm 则补 `publishConfig`
+- [x] 增加 `repository` 字段；若发布 npm 则补 `publishConfig`
 - [ ] 统一版本策略（跟随 dsh rc 版本 or 独立语义化）
 
 ## 9. 决策记录

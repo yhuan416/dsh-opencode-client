@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "OpenCode 客户端",
+    "description": "在 dsh 中对接远端 OpenCode 服务：列出/读取会话、委派任务、续用会话，并把 OpenCode 作为原生子代理。"
+  }
+}
