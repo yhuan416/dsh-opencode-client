@@ -16,6 +16,7 @@ native dsh subagent backend.
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages`
 - **Agent catalog** — tool `opencode_agents` + `GET /api/opencode-client/agents` (primary/subagent, native/custom)
 - **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`; optional `agent` and `model`)
+- **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast permission/question handling, live state, `GET /api/opencode-client/events` and `/status`
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
 - **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, messages, create session, open OpenCode UI
 
@@ -72,3 +73,6 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
   `127.0.0.1` by default — bind `0.0.0.0` or put it behind an SSH tunnel.
 - Session continuation is done through the OpenCode HTTP API; native external subagents still
   execute once (matching Codex/Claude Code backends).
+- Permission/question requests are answered while a delegated run is active: SSE events are handled
+  immediately, with a 15s polling fallback when the stream is unavailable.
+- The plugin page shows `live` (SSE connected) and the number of currently running sessions.
