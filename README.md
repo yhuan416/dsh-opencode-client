@@ -14,7 +14,8 @@ native dsh subagent backend.
 - **Discovery** — `GET /api/opencode-client/list` (server health, projects, sessions grouped by directory)
 - **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages`
-- **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`)
+- **Agent catalog** — tool `opencode_agents` + `GET /api/opencode-client/agents` (primary/subagent, native/custom)
+- **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`; optional `agent` and `model`)
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
 - **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, messages, create session, open OpenCode UI
 
@@ -45,7 +46,10 @@ or add it manually to the profile and select it as a bundle:
         url: http://192.168.4.50:4096
         # password: xxx          # OPENCODE_SERVER_PASSWORD (basic auth, user "opencode")
         # directory: /home/yhuan/workspace   # default remote dir when the caller does not give one
+        # agent: plan            # default OpenCode agent for delegation
+        # model: deepseek/deepseek-chat      # default model "provider/model"
     permission: allow            # allow (default) or reject for remote permission prompts
+    question: reject             # reject (default) interactive questions or "ignore" them
     pathMap:                     # only when local and remote path layouts differ
       - { from: /home/yhuan, to: /home/yhuan }
 ```
