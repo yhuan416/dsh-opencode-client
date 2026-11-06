@@ -63,7 +63,7 @@ NODE
 cat <<EOF
 
 Done. Restart the dsh web profile, then use a NEW session.
-Tools: opencode_sessions / opencode_messages / opencode_delegate
+Tools: opencode_sessions / opencode_messages / opencode_subagent
 Optional native subagent row:
 
 - insert:
@@ -72,5 +72,5 @@ Optional native subagent row:
       config:
         provider: opencode-$SERVER_ID
         maxDepth: provider-managed
-        toolName: subagent_$SERVER_ID
+        toolName: opencode_subagent_$SERVER_ID
 EOF

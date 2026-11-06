@@ -53,13 +53,13 @@ structured result + diagnostic) into the parent conversation.
 | `result.stopReason` | `completed` / `aborted` / `error` (diagnostic ≤ 4096 bytes) |
 | `dispose` | abort controller + `POST /session/{id}/abort`, await settlement (memoized) |
 | `agentOptions` / `agentPreset` | not supported: dsh route/model names do not map to OpenCode providers/models |
-| `outputSchema` | not supported by the tool's external path; the separate `opencode_delegate` tool implements prompt-enforced schema |
+| `outputSchema` | not supported by the tool's external path; the separate `opencode_subagent` tool implements prompt-enforced schema |
 | `depthLimit` | not supported remotely; tool rows use `maxDepth: provider-managed` |
 | continuation / `send_message` steering | not supported: external backend is one-shot by design |
 
 ## 2.1 Shared lifecycle with the delegate tool
 
-`opencode_delegate` and the native provider both go through `lib/session-run.js`:
+`opencode_subagent` and the native provider both go through `lib/session-run.js`:
 
 - `ensureSession` — reuse the session id or create one with the same title semantics
 - `trackRun` — one active-run entry (server, directory, parent agent, signal) plus the
@@ -79,7 +79,7 @@ abort and cleanup behavior cannot drift between the two entry points.
 2. **Event-driven wait.** The provider no longer holds a blocking
    `POST /session/{id}/message` for up to an hour; it uses the same
    `prompt_async` + SSE `session.idle` wait (with a polling fallback) as
-   `opencode_delegate`, so long runs survive idle proxies and match the
+   `opencode_subagent`, so long runs survive idle proxies and match the
    delegate path's timing/abort semantics.
 3. **Idempotent dispose.** Repeated `dispose()` returns the same promise, as the
    seam requires; teardown aborts the remote session and awaits settlement.
@@ -94,7 +94,7 @@ abort and cleanup behavior cannot drift between the two entry points.
 
 - **Continuable child** (`prepareContinuable`) would require the child to be a
   local dsh Agent; an external OpenCode session cannot be resumed by dsh.
-  `opencode_delegate` covers continuation via `session=`.
+  `opencode_subagent` covers continuation via `session=`.
 - **Child model selection** (`agentOptions`) would map dsh LLM routes onto
   OpenCode provider/model ids; the two catalogs are unrelated, so advertising it
   would be dishonest.

@@ -19,10 +19,10 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **会话管理**：`opencode_fork`、`opencode_children`、`opencode_summarize`（mutating）、`opencode_init`（写 AGENTS.md，需 confirm=true）
 - **实时进度**：`opencode_progress`（当前工具/步骤、耗时、输出 tail），由 SSE 工具事件驱动；委派完成改为 SSE idle 事件触发
 - **搜索/诊断**：`opencode_search`（v2 会话搜索）、`opencode_mcp`（MCP 服务状态）
-- **附件**：`opencode_delegate` 支持 `files` JSON 数组（text/base64 → data URL file part）
+- **附件**：`opencode_subagent` 支持 `files` JSON 数组（text/base64 → data URL file part）
 - **中止**：`opencode_abort` 停止远端运行中的会话；等待中的委派会返回 abort 错误而不是继续挂起。
-  注意：同一轮次内 dsh 会串行执行工具调用，因此 abort 需从**另一个会话/agent** 发起，无法抢占同轮次里阻塞中的 `opencode_delegate`。
-- **委派**：`opencode_delegate`（新建或 `session=` 续用；可选 `agent`、`model`、prompt 级 `schema`）
+  注意：同一轮次内 dsh 会串行执行工具调用，因此 abort 需从**另一个会话/agent** 发起，无法抢占同轮次里阻塞中的 `opencode_subagent`。
+- **委派**：`opencode_subagent`（新建或 `session=` 续用；可选 `agent`、`model`、prompt 级 `schema`）
 - **原生子代理**：provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 使用
 - **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）
 - **实时**：每台 server 常驻 SSE（`/global/event`），带重连；`/events`、`/status`、`live`/`running`
@@ -80,14 +80,14 @@ dsh plugin --profile web add /path/to/dsh-opencode-client
       config:
         provider: opencode-n100   # "opencode-" + server id
         maxDepth: provider-managed
-        toolName: subagent_n100
+        toolName: opencode_subagent_n100
 ```
 
 ## Subagent 接缝
 
 原生 `subagent_<server>` 工具接入 dsh 的 `ctx.subagents` provider 接缝。
 契约、能力映射与已应用的优化（父 agent 归属、事件驱动等待、幂等 dispose）见
-[docs/subagent-seam.md](docs/subagent-seam.md)。`opencode_delegate` 与原生 provider 复用同一条
+[docs/subagent-seam.md](docs/subagent-seam.md)。`opencode_subagent` 与原生 provider 复用同一条
 session 运行生命周期（`lib/session-run.js`）：同一套建会话、交互跟踪、异步 prompt + SSE idle
 等待与中止逻辑。原生 subagent 会话标题为 `dsh subagent: <label>`，插件页可直接识别（页面现在也
 显示会话 id 和运行中服务器的当前工具）。

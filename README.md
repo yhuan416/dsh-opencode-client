@@ -15,7 +15,7 @@ native dsh subagent backend.
 - **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages`
 - **Agent catalog** — tool `opencode_agents` + `GET /api/opencode-client/agents` (primary/subagent, native/custom)
-- **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`; optional `agent`, `model` and prompt-enforced `schema`); uses `prompt_async` + message polling with a blocking-prompt fallback
+- **Delegation** — tool `opencode_subagent` (new session, or continue with `session=`; optional `agent`, `model` and prompt-enforced `schema`); uses `prompt_async` + message polling with a blocking-prompt fallback
 - **Session info** — tool `opencode_session_info` (title/summary/todos/diff) and `opencode_share` (share/unshare link)
 - **Catalogs** — `opencode_models` (providers/models, credentials stripped), `opencode_commands`, `opencode_skills`, `opencode_tools`, `opencode_references`
 - **Command execution** — `opencode_command` runs a remote command (e.g. `init`) inside a session
@@ -23,9 +23,9 @@ native dsh subagent backend.
 - **Session management** — `opencode_fork`, `opencode_children`, `opencode_summarize` (mutating), `opencode_init` (writes AGENTS.md, requires confirm=true)
 - **Live progress** — `opencode_progress` (current tool/step, elapsed, output tail) fed by SSE tool events; delegation completes on the SSE idle event
 - **Search & diagnostics** — `opencode_search` (v2 session search), `opencode_mcp` (MCP server status)
-- **Attachments** — `opencode_delegate` accepts a `files` JSON array (text/base64 → data URL file parts)
+- **Attachments** — `opencode_subagent` accepts a `files` JSON array (text/base64 → data URL file parts)
 - **Abort** — `opencode_abort` stops a running remote session; a waiting delegation returns an abort error instead of hanging.
-  Call it from another dsh session/agent: tool calls inside one turn are serialized, so it cannot preempt a blocking `opencode_delegate` in the same turn.
+  Call it from another dsh session/agent: tool calls inside one turn are serialized, so it cannot preempt a blocking `opencode_subagent` in the same turn.
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh approval cards; `allow`/`reject` answer deterministically
 - **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast permission/question handling, live state, `GET /api/opencode-client/events` and `/status`
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
@@ -78,7 +78,7 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
       config:
         provider: opencode-n100   # "opencode-" + server id
         maxDepth: provider-managed
-        toolName: subagent_n100
+        toolName: opencode_subagent_n100
 ```
 
 ## Subagent seam
@@ -86,7 +86,7 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
 The native `subagent_<server>` tools plug into dsh's `ctx.subagents` provider seam.
 See [docs/subagent-seam.md](docs/subagent-seam.md) for the contract, our capability
 mapping, and the applied optimizations (parent-agent attribution, event-driven wait,
-idempotent dispose). Both `opencode_delegate` and the native provider share one
+idempotent dispose). Both `opencode_subagent` and the native provider share one
 session-run lifecycle (`lib/session-run.js`): same session creation, interaction
 tracking, async prompt + SSE idle wait and abort handling. Native subagent sessions are
 titled `dsh subagent: <label>` so they are identifiable in the plugin page (which now
@@ -105,7 +105,7 @@ npm for now (install from git or a local path).
 - Session continuation is done through the OpenCode HTTP API; native external subagents still
   execute once (matching Codex/Claude Code backends).
 - Interactive questions asked by the remote agent are forwarded to dsh's user-question UI when the
-  run was started by `opencode_delegate` (an agent is in scope); otherwise they are rejected.
+  run was started by `opencode_subagent` (an agent is in scope); otherwise they are rejected.
 - **Structured output is prompt-enforced, not `format=`-enforced**: opencode 1.18.x has an upstream
   bug — after a prompt carrying `format: {type:"json_schema"}`, it persists a `retryCount` field
   that makes `GET /session/{id}/message` return 400 (BadRequest), poisoning the session. The plugin

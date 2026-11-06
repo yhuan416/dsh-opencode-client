@@ -66,7 +66,7 @@
 
 - [x] MCP 只读列表/状态：`opencode_mcp` → `GET /mcp`（connect/disconnect/auth 仍不做）
 - [ ] PTY 远端终端——**暂缓：需要 WebSocket 客户端交互，当前没有；`opencode_shell` 已覆盖确定性命令**
-- [x] 附件发送：`opencode_delegate` 的 `files` JSON 数组（text/base64 → data URL FilePartInput），单文件 ≤5MB
+- [x] 附件发送：`opencode_subagent` 的 `files` JSON 数组（text/base64 → data URL FilePartInput），单文件 ≤5MB
 - [x] 会话搜索：`opencode_search` → v2 `/api/session?search=`，v1 列表过滤兜底
 
 ## 7. 不做（边界）
