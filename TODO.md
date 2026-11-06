@@ -24,12 +24,12 @@
 
 ## 2. P1 — 客户端目录能力（只读，低风险）
 
-- [ ] `opencode_models`：`GET /config/providers` + `GET /provider`，列出 provider/model；delegate 的 `model` 参数做存在性校验。
-- [ ] `opencode_commands`：`GET /command` 列出自定义命令（/init、/review 等）。
-- [ ] `opencode_command`：`POST /session/{id}/command` 在远端会话执行命令。
-- [ ] `opencode_skills`：`GET /skill` 列出远端 skills。
-- [ ] `opencode_references`：`GET /reference` 列出项目 references。
-- [ ] `opencode_tools`：`GET /experimental/tool` + `/tool/ids` 列出远端可用工具。
+- [x] `opencode_models`：`GET /config/providers`，列出 provider/model（凭据字段已剔除）；delegate 的 `model` 参数不做强校验。
+- [x] `opencode_commands`：`GET /command` 列出自定义命令（/init、/review 等）。
+- [x] `opencode_command`：`POST /session/{id}/command` 在远端会话执行命令。
+- [x] `opencode_skills`：`GET /skill` 列出远端 skills（内容省略）。
+- [x] `opencode_references`：`GET /api/reference`（v2）列出项目 references。
+- [x] `opencode_tools`：`GET /experimental/tool/ids` 列出远端可用工具。
 
 验收：新会话工具列表可见；只读调用不改变远端状态。
 

@@ -9,7 +9,8 @@ Initial independent release.
 - Multi-server OpenCode configuration (`servers` array) with aggregated discovery.
 - Tools: `opencode_sessions`, `opencode_messages`, `opencode_agents`, `opencode_delegate`
   (agent/model/prompt-enforced `schema`, session continuation), `opencode_session_info`,
-  `opencode_share`.
+  `opencode_share`, `opencode_models`, `opencode_commands`, `opencode_skills`, `opencode_tools`,
+  `opencode_references`, `opencode_command`.
 - Native dsh subagent provider `opencode-<serverId>`.
 - Permission requests bridged to dsh approval cards (`permission: ask|allow|reject`), question
   requests bridged to the dsh user-question UI, with polling fallback.

@@ -17,6 +17,8 @@ native dsh subagent backend.
 - **Agent catalog** — tool `opencode_agents` + `GET /api/opencode-client/agents` (primary/subagent, native/custom)
 - **Delegation** — tool `opencode_delegate` (new session, or continue with `session=`; optional `agent`, `model` and prompt-enforced `schema`); uses `prompt_async` + message polling with a blocking-prompt fallback
 - **Session info** — tool `opencode_session_info` (title/summary/todos/diff) and `opencode_share` (share/unshare link)
+- **Catalogs** — `opencode_models` (providers/models, credentials stripped), `opencode_commands`, `opencode_skills`, `opencode_tools`, `opencode_references`
+- **Command execution** — `opencode_command` runs a remote command (e.g. `init`) inside a session
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh approval cards; `allow`/`reject` answer deterministically
 - **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast permission/question handling, live state, `GET /api/opencode-client/events` and `/status`
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`

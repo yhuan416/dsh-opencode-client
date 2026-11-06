@@ -6,6 +6,7 @@ import { normalizeServers, parseModel, parsePathMap } from '../lib/config.js'
 import { jsonResponse } from '../lib/http.js'
 import { promptBody, extractAssistant } from '../lib/delegate.js'
 import { parseStructured } from '../lib/run.js'
+import { collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand } from '../lib/catalog.js'
 
 assert.equal(entry.name, 'opencode-client')
 assert.deepEqual(entry.inject, ['connection'])
@@ -36,5 +37,9 @@ assert.equal(reply.headers.get('content-type'), 'application/json; charset=utf-8
 assert.deepEqual(await reply.json(), { ok: true })
 
 assert.deepEqual(extractAssistant({ info: { role: 'assistant' }, parts: [{ type: 'text', text: 'ok' }] }), { text: 'ok', structured: undefined })
+
+for (const fn of [collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand]) {
+  assert.equal(typeof fn, 'function')
+}
 
 console.log('check ok')
