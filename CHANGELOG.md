@@ -22,6 +22,8 @@ Initial independent release.
 - Native dsh subagent provider `opencode-<serverId>` (external out-of-process seam):
   parent-agent attribution for approval/question bridging, `prompt_async` + SSE idle wait,
   idempotent `dispose`, bounded diagnostics; see `docs/subagent-seam.md`.
+- Shared session-run lifecycle (`lib/session-run.js`) used by both `opencode_delegate` and the
+  native provider: same session creation, interaction tracking, async wait and abort handling.
 - Permission requests bridged to dsh approval cards (`permission: ask|allow|reject`), question
   requests bridged to the dsh user-question UI, with polling fallback.
 - Per-server SSE (`/global/event`) with reconnect; `/events`, `/status`, `live`/`running` state.

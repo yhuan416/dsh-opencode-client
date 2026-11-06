@@ -87,7 +87,10 @@ dsh plugin --profile web add /path/to/dsh-opencode-client
 
 原生 `subagent_<server>` 工具接入 dsh 的 `ctx.subagents` provider 接缝。
 契约、能力映射与已应用的优化（父 agent 归属、事件驱动等待、幂等 dispose）见
-[docs/subagent-seam.md](docs/subagent-seam.md)。
+[docs/subagent-seam.md](docs/subagent-seam.md)。`opencode_delegate` 与原生 provider 复用同一条
+session 运行生命周期（`lib/session-run.js`）：同一套建会话、交互跟踪、异步 prompt + SSE idle
+等待与中止逻辑。原生 subagent 会话标题为 `dsh subagent: <label>`，插件页可直接识别（页面现在也
+显示会话 id 和运行中服务器的当前工具）。
 
 ## 兼容性与版本
 

@@ -57,6 +57,18 @@ structured result + diagnostic) into the parent conversation.
 | `depthLimit` | not supported remotely; tool rows use `maxDepth: provider-managed` |
 | continuation / `send_message` steering | not supported: external backend is one-shot by design |
 
+## 2.1 Shared lifecycle with the delegate tool
+
+`opencode_delegate` and the native provider both go through `lib/session-run.js`:
+
+- `ensureSession` — reuse the session id or create one with the same title semantics
+- `trackRun` — one active-run entry (server, directory, parent agent, signal) plus the
+  interaction bridge (`watchInteractions`) and snapshot invalidation
+- `abortRemote` — best-effort `POST /session/{id}/abort`
+
+Both then use the same `prompt_async` + SSE idle wait from `lib/delegate.js`, so timing,
+abort and cleanup behavior cannot drift between the two entry points.
+
 ## 3. Optimizations applied
 
 1. **Parent-agent attribution.** `activeRuns` entries now carry `agent` = the dsh
@@ -73,6 +85,10 @@ structured result + diagnostic) into the parent conversation.
    seam requires; teardown aborts the remote session and awaits settlement.
 4. **Clearer failures.** Session-creation failures include the mapped directory;
    diagnostics are bounded before returning.
+5. **Identifiable native sessions.** Provider sessions are titled
+   `dsh subagent: <label>`; the plugin page shows session ids and the active tool of
+   running servers, so a settlement notice's child id can be matched to a listed
+   session without any new UI flow.
 
 ## 4. Deliberately not done
 

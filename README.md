@@ -86,7 +86,11 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
 The native `subagent_<server>` tools plug into dsh's `ctx.subagents` provider seam.
 See [docs/subagent-seam.md](docs/subagent-seam.md) for the contract, our capability
 mapping, and the applied optimizations (parent-agent attribution, event-driven wait,
-idempotent dispose).
+idempotent dispose). Both `opencode_delegate` and the native provider share one
+session-run lifecycle (`lib/session-run.js`): same session creation, interaction
+tracking, async prompt + SSE idle wait and abort handling. Native subagent sessions are
+titled `dsh subagent: <label>` so they are identifiable in the plugin page (which now
+also shows session ids and the active tool of running servers).
 
 ## Compatibility & versioning
 
