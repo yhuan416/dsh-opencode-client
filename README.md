@@ -7,6 +7,12 @@ native dsh subagent backend.
 
 > OpenCode's own architecture: `opencode serve` exposes an OpenAPI HTTP server "that an opencode
 > client can use"; the TUI/web/SDK are clients. This plugin is another client, hosted in dsh.
+>
+> **Primary role**: register OpenCode as a native dsh subagent backend
+> (`opencode_subagent_<server>`) and expose remote sessions/workspace as tools
+> (`opencode_subagent`, `opencode_prompt`, shell/git/read/find, catalogs). The embedded
+> OpenCode Web UI (left/side panels) is an optional convenience for full-fidelity work,
+> not a replacement for the OpenCode client.
 
 ## Features
 

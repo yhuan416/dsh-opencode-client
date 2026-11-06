@@ -6,6 +6,10 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 
 > OpenCode 的官方架构：`opencode serve` 暴露 OpenAPI HTTP 服务，"an opencode client can use"；
 > TUI / Web / SDK 都是它的客户端。本插件是另一个客户端，宿主在 dsh 里。
+>
+> **定位**：核心能力是把 OpenCode 注册为 dsh 的**原生 subagent 后端**（`opencode_subagent_<server>`），
+> 并把远端会话/工作区暴露为工具（`opencode_subagent`、`opencode_prompt`、shell/git/read/find、各类目录）。
+> 嵌入的 OpenCode Web UI（左侧/右侧面板）只是可选的完整功能入口，不替代 OpenCode 客户端。
 
 ## 功能
 

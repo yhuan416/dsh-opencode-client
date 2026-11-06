@@ -69,7 +69,11 @@
 - [ ] v2 `delivery: steer|queue`、`resume`——**暂缓：一发式委派，无并发插话需求**
 - [x] `opencode_abort`：`POST /session/{id}/abort`，取消远端长任务；等待中的委派会以 abort 错误返回（不再干等超时）。
 
-## 5.5 P6 — 插件页远端会话聊天（提案，未实现）
+## 5.5 P6 — 插件页远端会话聊天（提案，暂缓）
+
+> **暂缓原因（2026-11-06）**：定位收敛为"subagent 核心 + 原生 OpenCode UI 嵌入入口"。
+> 聚合工作台 / 自研聊天页 / LLM 桥接都暂不做；完整交互使用嵌入的 OpenCode 原生 Web UI。
+
 
 见 [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md)。
 
@@ -115,5 +119,6 @@
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。
+- **产品定位**：核心是`opencode_subagent_<server>` 原生 subagent 后端；`opencode_subagent`/`opencode_prompt` 提供可控委派与续聊；UI 只做入口（左侧栏/右侧栏/会话头/嵌入原生 OpenCode），不做聚合工作台、聊天页或 LLM 桥接。
 - **原生 subagent 一次性、远端会话可续**：外部 provider 无法实现 `prepareContinuable`；续用通过 `opencode_subagent(session=)`（任务级）或 `opencode_prompt`（消息级）。
 - **直接操作 vs 委派**：确定性操作走 shell/read/git 等直连工具；开放式任务才走远端 agent。
