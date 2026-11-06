@@ -28,7 +28,7 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）
 - **实时**：每台 server 常驻 SSE（`/global/event`），带重连；`/events`、`/status`、`live`/`running`
 - **完成等待**：`prompt_async` + SSE `session.idle` 事件驱动（空闲立即返回），5s 轮询兜底，失败回退阻塞式 prompt
-- **插件页**：「OpenCode Client」分区：服务器/工作区/会话、查看消息、新建会话、打开 OpenCode UI
+- **插件页**：「OpenCode Client」分区：服务器/工作区/会话、会话 id、当前工具、查看消息、新建会话，以及**全屏嵌入的 OpenCode Web UI**（每台服务器「打开 Web UI」、每个会话「内嵌打开」）。嵌入的是完整 OpenCode 客户端（流式、工具卡片、diff、权限），无需重实现。
 
 ## 安装
 
