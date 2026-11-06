@@ -47,6 +47,8 @@ Known upstream issues that shape the integration:
 - `format: {type:"json_schema"}` (structured output) persists a `retryCount` field in the user
   message and makes `GET /session/{id}/message` return 400 afterwards (1.18.10 and 1.18.31).
   The plugin therefore uses prompt-enforced JSON (`schema` parameter) instead of `format`.
+- Live progress comes from the v1 SSE stream (`message.part.updated`, `message.part.delta`,
+  `session.status`, `session.idle`); the v2 `session.next.tool.*` events are not emitted by 1.18.x.
 - `POST /api/session/{id}/wait` (v2) returns `503 Session wait is not available yet` on 1.18.31 and
   1.18.33; completion is therefore detected from SSE (`session.idle`/`session.status`) with a polling
   fallback instead of the v2 wait endpoint.
