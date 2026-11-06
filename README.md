@@ -30,7 +30,11 @@ native dsh subagent backend.
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh approval cards; `allow`/`reject` answer deterministically
 - **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast permission/question handling, live state, `GET /api/opencode-client/events` and `/status`
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
-- **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, session ids, active tool, messages, create session, and a **full-screen embedded OpenCode Web UI** ("打开 Web UI" per server, "内嵌打开" per session). The embedded page keeps the complete OpenCode client (streaming, tool cards, diffs, permissions) — no reimplementation.
+- **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, session ids, active tool, messages, create session.
+- **Embedded OpenCode UI** — register a right-sidebar tab (`kind: opencode`): server picker + iframe of the real
+  OpenCode Web UI, inside the current session page. Open it from a server's "侧边栏打开" button or the
+  right-sidebar add-tab guide; "全屏" overlay and "新标签" remain as fallbacks. No reimplementation — the
+  embedded page keeps streaming, tool cards, diffs and permissions.
 
 ## Install (profile)
 

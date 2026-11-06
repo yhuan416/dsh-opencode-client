@@ -31,8 +31,9 @@ First milestone release (not published to npm).
 - Per-server SSE (`/global/event`) with reconnect; `/events`, `/status`, `live`/`running` state.
 - `prompt_async` + message polling completion wait, falling back to the blocking prompt endpoint.
 - Plugin page section "OpenCode Client" (servers, sessions, messages, create session, open UI).
-- Full-screen embedded OpenCode Web UI (iframe overlay) with per-server "打开 Web UI" and per-session
-  "内嵌打开"; the real OpenCode client keeps streaming/tool cards/diffs/permissions intact.
+- Embedded OpenCode Web UI as a right-sidebar tab type (`kind: opencode`): per-server selector + iframe of
+  the real OpenCode client inside the current session page; opened from a server's "侧边栏打开" button or the
+  sidebar add-tab guide. Full-screen overlay and new-tab remain as fallbacks.
 - dsh plugin manifest compliance: `engines.dsh`, `dsh.manifestVersion`, bundle patch, client
   declaration, locale metadata, icon, LICENSE, README.zh.
 - Offline smoke check: `npm run check` (`scripts/check.mjs`).
