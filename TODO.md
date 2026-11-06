@@ -60,7 +60,7 @@
 - [ ] saved permissions 查看/删除——**暂缓：本地审批卡已覆盖交互，远端规则管理属低频诊断**
 - [ ] 读远端 `GET /config` 的 permission 配置——**暂缓：本地档位已够用**
 - [ ] v2 `delivery: steer|queue`、`resume`——**暂缓：一发式委派，无并发插话需求**
-- [ ] **`opencode_abort`（建议补）**：`POST /session/{id}/abort`，取消远端长任务；当前只能等或去 UI 手动停。
+- [x] `opencode_abort`：`POST /session/{id}/abort`，取消远端长任务；等待中的委派会以 abort 错误返回（不再干等超时）。
 
 ## 6. P5 — 可选
 

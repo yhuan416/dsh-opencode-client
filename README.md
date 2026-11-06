@@ -24,6 +24,7 @@ native dsh subagent backend.
 - **Live progress** — `opencode_progress` (current tool/step, elapsed, output tail) fed by SSE tool events; delegation completes on the SSE idle event
 - **Search & diagnostics** — `opencode_search` (v2 session search), `opencode_mcp` (MCP server status)
 - **Attachments** — `opencode_delegate` accepts a `files` JSON array (text/base64 → data URL file parts)
+- **Abort** — `opencode_abort` stops a running remote session; a waiting delegation returns an abort error instead of hanging
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh approval cards; `allow`/`reject` answer deterministically
 - **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast permission/question handling, live state, `GET /api/opencode-client/events` and `/status`
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
