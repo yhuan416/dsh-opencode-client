@@ -35,10 +35,10 @@
 
 ## 3. P2 — 验证闭环（中高价值）
 
-- [ ] `opencode_shell`：`POST /session/{id}/shell` 在远端会话跑 shell 命令（确定性执行，不跑完整 agent）。
-- [ ] `opencode_read_file`：`GET /file/content` 读远端文件。
-- [ ] `opencode_find`：`GET /find/file`、`/find/text` 搜索。
-- [ ] `opencode_git_diff`：`GET /vcs/status`、`/vcs/diff`、`/vcs/diff/raw`，委派后验收"改了什么"。
+- [x] `opencode_shell`：`POST /session/{id}/shell` 在远端会话跑 shell 命令（确定性执行，不跑完整 agent）。
+- [x] `opencode_read_file`：`GET /file/content` 读远端文件。
+- [x] `opencode_find`：`GET /find/file`、`/find`（文本搜索）搜索。
+- [x] `opencode_git_status` / `opencode_git_diff`：`GET /vcs/status`、`/vcs/diff`、`/vcs/diff/raw`，委派后验收"改了什么"。
 
 验收：委派 → diff 核对 → 必要时再委派修复，形成闭环。
 

@@ -7,6 +7,7 @@ import { jsonResponse } from '../lib/http.js'
 import { promptBody, extractAssistant } from '../lib/delegate.js'
 import { parseStructured } from '../lib/run.js'
 import { collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand } from '../lib/catalog.js'
+import { runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText } from '../lib/workspace.js'
 
 assert.equal(entry.name, 'opencode-client')
 assert.deepEqual(entry.inject, ['connection'])
@@ -38,7 +39,7 @@ assert.deepEqual(await reply.json(), { ok: true })
 
 assert.deepEqual(extractAssistant({ info: { role: 'assistant' }, parts: [{ type: 'text', text: 'ok' }] }), { text: 'ok', structured: undefined })
 
-for (const fn of [collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand]) {
+for (const fn of [collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand, runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText]) {
   assert.equal(typeof fn, 'function')
 }
 
