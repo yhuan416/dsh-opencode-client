@@ -12,7 +12,9 @@ Initial independent release.
   `opencode_share`, `opencode_models`, `opencode_commands`, `opencode_skills`, `opencode_tools`,
   `opencode_references`, `opencode_command`, `opencode_shell`, `opencode_git_status`,
   `opencode_git_diff`, `opencode_read_file`, `opencode_find`, `opencode_fork`, `opencode_children`,
-  `opencode_summarize`, `opencode_init`, `opencode_progress`.
+  `opencode_summarize`, `opencode_init`, `opencode_progress`, `opencode_search`, `opencode_mcp`.
+- Attachments via `opencode_delegate` `files` (data-URL file parts); session search (v2 + v1 fallback);
+  MCP server status.
 - Live run progress from SSE tool/step events (current tool, elapsed, output tail) exposed via
   `opencode_progress`, `GET /status` and `activeTool` in `GET /list`.
 - Delegation completion is now event-driven (SSE `session.idle`) with a slow polling fallback.

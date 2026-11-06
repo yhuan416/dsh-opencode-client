@@ -18,6 +18,8 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **工作区操作**：`opencode_shell`、`opencode_git_status`、`opencode_git_diff`、`opencode_read_file`、`opencode_find`
 - **会话管理**：`opencode_fork`、`opencode_children`、`opencode_summarize`（mutating）、`opencode_init`（写 AGENTS.md，需 confirm=true）
 - **实时进度**：`opencode_progress`（当前工具/步骤、耗时、输出 tail），由 SSE 工具事件驱动；委派完成改为 SSE idle 事件触发
+- **搜索/诊断**：`opencode_search`（v2 会话搜索）、`opencode_mcp`（MCP 服务状态）
+- **附件**：`opencode_delegate` 支持 `files` JSON 数组（text/base64 → data URL file part）
 - **委派**：`opencode_delegate`（新建或 `session=` 续用；可选 `agent`、`model`、prompt 级 `schema`）
 - **原生子代理**：provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 使用
 - **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）
