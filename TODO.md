@@ -53,8 +53,8 @@
 
 ## 5. P4 — 权限/实时增强
 
-- [ ] saved permissions 查看/删除（v1 `GET /permission` 规则、v2 `/api/permission/saved`）
-- [ ] 读远端 `GET /config` 的 permission 配置，对齐本地档位
+- [ ] saved permissions 查看/删除（v1 `GET /permission` 规则、v2 `/api/permission/saved`）——**暂缓：本地审批卡已覆盖交互，远端规则管理属低频诊断**
+- [ ] 读远端 `GET /config` 的 permission 配置，对齐本地档位——**暂缓：本地档位已够用，避免引入"远端全 allow、本地还弹卡"之外的复杂度**
 - [ ] 工具进度事件：`session.next.tool.called/progress/success/failed` → 状态/UI 展示
 - [ ] 流式文本：`message.part.delta` → 可选实时输出
 - [ ] v2 `POST /api/session/{id}/wait` 替代消息轮询（需 `GET /api/health` 探测）
