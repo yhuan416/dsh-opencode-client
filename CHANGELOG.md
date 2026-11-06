@@ -19,7 +19,9 @@ Initial independent release.
 - Live run progress from SSE tool/step events (current tool, elapsed, output tail) exposed via
   `opencode_progress`, `GET /status` and `activeTool` in `GET /list`.
 - Delegation completion is now event-driven (SSE `session.idle`) with a slow polling fallback.
-- Native dsh subagent provider `opencode-<serverId>`.
+- Native dsh subagent provider `opencode-<serverId>` (external out-of-process seam):
+  parent-agent attribution for approval/question bridging, `prompt_async` + SSE idle wait,
+  idempotent `dispose`, bounded diagnostics; see `docs/subagent-seam.md`.
 - Permission requests bridged to dsh approval cards (`permission: ask|allow|reject`), question
   requests bridged to the dsh user-question UI, with polling fallback.
 - Per-server SSE (`/global/event`) with reconnect; `/events`, `/status`, `live`/`running` state.

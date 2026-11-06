@@ -81,6 +81,13 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
         toolName: subagent_n100
 ```
 
+## Subagent seam
+
+The native `subagent_<server>` tools plug into dsh's `ctx.subagents` provider seam.
+See [docs/subagent-seam.md](docs/subagent-seam.md) for the contract, our capability
+mapping, and the applied optimizations (parent-agent attribution, event-driven wait,
+idempotent dispose).
+
 ## Compatibility & versioning
 
 See [COMPATIBILITY.md](COMPATIBILITY.md). The plugin follows independent semantic versioning, is

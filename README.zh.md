@@ -83,6 +83,12 @@ dsh plugin --profile web add /path/to/dsh-opencode-client
         toolName: subagent_n100
 ```
 
+## Subagent 接缝
+
+原生 `subagent_<server>` 工具接入 dsh 的 `ctx.subagents` provider 接缝。
+契约、能力映射与已应用的优化（父 agent 归属、事件驱动等待、幂等 dispose）见
+[docs/subagent-seam.md](docs/subagent-seam.md)。
+
 ## 兼容性与版本
 
 见 [COMPATIBILITY.md](COMPATIBILITY.md)。插件采用独立语义化版本，已验证 dsh `0.2.1-rc.2` 与
