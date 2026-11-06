@@ -1,7 +1,9 @@
 # TODO — dsh-opencode-client
 
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
-> 本文档只记录"还没做/要做"的内容；已完成能力见 README。
+> 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
+>
+> **当前里程碑：v0.1.0（2026-11-06）** —— P1–P5 完成；剩余为上游阻塞项、明确暂缓项和 P6 提案。
 
 ## 0. 已完成（基线）
 
@@ -14,6 +16,10 @@
 - [x] `prompt_async` + 消息轮询等待（回退阻塞 prompt）
 - [x] session-info（title/summary/todo/diff）、share/unshare
 - [x] 插件页「OpenCode Client」
+- [x] 共享运行生命周期 `lib/session-run.js`（delegate 与原生 provider 复用）
+- [x] `opencode_prompt` 回合制续聊（远端会话跨 dsh 回合存活）
+- [x] 工具进度 / SSE idle 完成等待 / abort
+- [x] 26 个 `opencode_*` 模型工具（会话 58 工具）
 
 ## 1. P0 — 上游阻塞（等 opencode 修复）
 
@@ -38,7 +44,7 @@
 - [x] `opencode_shell`：`POST /session/{id}/shell` 在远端会话跑 shell 命令（确定性执行，不跑完整 agent）。
 - [x] `opencode_read_file`：`GET /file/content` 读远端文件。
 - [x] `opencode_find`：`GET /find/file`、`/find`（文本搜索）搜索。
-- [x] `opencode_git_status` / `opencode_git_diff`：`GET /vcs/status`、`/vcs/diff`、`/vcs/diff/raw`，委派后验收"改了什么"。
+- [x] `opencode_git_status` / `opencode_git_diff`：`GET /vcs/status`、`/vcs/diff`（摘要，patch 可选，避免大仓库 raw diff 爆炸），委派后验收"改了什么"。
 
 验收：委派 → diff 核对 → 必要时再委派修复，形成闭环。
 
@@ -62,6 +68,14 @@
 - [ ] 读远端 `GET /config` 的 permission 配置——**暂缓：本地档位已够用**
 - [ ] v2 `delivery: steer|queue`、`resume`——**暂缓：一发式委派，无并发插话需求**
 - [x] `opencode_abort`：`POST /session/{id}/abort`，取消远端长任务；等待中的委派会以 abort 错误返回（不再干等超时）。
+
+## 5.5 P6 — 插件页远端会话聊天（提案，未实现）
+
+见 [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md)。
+
+- [ ] Phase 1（MVP，仅 client）：会话级「聊天」按钮 + 消息渲染 + 输入框（`prompt`，`wait` 可选）+ 1.5–2s 轮询 + 中止 + OpenCode 深链
+- [ ] Phase 2：宿主 SSE 代理（`/stream`）+ 页面 EventSource，渲染 delta/工具状态
+- [ ] Phase 3（可选）：页面内附件、markdown、内联权限卡
 
 ## 6. P5 — 可选
 
@@ -93,6 +107,7 @@
 - [x] 增加 `scripts/check.mjs` 冒烟测试（语法 + 配置归一化 + 工具注册 + 假 ctx），`npm run check`
 - [x] 增加 `repository` 字段；若发布 npm 则补 `publishConfig`
 - [x] 统一版本策略（独立语义化；见 COMPATIBILITY.md 与 CHANGELOG.md）
+- [x] 文档整理：ARCHITECTURE.md、文档索引、聊天提案；v0.1.0 里程碑打 tag
 
 ## 9. 决策记录
 
@@ -100,3 +115,5 @@
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。
+- **原生 subagent 一次性、远端会话可续**：外部 provider 无法实现 `prepareContinuable`；续用通过 `opencode_subagent(session=)`（任务级）或 `opencode_prompt`（消息级）。
+- **直接操作 vs 委派**：确定性操作走 shell/read/git 等直连工具；开放式任务才走远端 agent。

@@ -84,7 +84,7 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
 
 ## Subagent seam
 
-The native `subagent_<server>` tools plug into dsh's `ctx.subagents` provider seam.
+The native `opencode_subagent_<server>` tools plug into dsh's `ctx.subagents` provider seam.
 See [docs/subagent-seam.md](docs/subagent-seam.md) for the contract, our capability
 mapping, and the applied optimizations (parent-agent attribution, event-driven wait,
 idempotent dispose). Both `opencode_subagent` and the native provider share one
@@ -92,6 +92,14 @@ session-run lifecycle (`lib/session-run.js`): same session creation, interaction
 tracking, async prompt + SSE idle wait and abort handling. Native subagent sessions are
 titled `dsh subagent: <label>` so they are identifiable in the plugin page (which now
 also shows session ids and the active tool of running servers).
+
+## Documentation
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — module map, data flows, design decisions
+- [COMPATIBILITY.md](COMPATIBILITY.md) — dsh / OpenCode compatibility and versioning policy
+- [docs/subagent-seam.md](docs/subagent-seam.md) — dsh subagent provider contract
+- [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) — in-page remote-session chat proposal
+- [README.zh.md](README.zh.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Compatibility & versioning
 

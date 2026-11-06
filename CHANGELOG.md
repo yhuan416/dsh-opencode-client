@@ -1,8 +1,8 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-06)
 
-Initial independent release.
+First milestone release (not published to npm).
 
 ### Added
 
@@ -34,6 +34,13 @@ Initial independent release.
 - dsh plugin manifest compliance: `engines.dsh`, `dsh.manifestVersion`, bundle patch, client
   declaration, locale metadata, icon, LICENSE, README.zh.
 - Offline smoke check: `npm run check` (`scripts/check.mjs`).
+
+### Documentation
+
+- `ARCHITECTURE.md` (module map, data flows, design decisions, feature checklist).
+- `docs/subagent-seam.md` (dsh subagent provider contract and optimizations).
+- `docs/chat-ui-proposal.md` (in-page remote-session chat proposal).
+- README / README.zh documentation index, TODO refresh, compatibility matrix.
 
 ### Compatibility
 

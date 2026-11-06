@@ -27,7 +27,7 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **原生子代理**：provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 使用
 - **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）
 - **实时**：每台 server 常驻 SSE（`/global/event`），带重连；`/events`、`/status`、`live`/`running`
-- **异步提示**：`prompt_async` + 消息轮询等待，失败回退阻塞式 prompt
+- **完成等待**：`prompt_async` + SSE `session.idle` 事件驱动（空闲立即返回），5s 轮询兜底，失败回退阻塞式 prompt
 - **插件页**：「OpenCode Client」分区：服务器/工作区/会话、查看消息、新建会话、打开 OpenCode UI
 
 ## 安装
@@ -86,12 +86,20 @@ dsh plugin --profile web add /path/to/dsh-opencode-client
 
 ## Subagent 接缝
 
-原生 `subagent_<server>` 工具接入 dsh 的 `ctx.subagents` provider 接缝。
+原生 `opencode_subagent_<server>` 工具接入 dsh 的 `ctx.subagents` provider 接缝。
 契约、能力映射与已应用的优化（父 agent 归属、事件驱动等待、幂等 dispose）见
 [docs/subagent-seam.md](docs/subagent-seam.md)。`opencode_subagent` 与原生 provider 复用同一条
 session 运行生命周期（`lib/session-run.js`）：同一套建会话、交互跟踪、异步 prompt + SSE idle
 等待与中止逻辑。原生 subagent 会话标题为 `dsh subagent: <label>`，插件页可直接识别（页面现在也
 显示会话 id 和运行中服务器的当前工具）。
+
+## 文档
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) —— 模块地图、数据流、设计决策
+- [COMPATIBILITY.md](COMPATIBILITY.md) —— dsh / OpenCode 兼容性与版本策略
+- [docs/subagent-seam.md](docs/subagent-seam.md) —— dsh subagent provider 接缝
+- [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) —— 插件页远端会话聊天提案
+- [README.md](README.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## 兼容性与版本
 
