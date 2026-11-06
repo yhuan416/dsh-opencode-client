@@ -47,6 +47,9 @@ Known upstream issues that shape the integration:
 - `format: {type:"json_schema"}` (structured output) persists a `retryCount` field in the user
   message and makes `GET /session/{id}/message` return 400 afterwards (1.18.10 and 1.18.31).
   The plugin therefore uses prompt-enforced JSON (`schema` parameter) instead of `format`.
+- `POST /api/session/{id}/wait` (v2) returns `503 Session wait is not available yet` on 1.18.31 and
+  1.18.33; completion is therefore detected from SSE (`session.idle`/`session.status`) with a polling
+  fallback instead of the v2 wait endpoint.
 - `GET /experimental/capabilities` reports `backgroundSubagents: false` on 1.18.31.
 - Servers are single-tenant and have no server-side federation; multiple servers are aggregated by
   this client.

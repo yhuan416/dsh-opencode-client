@@ -12,7 +12,10 @@ Initial independent release.
   `opencode_share`, `opencode_models`, `opencode_commands`, `opencode_skills`, `opencode_tools`,
   `opencode_references`, `opencode_command`, `opencode_shell`, `opencode_git_status`,
   `opencode_git_diff`, `opencode_read_file`, `opencode_find`, `opencode_fork`, `opencode_children`,
-  `opencode_summarize`, `opencode_init`.
+  `opencode_summarize`, `opencode_init`, `opencode_progress`.
+- Live run progress from SSE tool/step events (current tool, elapsed, output tail) exposed via
+  `opencode_progress`, `GET /status` and `activeTool` in `GET /list`.
+- Delegation completion is now event-driven (SSE `session.idle`) with a slow polling fallback.
 - Native dsh subagent provider `opencode-<serverId>`.
 - Permission requests bridged to dsh approval cards (`permission: ask|allow|reject`), question
   requests bridged to the dsh user-question UI, with polling fallback.
