@@ -49,16 +49,18 @@
 - [x] `opencode_init`：`POST /session/{id}/init`（写 AGENTS.md，需 confirm=true）
 - [ ] `opencode_revert` / `opencode_unrevert`：暂不开放（高风险；后续加审批卡再启用）
 - [x] `opencode_children`：`GET /session/{id}/children`
-- [ ] 消息 part 编辑/删除（`PATCH/DELETE .../part/{id}`），低优先级
+- [ ] 消息 part 编辑/删除（`PATCH/DELETE .../part/{id}`）——**暂缓：低频、且可绕过（重开/分叉）**
 
 ## 5. P4 — 权限/实时增强
 
-- [ ] saved permissions 查看/删除（v1 `GET /permission` 规则、v2 `/api/permission/saved`）——**暂缓：本地审批卡已覆盖交互，远端规则管理属低频诊断**
-- [ ] 读远端 `GET /config` 的 permission 配置，对齐本地档位——**暂缓：本地档位已够用，避免引入"远端全 allow、本地还弹卡"之外的复杂度**
-- [ ] 工具进度事件：`session.next.tool.called/progress/success/failed` → 状态/UI 展示
-- [ ] 流式文本：`message.part.delta` → 可选实时输出
-- [ ] v2 `POST /api/session/{id}/wait` 替代消息轮询（需 `GET /api/health` 探测）
-- [ ] v2 `delivery: steer|queue`、`resume` 语义接入
+- [x] 工具进度事件（v1 SSE `message.part.updated`/`session.status`/`session.idle`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。v2 `session.next.tool.*` 在 1.18.x 不发，已按 v1 实现。
+- [x] 完成等待改为 **SSE `session.idle` 事件驱动** + 5s 轮询兜底（原 1.5s 纯轮询）。
+- [x] 流式文本 tail：`message.part.delta` 记录 400 字符（未做完整流式渲染，够用于进度展示）。
+- [ ] v2 `POST /api/session/{id}/wait`：**上游不可用**——1.18.31/1.18.33 实测 503 `Session wait is not available yet`，已由 SSE wait 替代。
+- [ ] saved permissions 查看/删除——**暂缓：本地审批卡已覆盖交互，远端规则管理属低频诊断**
+- [ ] 读远端 `GET /config` 的 permission 配置——**暂缓：本地档位已够用**
+- [ ] v2 `delivery: steer|queue`、`resume`——**暂缓：一发式委派，无并发插话需求**
+- [ ] **`opencode_abort`（建议补）**：`POST /session/{id}/abort`，取消远端长任务；当前只能等或去 UI 手动停。
 
 ## 6. P5 — 可选
 
