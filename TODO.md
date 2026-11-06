@@ -49,6 +49,7 @@
 - [x] `opencode_init`：`POST /session/{id}/init`（写 AGENTS.md，需 confirm=true）
 - [ ] `opencode_revert` / `opencode_unrevert`：暂不开放（高风险；后续加审批卡再启用）
 - [x] `opencode_children`：`GET /session/{id}/children`
+- [x] `opencode_prompt`：`POST /session/{id}/prompt_async`，回合制续聊（默认非阻塞，`wait=true` 等本轮结束）——远端会话不再只能"一次性"用
 - [ ] 消息 part 编辑/删除（`PATCH/DELETE .../part/{id}`）——**暂缓：低频、且可绕过（重开/分叉）**
 
 ## 5. P4 — 权限/实时增强

@@ -13,7 +13,9 @@ Initial independent release.
   `opencode_references`, `opencode_command`, `opencode_shell`, `opencode_git_status`,
   `opencode_git_diff`, `opencode_read_file`, `opencode_find`, `opencode_fork`, `opencode_children`,
   `opencode_summarize`, `opencode_init`, `opencode_progress`, `opencode_search`, `opencode_mcp`,
-  `opencode_abort`.
+  `opencode_abort`, `opencode_prompt`.
+- Turn-by-turn remote session continuation (`opencode_prompt`, fire-and-forget or wait), so one
+  remote worker session can be driven across dsh turns; both entry points share `lib/session-run.js`.
 - Attachments via `opencode_subagent` `files` (data-URL file parts; text/* content is also inlined as a
   text part so the model actually sees it); session search (v2 + v1 fallback); MCP server status.
 - Live run progress from SSE tool/step events (current tool, elapsed, output tail) exposed via

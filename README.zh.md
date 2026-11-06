@@ -17,6 +17,7 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **命令执行**：`opencode_command` 在会话内执行远端命令（如 `init`）
 - **工作区操作**：`opencode_shell`、`opencode_git_status`、`opencode_git_diff`、`opencode_read_file`、`opencode_find`
 - **会话管理**：`opencode_fork`、`opencode_children`、`opencode_summarize`（mutating）、`opencode_init`（写 AGENTS.md，需 confirm=true）
+- **回合制续聊**：`opencode_prompt` 向已有远端会话发一条消息（默认 fire-and-forget，`wait=true` 则阻塞等本轮结束）；用 `opencode_messages`/`opencode_progress` 读回复，再发下一条。远端会话可跨 dsh 回合长期存活。
 - **实时进度**：`opencode_progress`（当前工具/步骤、耗时、输出 tail），由 SSE 工具事件驱动；委派完成改为 SSE idle 事件触发
 - **搜索/诊断**：`opencode_search`（v2 会话搜索）、`opencode_mcp`（MCP 服务状态）
 - **附件**：`opencode_subagent` 支持 `files` JSON 数组（text/base64 → data URL file part）

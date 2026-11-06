@@ -21,6 +21,7 @@ native dsh subagent backend.
 - **Command execution** — `opencode_command` runs a remote command (e.g. `init`) inside a session
 - **Workspace ops** — `opencode_shell`, `opencode_git_status`, `opencode_git_diff`, `opencode_read_file`, `opencode_find`
 - **Session management** — `opencode_fork`, `opencode_children`, `opencode_summarize` (mutating), `opencode_init` (writes AGENTS.md, requires confirm=true)
+- **Turn-by-turn continuation** — `opencode_prompt` sends one message to an existing remote session (fire-and-forget by default, `wait=true` to block); read the reply with `opencode_messages`/`opencode_progress` and send the next message. This keeps a remote worker session alive across dsh turns.
 - **Live progress** — `opencode_progress` (current tool/step, elapsed, output tail) fed by SSE tool events; delegation completes on the SSE idle event
 - **Search & diagnostics** — `opencode_search` (v2 session search), `opencode_mcp` (MCP server status)
 - **Attachments** — `opencode_subagent` accepts a `files` JSON array (text/base64 → data URL file parts)
