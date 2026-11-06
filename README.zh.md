@@ -20,7 +20,8 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **实时进度**：`opencode_progress`（当前工具/步骤、耗时、输出 tail），由 SSE 工具事件驱动；委派完成改为 SSE idle 事件触发
 - **搜索/诊断**：`opencode_search`（v2 会话搜索）、`opencode_mcp`（MCP 服务状态）
 - **附件**：`opencode_delegate` 支持 `files` JSON 数组（text/base64 → data URL file part）
-- **中止**：`opencode_abort` 停止远端运行中的会话；等待中的委派会返回 abort 错误而不是继续挂起
+- **中止**：`opencode_abort` 停止远端运行中的会话；等待中的委派会返回 abort 错误而不是继续挂起。
+  注意：同一轮次内 dsh 会串行执行工具调用，因此 abort 需从**另一个会话/agent** 发起，无法抢占同轮次里阻塞中的 `opencode_delegate`。
 - **委派**：`opencode_delegate`（新建或 `session=` 续用；可选 `agent`、`model`、prompt 级 `schema`）
 - **原生子代理**：provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 使用
 - **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）
