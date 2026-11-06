@@ -16,6 +16,7 @@ projects、sessions 和 messages，把任务委派进去，并把 OpenCode 注�
 - **目录类**：`opencode_models`（provider/model，已脱敏）、`opencode_commands`、`opencode_skills`、`opencode_tools`、`opencode_references`
 - **命令执行**：`opencode_command` 在会话内执行远端命令（如 `init`）
 - **工作区操作**：`opencode_shell`、`opencode_git_status`、`opencode_git_diff`、`opencode_read_file`、`opencode_find`
+- **会话管理**：`opencode_fork`、`opencode_children`、`opencode_summarize`（mutating）、`opencode_init`（写 AGENTS.md，需 confirm=true）
 - **委派**：`opencode_delegate`（新建或 `session=` 续用；可选 `agent`、`model`、prompt 级 `schema`）
 - **原生子代理**：provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 使用
 - **权限 / 提问**：远端权限请求转 dsh 审批卡；提问转 dsh 用户提问 UI（无 agent 时自动拒绝/放行）

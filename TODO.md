@@ -44,11 +44,11 @@
 
 ## 4. P3 — 会话管理（mutating，需确认）
 
-- [ ] `opencode_fork`：`POST /session/{id}/fork`
-- [ ] `opencode_summarize`：`POST /session/{id}/summarize`（长会话压缩）
-- [ ] `opencode_init`：`POST /session/{id}/init`
-- [ ] `opencode_revert` / `opencode_unrevert`：默认禁用，需显式参数 + 审批卡
-- [ ] `opencode_children`：`GET /session/{id}/children`
+- [x] `opencode_fork`：`POST /session/{id}/fork`
+- [x] `opencode_summarize`：`POST /session/{id}/summarize`（需 provider/model）
+- [x] `opencode_init`：`POST /session/{id}/init`（写 AGENTS.md，需 confirm=true）
+- [ ] `opencode_revert` / `opencode_unrevert`：暂不开放（高风险；后续加审批卡再启用）
+- [x] `opencode_children`：`GET /session/{id}/children`
 - [ ] 消息 part 编辑/删除（`PATCH/DELETE .../part/{id}`），低优先级
 
 ## 5. P4 — 权限/实时增强
