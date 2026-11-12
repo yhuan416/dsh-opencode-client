@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+Repository hygiene and documentation only — no runtime behavior changed, and `package.json` stays
+at `0.1.0`.
+
+### Added
+
+- CI: `.github/workflows/check.yml` runs `npm run check` on push to the main branches and on every
+  pull request, with Node 22.
+- `.gitattributes` (LF normalization, PNG/JPG binary, SVG text/eol=lf) and `.editorconfig`
+  (UTF-8, LF, final newline, 2 spaces; Markdown keeps trailing whitespace).
+- README facelift in both languages: centered shields badges (release, license, Node, dsh, CI),
+  a positioning tagline, a quick start (install → configure → restart → verify), a table of
+  contents, a Mermaid architecture diagram (browser → dsh origin → plugin → `opencode serve` plus
+  the SSE `/global/event` direction), an ecosystem table, and a thematic grouping of the feature
+  list.
+- `docs/TOOLS.zh.md`: tool-by-tool reference for the 26 `opencode_*` tools — purpose, key
+  parameters, read-only vs mutating, and the remote HTTP API each one uses.
+- `docs/ARCHITECTURE.zh.md`: Chinese architecture companion (module map, data flows, design
+  decisions, feature checklist) mirroring `ARCHITECTURE.md`.
+
+### Changed
+
+- `README.md` / `README.zh.md`: features regrouped by theme (subagent delegation, sessions and
+  messages, catalogs and discovery, workspace and git, permissions and events, UI) without
+  dropping any documented tool or capability; the documentation index points at the new Chinese
+  docs.
+
 ## 0.1.0 (2026-11-06)
 
 First milestone release (not published to npm).
