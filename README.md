@@ -210,6 +210,7 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
       - id: n100
         label: n100 opencode
         url: http://192.168.4.50:4096
+        # apiVersion: auto       # auto (probe /api/info) | 1 | 2
         # password: xxx          # OPENCODE_SERVER_PASSWORD (basic auth, user "opencode")
         # directory: /home/yhuan/workspace   # default remote dir when the caller does not give one
         # agent: plan            # default OpenCode agent for delegation
@@ -252,6 +253,7 @@ also shows session ids and the active tool of running servers).
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) — 中文架构（与 ARCHITECTURE.md 对应）
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：26 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) — dsh / OpenCode compatibility and versioning policy
+- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) — measured OpenCode 2.3.0 gaps and a phased migration plan (analysis only; v2 is not supported yet)
 - [docs/subagent-seam.md](docs/subagent-seam.md) — dsh subagent provider contract
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) — in-page remote-session chat proposal
 - [README.zh.md](README.zh.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
@@ -268,7 +270,9 @@ also shows session ids and the active tool of running servers).
 
 See [COMPATIBILITY.md](COMPATIBILITY.md). The plugin follows independent semantic versioning, is
 verified against dsh `0.2.1-rc.2` and OpenCode `1.18.10/1.18.31/1.18.33`, and is not published to
-npm for now (install from git or a local path).
+npm for now (install from git or a local path). OpenCode 2 is detected at the transport layer
+(`apiVersion: auto`), but the rest of the v2 API is not migrated yet — see
+[docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 
 ## Notes
 

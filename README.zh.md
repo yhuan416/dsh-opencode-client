@@ -198,6 +198,7 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
       - id: n100
         label: n100 opencode
         url: http://192.168.4.50:4096
+        # apiVersion: auto       # auto（探测 /api/info）| 1 | 2
         # password: xxx          # OPENCODE_SERVER_PASSWORD（Basic，用户名 opencode）
         # directory: /home/yhuan/workspace   # 调用方未给目录时的默认远端目录
         # agent: plan            # 委派默认 agent
@@ -238,6 +239,7 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) —— 中文架构（与 ARCHITECTURE.md 对应）
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) —— 中文工具总览：26 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) —— dsh / OpenCode 兼容性与版本策略
+- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) —— OpenCode 2.3.0 实测兼容缺口与迁移计划（仅方案；尚未提供 v2 支持）
 - [docs/subagent-seam.md](docs/subagent-seam.md) —— dsh subagent provider 接缝
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) —— 插件页远端会话聊天提案
 - [README.md](README.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
@@ -253,7 +255,9 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 ## 兼容性与版本
 
 见 [COMPATIBILITY.md](COMPATIBILITY.md)。插件采用独立语义化版本，已验证 dsh `0.2.1-rc.2` 与
-OpenCode `1.18.10/1.18.31/1.18.33`；暂不发布 npm（从 git 或本地路径安装）。
+OpenCode `1.18.10/1.18.31/1.18.33`；暂不发布 npm（从 git 或本地路径安装）。OpenCode 2 在传输层
+可被探测（`apiVersion: auto`），其余 v2 API 尚未迁移——见
+[docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)。
 
 ## 说明与限制
 

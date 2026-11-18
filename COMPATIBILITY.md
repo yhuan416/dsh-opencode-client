@@ -38,9 +38,26 @@ dsh integration points used (each must exist for the plugin to load):
   `/session/{id}/prompt_async`, `/session/{id}/abort`, `/session/{id}/todo`,
   `/session/{id}/diff`, `/session/{id}/share`, `/session/status`, `/permission`,
   `/permission/{id}/reply`, `/question`, `/question/{id}/reply|reject`, `/agent`.
-- v2 (`/api/*`) is present in 1.18.x but **not used yet**; see `TODO.md`.
-- OpenCode 2 (separate major release) is **not tested**. It uses the same `opencode` command and
-  cannot be installed alongside OpenCode 1; treat it as unsupported until verified.
+- v2 (`/api/*`): present in 1.18.x; only the transport layer probes/uses it (next bullets).
+- **OpenCode 2 — measured 2026-11-18 against `2.3.0`: transport supported, not compatible end to
+  end.** The v1 HTTP API is gone
+  (the old paths now return the web SPA), the API moved to an authenticated `/api/*` surface, and the
+  SSE event taxonomy was rewritten. See
+  [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) for the measured break list,
+  affected modules, phased migration plan and tests. The v2 API surface is not migrated yet (only
+  the transport probe below).
+  OpenCode 2 uses the same `opencode` command and cannot be installed alongside OpenCode 1;
+  `opencode serve --help` in v2 describes only the v2 API/web server (no v1 compatibility flag).
+- **Transport layer (Phase 1, implemented)**: `lib/http.js` detects the API version per server.
+  In `auto` mode (the default) it probes `GET /api/info` with HTTP Basic auth (user `opencode`,
+  password from `OPENCODE_SERVER_PASSWORD`); a server that reports OpenCode 2 gets every request
+  prefixed with `/api` plus the Basic header, while v1 paths stay untouched. Probe failure, a
+  missing password or HTTP 401 falls back to v1 and records one diagnosable reason on
+  `server.versionProbe` (logged once at startup). Transport failures — 401, HTML/SPA bodies,
+  non-JSON bodies, other non-2xx responses and network/timeout errors — raise `OpenCodeError`
+  instead of degrading to empty results. Force a version per server with `apiVersion: 1|2`.
+  Event streaming, permissions/forms, directory scoping and the `opencode_*` tool surface are
+  **still v1-only**, so OpenCode 2 remains unsupported end to end.
 
 Known upstream issues that shape the integration:
 

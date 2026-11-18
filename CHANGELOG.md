@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-Repository hygiene and documentation only — no runtime behavior changed, and `package.json` stays
+Phase 1 of the OpenCode 2 migration (transport layer) plus repository hygiene; `package.json` stays
 at `0.1.0`.
 
 ### Added
@@ -20,9 +20,20 @@ at `0.1.0`.
   parameters, read-only vs mutating, and the remote HTTP API each one uses.
 - `docs/ARCHITECTURE.zh.md`: Chinese architecture companion (module map, data flows, design
   decisions, feature checklist) mirroring `ARCHITECTURE.md`.
+- `test/http.test.js` (18 `node:test` cases) and `npm test`; `npm run check` now runs the offline
+  smoke checks plus the transport tests.
 
 ### Changed
 
+- `lib/http.js`: transport-level OpenCode API version support (Phase 1 of
+  `docs/opencode-v2-migration.zh.md`). Servers default to `apiVersion: auto`, which probes
+  `GET /api/info` with HTTP Basic auth and switches to `/api`-prefixed requests for OpenCode 2; a
+  failed probe, missing password or 401 falls back to v1 with one recorded reason. 401, HTML/SPA
+  bodies, non-JSON bodies, other non-2xx responses and network/timeout errors now raise
+  `OpenCodeError` instead of returning `undefined`/empty data. The 26 `opencode_*` tool names are
+  unchanged; event streaming, permissions/forms, directory scoping and the tool surface remain
+  v1-only.
+- `lib/config.js`: per-server `apiVersion` option (`auto` | `1` | `2`).
 - `README.md` / `README.zh.md`: features regrouped by theme (subagent delegation, sessions and
   messages, catalogs and discovery, workspace and git, permissions and events, UI) without
   dropping any documented tool or capability; the documentation index points at the new Chinese

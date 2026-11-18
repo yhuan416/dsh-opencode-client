@@ -10,7 +10,7 @@
 dsh web 宿主进程
 ├── lib/index.js                 装配：config → services → routes/providers/tools/SSE
 │   ├── lib/config.js            normalizeServers / parseModel / parsePathMap
-│   ├── lib/http.js              opencodeRequest（按 server 加头、directory、超时）
+│   ├── lib/http.js              opencodeRequest（API 版本探测、/api 前缀、Basic、类型化错误）
 │   ├── lib/sessions.js          discovery、messages、status、agents、session-info、share、abort
 │   ├── lib/catalog.js           models/commands/skills/tools/references/search/MCP
 │   ├── lib/workspace.js         shell、git status/diff、read file、find
