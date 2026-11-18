@@ -2,8 +2,8 @@
 
 ## Unreleased
 
-Phase 1 of the OpenCode 2 migration (transport layer) plus repository hygiene; `package.json` stays
-at `0.1.0`.
+Phases 1–2 of the OpenCode 2 migration (transport layer, then SSE/completion) plus repository
+hygiene; `package.json` stays at `0.1.0`.
 
 ### Added
 
@@ -22,6 +22,11 @@ at `0.1.0`.
   decisions, feature checklist) mirroring `ARCHITECTURE.md`.
 - `test/http.test.js` (18 `node:test` cases) and `npm test`; `npm run check` now runs the offline
   smoke checks plus the transport tests.
+- `lib/events.js`: one canonical event model for both wire formats, with version-split completion
+  classification.
+- `test/events.test.js`, `test/sse.test.js`, `test/completion.test.js`: v1/v2 event sequences,
+  succeed/fail/interrupt endings, unknown-event forward compatibility, and version-aware SSE
+  endpoints/auth (37 test cases in total).
 
 ### Changed
 
@@ -34,6 +39,13 @@ at `0.1.0`.
   unchanged; event streaming, permissions/forms, directory scoping and the tool surface remain
   v1-only.
 - `lib/config.js`: per-server `apiVersion` option (`auto` | `1` | `2`).
+- `lib/sse.js`: subscribes to v1 `/global/event` or v2 `/api/event` (prefix + Basic auth) per
+  detected version, consumes canonical events, and reports v2 completion from
+  `session.execution.*` instead of `session.idle`. Interaction fallback polling is skipped on v2
+  (session-scoped permission/form replies are Phase 3) and no longer leaves transport rejections
+  unhandled.
+- `lib/delegate.js`: completion kinds `failed`/`interrupted` now reject immediately instead of
+  falling through to polling.
 - `README.md` / `README.zh.md`: features regrouped by theme (subagent delegation, sessions and
   messages, catalogs and discovery, workspace and git, permissions and events, UI) without
   dropping any documented tool or capability; the documentation index points at the new Chinese

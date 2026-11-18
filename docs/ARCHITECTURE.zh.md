@@ -11,6 +11,7 @@ dsh web 宿主进程
 ├── lib/index.js                 装配：config → services → routes/providers/tools/SSE
 │   ├── lib/config.js            normalizeServers / parseModel / parsePathMap
 │   ├── lib/http.js              opencodeRequest（API 版本探测、/api 前缀、Basic、类型化错误）
+│   ├── lib/events.js            统一的 v1/v2 事件模型（线上格式映射、完成判定分流）
 │   ├── lib/sessions.js          discovery、messages、status、agents、session-info、share、abort
 │   ├── lib/catalog.js           models/commands/skills/tools/references/search/MCP
 │   ├── lib/workspace.js         shell、git status/diff、read file、find
@@ -20,13 +21,13 @@ dsh web 宿主进程
 │   ├── lib/run.js               opencode_subagent 委派（session= 续用、schema）
 │   ├── lib/provider.js          原生 dsh subagent provider（外部后端）
 │   ├── lib/interactions.js      远端 permission/question → dsh approval / userQuestions
-│   ├── lib/sse.js               每台 server 的 /global/event 流；progress、idle 监听、events 环形缓冲
+│   ├── lib/sse.js               每台 server 的 SSE（v1 /global/event、v2 /api/event）；progress、idle 监听、events 环形缓冲
 │   ├── lib/routes.js            /api/opencode-client/* 宿主 HTTP 路由
 │   └── lib/tools.js             26 个面向模型的 opencode_* 工具
 └── lib/client.js                浏览器 bundle：「OpenCode Client」插件页区块
 
 远端机器
-└── opencode serve               HTTP API（v1 基线）+ SSE /global/event
+└── opencode serve               HTTP API（v1 基线；v2 在 /api + Basic）+ SSE
 ```
 
 ## 数据流
@@ -59,12 +60,13 @@ opencode_subagent / 原生 subagent
 ### SSE 管道
 
 ```text
-GET /global/event（每台 server，重连/退避）
-  → 解析 v1 事件：message.part.updated / message.part.delta / session.status / session.idle
+GET /global/event（v1）或 /api/event（v2，Basic），每台 server，重连/退避
+  → normalizeEvent（lib/events.js）：v1 message.part.* / session.*，
+    v2 session.text|reasoning|tool|step|execution.* → 统一事件
   → server.sessionState（running）         → GET /list、/status
   → server.progress（tool、elapsed、tail） → opencode_progress、/progress、activeTool
-  → session.idle 监听器                    → 委派的完成等待
-  → permission.asked / question.asked      → 交互桥（审批卡 / 用户提问）
+  → 完成监听（v1 idle；v2 execution.succeeded|failed|interrupted） → 委派等待
+  → permission.asked / question.asked      → 交互桥（仅 v1；v2 为 session 作用域，Phase 3）
 ```
 
 ### 交互桥

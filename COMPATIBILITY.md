@@ -38,14 +38,14 @@ dsh integration points used (each must exist for the plugin to load):
   `/session/{id}/prompt_async`, `/session/{id}/abort`, `/session/{id}/todo`,
   `/session/{id}/diff`, `/session/{id}/share`, `/session/status`, `/permission`,
   `/permission/{id}/reply`, `/question`, `/question/{id}/reply|reject`, `/agent`.
-- v2 (`/api/*`): present in 1.18.x; only the transport layer probes/uses it (next bullets).
+- v2 (`/api/*`): present in 1.18.x; only the transport and SSE layers probe/use it (next bullets).
 - **OpenCode 2 — measured 2026-11-18 against `2.3.0`: transport supported, not compatible end to
   end.** The v1 HTTP API is gone
   (the old paths now return the web SPA), the API moved to an authenticated `/api/*` surface, and the
   SSE event taxonomy was rewritten. See
   [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) for the measured break list,
   affected modules, phased migration plan and tests. The v2 API surface is not migrated yet (only
-  the transport probe below).
+  the transport and SSE layers below).
   OpenCode 2 uses the same `opencode` command and cannot be installed alongside OpenCode 1;
   `opencode serve --help` in v2 describes only the v2 API/web server (no v1 compatibility flag).
 - **Transport layer (Phase 1, implemented)**: `lib/http.js` detects the API version per server.
@@ -56,8 +56,13 @@ dsh integration points used (each must exist for the plugin to load):
   `server.versionProbe` (logged once at startup). Transport failures — 401, HTML/SPA bodies,
   non-JSON bodies, other non-2xx responses and network/timeout errors — raise `OpenCodeError`
   instead of degrading to empty results. Force a version per server with `apiVersion: 1|2`.
-  Event streaming, permissions/forms, directory scoping and the `opencode_*` tool surface are
-  **still v1-only**, so OpenCode 2 remains unsupported end to end.
+- **SSE and completion detection (Phase 2, implemented)**: `lib/events.js` maps both wire formats
+  into one canonical event model; `lib/sse.js` subscribes to v1 `/global/event` or v2
+  `/api/event` (with the `/api` prefix and Basic header) according to the detected version.
+  Completion is version-split: v1 keeps `session.idle` / idle `session.status` with the polling
+  fallback, v2 uses `session.execution.succeeded|failed|interrupted` only (`session.idle` and
+  `session.status` are not completion signals on v2). Permissions/forms, directory scoping and
+  the `opencode_*` tool surface remain **v1-only**, so OpenCode 2 is still unsupported end to end.
 
 Known upstream issues that shape the integration:
 

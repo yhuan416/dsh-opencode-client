@@ -11,6 +11,7 @@ dsh web host process
 ├── lib/index.js                 wiring: config → services → routes/providers/tools/SSE
 │   ├── lib/config.js            normalizeServers / parseModel / parsePathMap
 │   ├── lib/http.js              opencodeRequest (API version probe, /api prefix, Basic auth, typed errors)
+│   ├── lib/events.js            unified v1/v2 event model (wire mapping, completion split)
 │   ├── lib/sessions.js          discovery, messages, status, agents, session-info, share, abort
 │   ├── lib/catalog.js           models/commands/skills/tools/references/search/MCP
 │   ├── lib/workspace.js         shell, git status/diff, read file, find
@@ -20,13 +21,13 @@ dsh web host process
 │   ├── lib/run.js               opencode_subagent delegation (session= continuation, schema)
 │   ├── lib/provider.js          native dsh subagent provider (external backend)
 │   ├── lib/interactions.js      remote permission/question → dsh approval / userQuestions
-│   ├── lib/sse.js               per-server /global/event stream; progress, idle listeners, events ring
+│   ├── lib/sse.js               per-server SSE (v1 /global/event, v2 /api/event); progress, idle listeners, events ring
 │   ├── lib/routes.js            /api/opencode-client/* host HTTP routes
 │   └── lib/tools.js             26 model-facing opencode_* tools
 └── lib/client.js                browser bundle: "OpenCode Client" plugin-page section
 
 remote machines
-└── opencode serve               HTTP API (v1 baseline) + SSE /global/event
+└── opencode serve               HTTP API (v1 baseline; v2 under /api + Basic) + SSE
 ```
 
 ## Data flows
@@ -59,12 +60,13 @@ The native provider (`lib/provider.js`) implements the dsh out-of-process seam
 ### SSE pipeline
 
 ```text
-GET /global/event (per server, reconnect/backoff)
-  → parse v1 events: message.part.updated / message.part.delta / session.status / session.idle
+GET /global/event (v1) or /api/event (v2, Basic) per server, reconnect/backoff
+  → normalizeEvent (lib/events.js): v1 message.part.* / session.*,
+    v2 session.text|reasoning|tool|step|execution.* → canonical events
   → server.sessionState (running)         → GET /list, /status
   → server.progress (tool, elapsed, tail) → opencode_progress, /progress, activeTool
-  → session.idle listeners                → completion wait for delegation
-  → permission.asked / question.asked     → interaction bridge (approval card / user question)
+  → completion listeners (v1 idle; v2 execution.succeeded|failed|interrupted) → delegation wait
+  → permission.asked / question.asked     → interaction bridge (v1 only; v2 is session-scoped, Phase 3)
 ```
 
 ### Interaction bridge

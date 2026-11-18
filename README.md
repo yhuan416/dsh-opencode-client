@@ -92,8 +92,8 @@ The browser only talks to the **dsh origin** — `lib/client.js` renders the plu
 right-sidebar tab and embeds the native OpenCode UI in an iframe. `lib/routes.js`
 (`/api/opencode-client/*`) and the model-facing `opencode_*` tools (`lib/tools.js`) make
 deterministic v1 HTTP calls; `lib/provider.js` (`opencode-<serverId>`) and `lib/session-run.js`
-drive delegated runs; `lib/sse.js` subscribes to each server's `/global/event` stream (with
-reconnect) for live progress, idle-based completion and permission/question bridging.
+drive delegated runs; `lib/sse.js` subscribes to each server's event stream (v1 `/global/event`,
+v2 `/api/event` with Basic auth; with reconnect) for live progress, idle-based completion and permission/question bridging.
 
 More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md).
 
@@ -162,7 +162,7 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
   approval cards; `allow`/`reject` answer deterministically.
 - **Question bridging** — remote questions are forwarded to dsh's user-question UI for
   tool-initiated runs (an agent is in scope); otherwise they are rejected.
-- **Live events** — per-server SSE subscription (`/global/event`) with reconnect; fast
+- **Live events** — per-server SSE subscription (v1 `/global/event`, v2 `/api/event`) with reconnect; fast
   permission/question handling, live state, `GET /api/opencode-client/events` and `/status`.
 - **Polling fallback** — permission/question requests are answered while a delegated run is active:
   SSE events are handled immediately, with a 15 s polling fallback when the stream is unavailable.
@@ -271,7 +271,8 @@ also shows session ids and the active tool of running servers).
 See [COMPATIBILITY.md](COMPATIBILITY.md). The plugin follows independent semantic versioning, is
 verified against dsh `0.2.1-rc.2` and OpenCode `1.18.10/1.18.31/1.18.33`, and is not published to
 npm for now (install from git or a local path). OpenCode 2 is detected at the transport layer
-(`apiVersion: auto`), but the rest of the v2 API is not migrated yet — see
+(`apiVersion: auto`) and its SSE/completion path is mapped, but the rest of the v2 API is not
+migrated yet — see
 [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 
 ## Notes
