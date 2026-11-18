@@ -89,7 +89,8 @@ flowchart LR
 浏览器只与 **dsh 同源**通信 —— `lib/client.js` 渲染插件页和右侧栏标签页，并用 iframe 嵌入
 OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模型的 `opencode_*` 工具
 （`lib/tools.js`）发出确定性的 v1 HTTP 调用；`lib/provider.js`（`opencode-<serverId>`）和
-`lib/session-run.js` 驱动委派运行；`lib/sse.js` 订阅每台 server 的 `/global/event`（带重连），
+`lib/session-run.js` 驱动委派运行；`lib/sse.js` 订阅每台 server 的事件流（v1 `/global/event`、
+v2 `/api/event` 带 Basic 认证；带重连），
 提供实时进度、idle 完成等待与权限/提问桥接。
 
 更多：[ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md)。
@@ -153,7 +154,7 @@ OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模�
   确定性应答。
 - **提问桥接** — 工具发起的运行（有 agent 在作用域）会把远端提问转发到 dsh 用户提问 UI；
   否则自动拒绝。
-- **实时** — 每台 server 常驻 SSE（`/global/event`），带重连；权限/提问快速应答、
+- **实时** — 每台 server 常驻 SSE（v1 `/global/event`、v2 `/api/event`），带重连；权限/提问快速应答、
   `GET /api/opencode-client/events`、`/status`、`live`/`running` 状态。
 - **轮询兜底** — 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
 
@@ -255,8 +256,8 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 ## 兼容性与版本
 
 见 [COMPATIBILITY.md](COMPATIBILITY.md)。插件采用独立语义化版本，已验证 dsh `0.2.1-rc.2` 与
-OpenCode `1.18.10/1.18.31/1.18.33`；暂不发布 npm（从 git 或本地路径安装）。OpenCode 2 在传输层
-可被探测（`apiVersion: auto`），其余 v2 API 尚未迁移——见
+OpenCode `1.18.10/1.18.31/1.18.33`；暂不发布 npm（从 git 或本地路径安装）。OpenCode 2 在传输层可被探测（`apiVersion: auto`），
+SSE/完成检测已按版本映射，其余 v2 API 尚未迁移——见
 [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)。
 
 ## 说明与限制
