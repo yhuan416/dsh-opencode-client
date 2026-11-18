@@ -39,8 +39,13 @@ dsh integration points used (each must exist for the plugin to load):
   `/session/{id}/diff`, `/session/{id}/share`, `/session/status`, `/permission`,
   `/permission/{id}/reply`, `/question`, `/question/{id}/reply|reject`, `/agent`.
 - v2 (`/api/*`) is present in 1.18.x but **not used yet**; see `TODO.md`.
-- OpenCode 2 (separate major release) is **not tested**. It uses the same `opencode` command and
-  cannot be installed alongside OpenCode 1; treat it as unsupported until verified.
+- **OpenCode 2 — measured 2026-11-18 against `2.3.0`: not compatible.** The v1 HTTP API is gone
+  (the old paths now return the web SPA), the API moved to an authenticated `/api/*` surface, and the
+  SSE event taxonomy was rewritten. See
+  [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) for the measured break list,
+  affected modules, phased migration plan and tests. No v2 support is implemented in 0.1.0.
+  OpenCode 2 uses the same `opencode` command and cannot be installed alongside OpenCode 1;
+  `opencode serve --help` in v2 describes only the v2 API/web server (no v1 compatibility flag).
 
 Known upstream issues that shape the integration:
 
