@@ -238,6 +238,7 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) —— 中文架构（与 ARCHITECTURE.md 对应）
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) —— 中文工具总览：26 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) —— dsh / OpenCode 兼容性与版本策略
+- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) —— OpenCode 2.3.0 实测兼容缺口与迁移计划（仅方案；尚未提供 v2 支持）
 - [docs/subagent-seam.md](docs/subagent-seam.md) —— dsh subagent provider 接缝
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) —— 插件页远端会话聊天提案
 - [README.md](README.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
