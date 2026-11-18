@@ -10,7 +10,7 @@ it is another OpenCode client, hosted in dsh.
 dsh web host process
 ├── lib/index.js                 wiring: config → services → routes/providers/tools/SSE
 │   ├── lib/config.js            normalizeServers / parseModel / parsePathMap
-│   ├── lib/http.js              opencodeRequest (per-server headers, directory, timeout)
+│   ├── lib/http.js              opencodeRequest (API version probe, /api prefix, Basic auth, typed errors)
 │   ├── lib/sessions.js          discovery, messages, status, agents, session-info, share, abort
 │   ├── lib/catalog.js           models/commands/skills/tools/references/search/MCP
 │   ├── lib/workspace.js         shell, git status/diff, read file, find
