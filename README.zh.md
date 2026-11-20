@@ -149,7 +149,7 @@ v2 上插件还会替你吸收这些 API 差异：
 - `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）。
 - `opencode_summarize` 映射到 `compact`（使用会话自身的 model，因此 v2 上 `model` 可省略）；
   `opencode_init` 执行内置 `init` 命令；`opencode_git_diff` 把 `git` 映射为 v2 的
-  `working`。
+  `working`；`opencode_find` 在 v2 上会把 glob 查询退化成子串再试一次（v2 端点不认 `*`/`?`）。
 
 ### 子代理委派
 

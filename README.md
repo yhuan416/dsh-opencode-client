@@ -154,7 +154,8 @@ On v2 the plugin also absorbs these API differences for you:
 - `opencode_shell` runs asynchronously in the session workspace (submit, poll, read output).
 - `opencode_summarize` maps to `compact` (the session's own model is used, so `model` is optional
   on v2); `opencode_init` runs the built-in `init` command; `opencode_git_diff` maps `git` → v2's
-  `working`.
+  `working`; `opencode_find` retries a glob query as a plain substring on v2 (the v2 endpoint does
+  not understand `*`/`?`).
 
 ### Subagent delegation
 
