@@ -23,7 +23,7 @@
 5. **`prompt` 的语义变了**：v1 的 `POST /api/session/{id}/prompt_async` 变成 `POST /api/session/{id}/prompt`；请求体从 `{parts, agent, model}` 变成 `{text, files, ...}`，**agent/model 不再放在 prompt body**，而是通过 `POST /api/session/{id}/agent`、`POST /api/session/{id}/model` 设置（包括创建会话时指定）。附件也从 `FilePartInput` 变成 `{uri, name}` 的 `FileAttachment`。
 6. **完成信号不能用 `session.idle`**：`session.idle`/`session.status` 仍出现在 2.3.0 的事件枚举和 schema 里，但本次实测的真实执行都没有发出；实际可用的完成信号是 `session.execution.succeeded` / `session.execution.failed` / `session.execution.interrupted`，轮询兜底可看 `Session.Message.Idle` 消息的 `outcome`。另有 `POST /api/experimental/session/{id}/wait` 可阻塞等待会话空闲（实测运行中调用约 8.5s 后返回 204）。
 7. **权限和提问改成 session 作用域**：权限列表是 `GET /api/permission/request`（或 `GET /api/session/{id}/permission`），回复是 `POST /api/session/{sid}/permission/{rid}/reply`，body `{decision: "once"|"always"|"reject"}`；提问变成 form：`GET /api/session/{sid}/form`，回复 `POST /api/session/{sid}/form/{fid}/reply` `{answer:{key:value}}`，拒绝/取消用 `DELETE /api/session/{sid}/form/{fid}`。
-8. **一批 v1 接口被移除，部分有替代、部分没有**：`/session/{id}/todo`、`/session/{id}/share`、`/session/{id}/children`、`/session/{id}/summarize`、`/session/{id}/init`、`/experimental/tool/ids`、`/config/providers`、`/session/status`、`/global/health`。children→`session?parentID=`、summarize→`compact`、init→`command init`、models→`provider+model`、status→`session/active`、health→`api/info`；**share、todo、tool ids、文本搜索没有 v2 对应接口**，必须产品决策（删除或降级）。
+8. **一批 v1 接口被移除，部分有替代、部分没有**：`/session/{id}/todo`、`/session/{id}/share`、`/session/{id}/children`、`/session/{id}/summarize`、`/session/{id}/init`、`/experimental/tool/ids`、`/config/providers`、`/session/status`、`/global/health`。children→`session?parentID=`、summarize→`compact`、init→`command init`、models→`provider+model`、status→`session/active`、health→`api/info`；**share、todo、tool ids、文本搜索没有 v2 对应接口**，必须产品决策（删除或降级）。→ 后续决策：share/tool ids 显式失败；todo 与文本搜索在 0.4.0 用 v2 原生能力补回（`todowrite` 推导 / workspace grep）。
 9. **当前 0.1.0 的“在线”判断也不成立**：`collectServer` 用 `/global/health` 的 `healthy === true` 判断在线；v2 没有该接口，必须改用 `/api/info` 的 200/version。
 10. **工作量**：v2-only 约 **5–8 人日**；保留 v1 的双栈约 **6.5–9.5 人日**（含测试/文档；不含 Web UI 代理和真实 provider 矩阵。Web UI 如果要求“嵌入后免登录”，另需 0.5–1 人日做一个 dsh 侧认证代理）。
 
@@ -45,7 +45,7 @@
 - **运行/委派（Phase 2）**：`delegate.js`/`session-run.js` 使用 `{text,files}` prompt、创建时 `location.directory`、会话级 agent/model、`interrupt`；完成用 execution 事件 + IDLE 轮询。
 - **交互（Phase 3）**：session 作用域权限（`decision: once|always|reject`）与表单（类型化字段、`{answer:{key:value}}`、`DELETE` 取消）桥接到 dsh 审批/提问。
 - **工作区/管理（Phase 4）**：shell 走 `POST /api/shell` + 轮询 + `/output`；vcs `mode=working|branch|committed`；`/api/fs/read/*` 原始字节；`/api/fs/find`；fork `{before}`、compact、`init` 命令、`parentID` 子会话。
-- **不可用功能**（决策：明确报错/降级，不伪造）：`opencode_share`、`opencode_tools`、`opencode_find(kind=text)`、`session_info` 的 todo；v1 保持原样。
+- **不可用功能**（决策：明确报错/降级，不伪造）：`opencode_share`、`opencode_tools`；`opencode_find(kind=text)` 与 `session_info` 的 todo 在 0.4.0 以 v2 原生能力补回（workspace grep、`todowrite` 推导），消息按 cursor 分页；v1 保持原样。
 - **验证**：`npm test`（45 项离线测试，含 8 项 v2 面测试）、`npm run check`、`npm run e2e` 对真实 v2.3.0（n100/e5）与本地 v1.18.10 各 10/10 步通过。
 
 ---

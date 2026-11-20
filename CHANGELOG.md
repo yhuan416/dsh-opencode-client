@@ -1,3 +1,39 @@
+## 0.4.0 (2026-11-20)
+
+OpenCode 2 compatibility backfill: three v1 capabilities that v2 removed or degraded are restored
+through v2-native fallbacks, and message pagination is now correct for long sessions.
+
+### Added
+
+- `opencode_find kind=text` works on OpenCode 2 again. v2 removed `/find?pattern=`, so the plugin
+  runs a workspace `grep -rIn -F` through the async shell (`lib/workspace.js::runShellCommand`) and
+  returns the same `path:line: text` shape (first 100 matches, literal substring, `.git` skipped).
+- `opencode_session_info` todo list works on OpenCode 2 again, derived from the last `todowrite`
+  tool call in the session (`state.input.todos`); output marks it `[derived from the last todowrite
+  call]`. v1 keeps using `/session/{id}/todo`.
+- `opencode_models` surfaces OpenCode 2 model `variants` (reasoning-effort ids) as
+  `model{none|low|high}` so a variant can be picked without guessing.
+
+### Fixed
+
+- `opencode_messages` follows the v2 cursor (`cursor.next`) instead of silently truncating at the
+  server page size: requesting N messages now pages until N entries are collected (bounded to 20
+  pages / 4000 raw entries) and keeps exactly the newest N.
+- `opencode_find kind=text` no longer answers "not available on OpenCode 2".
+
+### Changed
+
+- `npm test` covers 60 cases (4 new v2-compat tests: shell-grep search, cursor pagination, derived
+  todos, model variants).
+- `package.json`: version `0.4.0`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): content search returned `./a.txt:1: alpha needle here` (2 hits);
+  a session that used `todowrite` reported all 6 todos with priorities; a 199-message session
+  returned 149 of 150 requested messages (one raw entry is not a text message); model listing
+  showed `qwen4-max-preview{none|low|medium|xhigh}` and `deepseek-v4.1-flash-1017{none|low|high}`.
+
 ## 0.3.0 (2026-11-20)
 
 Multi-server subagent routing, accurate stop reasons, and a crash fix in the shared prompt path.

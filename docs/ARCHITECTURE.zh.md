@@ -49,7 +49,8 @@ dsh web 宿主进程
 | 交互 | 全局 `/permission`、`/question` + `/reply` / `/reject`，SSE 事件驱动 | 会话作用域 `/session/{sid}/permission/{rid}/reply {decision}`、`/session/{sid}/form` + `/reply {answer}` / `DELETE`；SSE 事件驱动 + run 作用域轮询兜底 | `interactions.js` |
 | 工作区 | 同步 `/session/{id}/shell`、`/vcs/*`、`/file/content`、`/find/file`、`/find` | 异步 `/shell` → `/shell/{id}` → `/shell/{id}/output`、`/vcs/*`（`mode=working` / `branch` / `committed`）、原始 `/fs/read/*`、`/fs/find`（仅文件） | `workspace.js` |
 | 管理 | `/fork {messageID}`、`/summarize`、`/init`、`/children` | `/fork {before}`、`/compact`、内置 `init` 命令、`/session?parentID=` | `manage.js` |
-| 仅 v1 | share、tool ids、文本 find、session todo | 无端点：显式报错或输出明确提示，绝不返回静默空数据 | `sessions.js`、`catalog.js`、`workspace.js` |
+| 仅 v1（保持显式失败） | share、tool ids | 无端点：显式报错，绝不返回静默空数据 | `sessions.js`、`catalog.js` |
+| v2 回退实现 | 文本 find、session todo、消息分页、模型 variants | 文本搜索走 workspace `grep`；todo 从 `todowrite` 推导；消息跟随 cursor；variants 透出 | `workspace.js`、`sessions.js`、`catalog.js` |
 
 版本分流的落点是“读面归一化 + 写路径按版本分支”：`sessions` / `catalog` / `workspace` / `manage`
 返回统一形状，`tools.js` 和 `routes.js` 不判断版本；`delegate.js` 与 `session-run.js` 负责提示词/
@@ -132,7 +133,7 @@ v2 表单字段带类型（`string` / `number` / `integer` / `boolean` / `multis
 | 读面在 `sessions` / `catalog` / `workspace` 归一化 | 26 个工具只消费统一形状，版本差异集中、可测试，不会泄漏到工具定义 |
 | 探测失败、缺密码或 401 时按 v1 处理并记录原因 | 现有 v1 安装在 1.18.10/31/33 上验证过；回退可诊断（启动日志 + `server.versionProbe`）而非静默 |
 | 传输失败一律抛 `OpenCodeError`，不降级为空数据 | 401、HTML/SPA、非 JSON、非 2xx、超时都是显式错误，避免“0 条结果”掩盖真实故障 |
-| v2 无对应端点的能力显式失败 | share、tool ids、文本 find、session todo 没有替代端点，返回明确错误/提示 |
+| v2 无对应端点的能力：能补则补，不能补才显式失败 | 文本 find / session todo 用 v2 原生能力补回；share、tool ids 没有替代端点，返回明确错误/提示 |
 | 结构化输出用 prompt 约束，而非 `format=` | 上游 bug 会毒化消息读取（400 BadRequest） |
 | 原生 subagent provider 不声明任何能力 | 远端后端无法兑现 `agentOptions`/`outputSchema`/`maxDepth`；在 start 前就拒绝 |
 | 共享同一条 session-run 生命周期 | 委派工具与原生 provider 不能在时序/中止/清理上产生漂移 |
