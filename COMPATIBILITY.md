@@ -60,7 +60,7 @@ with `apiVersion: 1|2`.
 | Fork / summarize / init / children | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` |
 | Share / tool ids | available | **not available** (explicit error, never silent empty data) |
 | Session todos | `/session/{id}/todo` | no endpoint; derived from the last `todowrite` tool call (`state.input.todos`) |
-| Model variants | none | `/api/model` `variants[]` (reasoning-effort ids) surfaced by `opencode_models` |
+| Model variants | none | `/api/model` `variants[]` (reasoning-effort ids) surfaced by `opencode_models`; selectable as `provider/model#variant` (v2 `Model.Ref.variant`) |
 
 - **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`
   (Linux x64, live server; measured 2026-11-18, v2 surface completed 2026-11-20).

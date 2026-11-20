@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
-import { normalizeServers } from '../lib/config.js'
+import { normalizeServers, parseModel } from '../lib/config.js'
 import {
   collectServer, collectSessionRows, readMessages, collectSessionInfo, collectAgents,
   collectStatus, abortSession, shareSession, resolveAgentId,
@@ -20,8 +20,8 @@ import {
 } from '../lib/catalog.js'
 import { gitStatus, gitDiff, readRemoteFile, findFiles, findText, runShell } from '../lib/workspace.js'
 import { forkSession, summarize, sessionChildren, initSession } from '../lib/manage.js'
-import { ensureSession, sendSessionMessage, prepareTurn } from '../lib/session-run.js'
-import { buildPrompt, captureTurnBaseline, extractAssistant } from '../lib/delegate.js'
+import { ensureSession, sendSessionMessage, prepareTurn, modelRef } from '../lib/session-run.js'
+import { buildPrompt, captureTurnBaseline, extractAssistant, promptBody, v2PromptBody } from '../lib/delegate.js'
 import { createInteractions } from '../lib/interactions.js'
 
 const SESSION = {
@@ -540,4 +540,16 @@ test('v2 compat: model variants are surfaced', async function () {
   } finally {
     await fake.close()
   }
+})
+
+
+test('v2 model refs: provider/model#variant parses and reaches Model.Ref only on v2', async function () {
+  assert.deepEqual(parseModel('p/m#high'), { providerID: 'p', modelID: 'm', variant: 'high' })
+  assert.deepEqual(parseModel('p/m'), { providerID: 'p', modelID: 'm' })
+  assert.deepEqual(parseModel({ providerID: 'p', modelID: 'm', variant: 'low' }), { providerID: 'p', modelID: 'm', variant: 'low' })
+  assert.deepEqual(modelRef(parseModel('p/m#high')), { id: 'm', providerID: 'p', variant: 'high' })
+  // The v1 prompt body must not carry the v2-only variant field.
+  const bodyModel = { providerID: 'p', modelID: 'm', variant: 'high' }
+  assert.deepEqual(promptBody({ id: 'v1', model: bodyModel }, 'hi').model, { providerID: 'p', modelID: 'm' })
+  assert.equal(v2PromptBody({ id: 'v2', model: bodyModel }, 'hi').model, undefined)
 })

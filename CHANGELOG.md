@@ -1,3 +1,28 @@
+## 0.4.1 (2026-11-20)
+
+OpenCode 2 model variants are selectable, not just listable.
+
+### Added
+
+- `model` accepts `"providerID/modelID#variant"` (e.g.
+  `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high`). The variant rides the v2
+  `Model.Ref.variant` field when the session is created or the model is switched, and shows up on
+  the remote session (`session.model.variant`). Plain `"provider/model"` still means the model
+  default; `opencode_models` lists the variant ids per model.
+- v1 stays strict: prompt bodies only send `{providerID, modelID}` (the `variant` field is
+  v2-only), while v2 session creation carries the full `Model.Ref`.
+
+### Changed
+
+- `npm test`: 61 cases (adds the variant parse/ref shape test).
+- `package.json`: version `0.4.1`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): delegating with
+  `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high` created a session whose
+  `model.variant` is `high`; omitting the variant yields the server default.
+
 ## 0.4.0 (2026-11-20)
 
 OpenCode 2 compatibility backfill: three v1 capabilities that v2 removed or degraded are restored
