@@ -159,7 +159,12 @@ function handle(entry, response) {
     response.end(Buffer.from([0, 1, 2, 3]))
     return
   }
-  if (path === '/api/fs/find') return json(response, 200, { location: { directory: '/work' }, data: [{ path: 'src/a.js', type: 'file' }] })
+  if (path === '/api/fs/find') {
+    // v2 matches a substring only: a glob query finds nothing and forces the fallback.
+    const query = url.searchParams.get('query') === null ? '' : url.searchParams.get('query')
+    if (query.indexOf('*') >= 0 || query.indexOf('?') >= 0) return json(response, 200, { location: { directory: '/work' }, data: [] })
+    return json(response, 200, { location: { directory: '/work' }, data: [{ path: 'src/a.js', type: 'file' }] })
+  }
   if (path === '/api/shell' && entry.method === 'POST') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'running', command: 'echo hi' } })
   if (path === '/api/shell/sh_1') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'exited', exit: 0 } })
   if (path === '/api/shell/sh_1/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'hi\nexit 0\n', cursor: 9, size: 9, truncated: false } })
@@ -285,6 +290,9 @@ test('v2 workspace: vcs envelope, mode rename, raw fs read, fs find and async sh
     const found = await findFiles(server, '/work', '*.js', 5)
     assert.equal(found.count, 1)
     assert.match(found.text, /src\/a\.js/)
+    const findUrls = fake.requests.filter(function (request) { return new URL(request.url, 'http://localhost').pathname === '/api/fs/find' }).map(function (request) { return request.url })
+    assert.match(findUrls[findUrls.length - 2], /query=\*\.js/) // glob tried first
+    assert.match(findUrls[findUrls.length - 1], /query=\.js/)    // then the stripped substring
     await assert.rejects(findText(server, '/work', 'needle'), /no content-search endpoint/)
 
     const shell = await runShell(server, 'ses_1', 'echo hi')
