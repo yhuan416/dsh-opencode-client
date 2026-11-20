@@ -1,0 +1,436 @@
+/**
+ * OpenCode 2 surface tests: the normalized session/catalog/workspace shapes,
+ * v2 request bodies (location scoping, prompt, agent/model, permission/form
+ * replies) and the "explicitly unsupported" paths.
+ *
+ * A local fake server answers the v2 endpoints; nothing here needs a real
+ * `opencode serve`.
+ */
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+import http from 'node:http'
+import { normalizeServers } from '../lib/config.js'
+import {
+  collectServer, collectSessionRows, readMessages, collectSessionInfo, collectAgents,
+  collectStatus, abortSession, shareSession, resolveAgentId,
+} from '../lib/sessions.js'
+import {
+  collectModels, collectCommands, collectSkills, collectReferences, collectMcpStatus,
+  collectToolIds, collectSessionSearch, runCommand,
+} from '../lib/catalog.js'
+import { gitStatus, gitDiff, readRemoteFile, findFiles, findText, runShell } from '../lib/workspace.js'
+import { forkSession, summarize, sessionChildren, initSession } from '../lib/manage.js'
+import { ensureSession, sendSessionMessage, prepareTurn } from '../lib/session-run.js'
+import { buildPrompt, captureTurnBaseline, extractAssistant } from '../lib/delegate.js'
+import { createInteractions } from '../lib/interactions.js'
+
+const SESSION = {
+  id: 'ses_1',
+  projectID: 'p1',
+  title: 'demo session',
+  outcome: 'succeeded',
+  cost: 0.5,
+  tokens: { input: 10, output: 20, reasoning: 3 },
+  time: { created: 100, updated: 200 },
+  location: { directory: '/work' },
+}
+
+function startServer() {
+  return new Promise(function (resolve) {
+    const requests = []
+    const server = http.createServer(function (request, response) {
+      const chunks = []
+      request.on('data', function (chunk) { chunks.push(chunk) })
+      request.on('end', function () {
+        const entry = { method: request.method, url: request.url, headers: request.headers, body: Buffer.concat(chunks).toString('utf8') }
+        requests.push(entry)
+        handle(entry, response)
+      })
+    })
+    server.listen(0, '127.0.0.1', function () {
+      resolve({
+        url: 'http://127.0.0.1:' + server.address().port,
+        requests: requests,
+        close: function () {
+          return new Promise(function (done) {
+            server.closeAllConnections()
+            server.close(function () { done() })
+          })
+        },
+      })
+    })
+  })
+}
+
+function json(response, status, value) {
+  response.writeHead(status, { 'content-type': 'application/json' })
+  response.end(JSON.stringify(value))
+}
+
+function noContent(response) {
+  response.writeHead(204)
+  response.end()
+}
+
+function handle(entry, response) {
+  const url = new URL(entry.url, 'http://localhost')
+  const path = url.pathname
+  if (path === '/api/info') return json(response, 200, { version: '2.3.0' })
+  if (path === '/api/project') return json(response, 200, [{ id: 'p1', canonical: '/work' }, { id: 'root', canonical: '/' }])
+  if (path === '/api/session' && entry.method === 'GET') {
+    if (url.searchParams.get('parentID') === 'ses_1') return json(response, 200, { data: [], cursor: {} })
+    if (url.searchParams.get('search') === 'demo') return json(response, 200, { data: [SESSION], cursor: {} })
+    return json(response, 200, { data: [SESSION], cursor: { next: null } })
+  }
+  if (path === '/api/session' && entry.method === 'POST') return json(response, 200, { data: { id: 'ses_new', location: { directory: '/work' } } })
+  if (path === '/api/session/active') return json(response, 200, { data: { ses_9: { type: 'running' } } })
+  if (path === '/api/session/ses_1/message') {
+    const type = url.searchParams.get('type')
+    if (type === 'idle') return json(response, 200, { data: [{ id: 'msg_idle', type: 'idle', outcome: 'succeeded', time: { created: 300 } }] })
+    return json(response, 200, {
+      data: [
+        { id: 'msg_idle', type: 'idle', outcome: 'succeeded', time: { created: 300 } },
+        {
+          id: 'msg_a', type: 'assistant', time: { created: 200, completed: 250 }, agent: 'build', model: { id: 'm1', providerID: 'p' },
+          content: [
+            { type: 'reasoning', text: 'thinking' },
+            { type: 'text', text: 'the answer' },
+            { type: 'tool', id: 'call_1', name: 'read', state: { status: 'completed', input: {}, content: [] }, time: { created: 210 } },
+          ],
+        },
+        { id: 'msg_u', type: 'user', time: { created: 100 }, text: 'the question', files: [{ uri: 'data:text/plain;base64,eA==', name: 'note.txt' }] },
+      ],
+      cursor: {},
+    })
+  }
+  if (path === '/api/session/ses_1') return json(response, 200, { data: SESSION })
+  if (path === '/api/session/ses_1/diff') return json(response, 200, { data: [] })
+  if (path === '/api/session/ses_1/prompt') return json(response, 200, { data: { id: 'msg_new' } })
+  if (path === '/api/session/ses_1/agent') return noContent(response)
+  if (path === '/api/session/ses_1/model') return noContent(response)
+  if (path === '/api/session/ses_1/interrupt') return json(response, 200, { interrupted: true })
+  if (path === '/api/session/ses_1/fork') return json(response, 200, { data: { id: 'ses_fork', title: 'demo session (fork #1)', time: { updated: 400 }, location: { directory: '/work' } } })
+  if (path === '/api/session/ses_1/compact') return json(response, 200, { data: { type: 'compaction' } })
+  if (path === '/api/session/ses_1/command') return noContent(response)
+  if (path === '/api/session/ses_1/permission') return json(response, 200, { data: [{ id: 'per_1', sessionID: 'ses_1', action: 'read', resources: ['a.txt'] }] })
+  if (path === '/api/session/ses_1/form') return json(response, 200, {
+    data: [{
+      id: 'frm_1', sessionID: 'ses_1', title: 'Questions',
+      metadata: { kind: 'question' },
+      fields: [
+        { key: 'q0', title: 'Color', description: 'Favorite color?', type: 'string', options: [{ value: 'red', label: 'Red' }, { value: 'blue', label: 'Blue' }], custom: true },
+        { key: 'q1', title: 'Count', description: 'How many?', type: 'integer' },
+        { key: 'q2', title: 'Tags', description: 'Pick tags', type: 'multiselect', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] },
+      ],
+    }],
+  })
+  if (path === '/api/session/ses_1/permission/per_1/reply') return noContent(response)
+  if (path === '/api/session/ses_1/form/frm_1') {
+    if (entry.method === 'DELETE') return noContent(response)
+    return noContent(response)
+  }
+  if (path === '/api/agent') return json(response, 200, { location: { directory: '/work' }, data: [{ id: 'build', name: 'Build', mode: 'primary', hidden: false, description: 'default' }] })
+  if (path === '/api/provider') return json(response, 200, { location: { directory: '/work' }, data: [{ id: 'p', name: 'Provider', activation: 'enabled' }] })
+  if (path === '/api/model') return json(response, 200, {
+    location: { directory: '/work' },
+    data: [
+      { id: 'm1', modelID: 'm1', providerID: 'p', name: 'Model One', enabled: true, settings: { apiKey: 'secret' } },
+      { id: 'm2', modelID: 'm2', providerID: 'p', name: 'Model Two', enabled: false },
+    ],
+  })
+  if (path === '/api/model/default') return json(response, 200, { location: { directory: '/work' }, data: { id: 'm1', providerID: 'p' } })
+  if (path === '/api/command') return json(response, 200, { location: { directory: '/work' }, data: [{ name: 'init', description: 'guided setup' }] })
+  if (path === '/api/skill') return json(response, 200, { location: { directory: '/work' }, data: [{ id: 's1', name: 'Skill One', description: 'does things', path: 'skill://s1/SKILL.md', content: 'SECRET BODY' }] })
+  if (path === '/api/mcp') return json(response, 200, { location: { directory: '/work' }, data: [{ name: 'drawio', status: { status: 'connected' } }, { name: 'jira', status: { status: 'failed', error: 'boom' } }] })
+  if (path === '/api/reference') return json(response, 200, { location: { directory: '/work' }, data: [] })
+  if (path === '/api/vcs/status') return json(response, 200, { location: { directory: '/work' }, data: [{ file: 'a.txt', status: 'modified', additions: 1, deletions: 2 }] })
+  if (path === '/api/vcs/diff') {
+    const mode = url.searchParams.get('mode')
+    if (mode === 'git') return json(response, 400, { message: 'Expected Vcs.Mode' })
+    return json(response, 200, { location: { directory: '/work' }, data: [{ file: 'a.txt', status: 'modified', additions: 1, deletions: 2, patch: '@@ -1 +1 @@' }] })
+  }
+  if (path === '/api/fs/read/a.txt') {
+    response.writeHead(200, { 'content-type': 'text/plain' })
+    response.end('hello from v2\n')
+    return
+  }
+  if (path === '/api/fs/read/bin.dat') {
+    response.writeHead(200, { 'content-type': 'application/octet-stream' })
+    response.end(Buffer.from([0, 1, 2, 3]))
+    return
+  }
+  if (path === '/api/fs/find') return json(response, 200, { location: { directory: '/work' }, data: [{ path: 'src/a.js', type: 'file' }] })
+  if (path === '/api/shell' && entry.method === 'POST') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'running', command: 'echo hi' } })
+  if (path === '/api/shell/sh_1') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'exited', exit: 0 } })
+  if (path === '/api/shell/sh_1/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'hi\nexit 0\n', cursor: 9, size: 9, truncated: false } })
+  return json(response, 404, { message: 'not found: ' + path })
+}
+
+function makeServer(fake) {
+  const servers = normalizeServers([{ id: 'v2', url: fake.url, password: 'secret', directory: '/work' }])
+  assert.equal(servers.length, 1)
+  return servers[0]
+}
+
+function lastRequest(fake, method, path) {
+  return fake.requests.filter(function (request) {
+    const url = new URL(request.url, 'http://localhost')
+    return request.method === method && url.pathname === path
+  }).pop()
+}
+
+test('v2 sessions: list/info/messages/agents/status normalize to the v1 shapes', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const snapshot = await collectServer(server)
+    assert.equal(snapshot.state, 'online')
+    assert.equal(snapshot.version, '2.3.0')
+    assert.equal(snapshot.projects.length, 1)
+    assert.equal(snapshot.projects[0].worktree, '/work')
+    assert.equal(snapshot.projects[0].sessions[0].directory, '/work')
+
+    const rows = await collectSessionRows([server], undefined, '/work', 'demo', 10)
+    assert.equal(rows.count, 1)
+    assert.match(rows.text, /demo session/)
+    assert.equal(rows.errors.length, 0)
+
+    const messages = await readMessages(server, 'ses_1', 10)
+    assert.deepEqual(messages.map(function (message) { return message.role }), ['user', 'assistant'])
+    assert.match(messages[1].text, /the answer/)
+    assert.match(messages[1].text, /\[tool\] read: completed/)
+    assert.match(messages[0].text, /\[file\] note.txt/)
+    const listRequest = lastRequest(fake, 'GET', '/api/session/ses_1/message')
+    assert.match(listRequest.url, /order=desc/)
+
+    const info = await collectSessionInfo(server, 'ses_1')
+    assert.equal(info.todosSupported, false)
+    assert.equal(info.session.outcome, 'succeeded')
+    assert.equal(info.session.title, 'demo session')
+
+    const agents = await collectAgents([server])
+    assert.equal(agents.count, 1)
+    assert.match(agents.text, /build \(Build\) \(primary\)/)
+
+    const status = await collectStatus(server)
+    assert.equal(status.ses_9.type, 'running')
+    assert.equal(await resolveAgentId(server, 'Build'), 'build')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 sessions: abort hits interrupt and share is explicitly unsupported', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    assert.equal(await abortSession(server, 'ses_1'), true)
+    assert.ok(lastRequest(fake, 'POST', '/api/session/ses_1/interrupt'))
+    const share = await shareSession(server, 'ses_1', 'share')
+    assert.equal(share.ok, false)
+    assert.match(share.error, /no session share endpoint/)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 catalogs: models (no secrets), commands, skills path, mcp status object, tool ids note', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const models = await collectModels([server])
+    assert.equal(models.count, 1)
+    assert.match(models.text, /\[v2\] p \(Provider\) default=m1 models: m1/)
+    assert.doesNotMatch(models.text, /Model Two/) // disabled models are hidden
+    assert.doesNotMatch(models.text, /secret/) // provider credentials never surface
+
+    const commands = await collectCommands([server])
+    assert.match(commands.text, /\/init — guided setup/)
+    const skills = await collectSkills([server])
+    assert.match(skills.text, /skill:\/\/s1\/SKILL\.md/)
+    assert.doesNotMatch(skills.text, /SECRET BODY/) // skill content is never surfaced
+    const mcp = await collectMcpStatus([server])
+    assert.match(mcp.text, /drawio: connected/)
+    assert.match(mcp.text, /jira: failed \(boom\)/)
+    const refs = await collectReferences([server])
+    assert.equal(refs.count, 0)
+    const toolIds = await collectToolIds([server])
+    assert.match(toolIds.text, /not available on OpenCode 2/)
+    const search = await collectSessionSearch([server], undefined, 'demo', 5)
+    assert.equal(search.count, 1)
+    assert.equal(search.rows[0].directory, '/work')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 workspace: vcs envelope, mode rename, raw fs read, fs find and async shell', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const status = await gitStatus(server, '/work')
+    assert.equal(status.files.length, 1)
+    assert.match(status.text, /\[modified\] a\.txt \(\+1 -2\)/)
+
+    const diff = await gitDiff(server, '/work', 'git', true)
+    assert.match(diff.text, /@@ -1 \+1 @@/)
+    assert.match(lastRequest(fake, 'GET', '/api/vcs/diff').url, /mode=working/)
+
+    const file = await readRemoteFile(server, '/work', 'a.txt')
+    assert.equal(file.binary, false)
+    assert.match(file.text, /hello from v2/)
+    const binary = await readRemoteFile(server, '/work', 'bin.dat')
+    assert.equal(binary.binary, true)
+
+    const found = await findFiles(server, '/work', '*.js', 5)
+    assert.equal(found.count, 1)
+    assert.match(found.text, /src\/a\.js/)
+    await assert.rejects(findText(server, '/work', 'needle'), /no content-search endpoint/)
+
+    const shell = await runShell(server, 'ses_1', 'echo hi')
+    assert.match(shell.text, /hi/)
+    const post = lastRequest(fake, 'POST', '/api/shell')
+    assert.equal(JSON.parse(post.body).command, 'echo hi')
+    assert.equal(JSON.parse(post.body).cwd, '/work')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 manage: fork uses before + data, compact replaces summarize, children use parentID', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const forked = await forkSession(server, 'ses_1', 'msg_9')
+    assert.equal(forked.id, 'ses_fork')
+    assert.equal(forked.directory, '/work')
+    assert.equal(JSON.parse(lastRequest(fake, 'POST', '/api/session/ses_1/fork').body).before, 'msg_9')
+
+    assert.equal(await summarize(server, 'ses_1'), true)
+    assert.ok(lastRequest(fake, 'POST', '/api/session/ses_1/compact'))
+
+    const children = await sessionChildren(server, 'ses_1')
+    assert.equal(children.count, 0)
+    assert.match(lastRequest(fake, 'GET', '/api/session').url, /parentID=ses_1/)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 prompts: create carries location/agent/model, prompt has text, agent/model are session state', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    server.agent = 'build'
+    server.model = { providerID: 'p', modelID: 'm1' }
+    const sessionId = await ensureSession(server, { title: 'x', directory: '/work' })
+    assert.equal(sessionId, 'ses_new')
+    const created = JSON.parse(lastRequest(fake, 'POST', '/api/session').body)
+    assert.deepEqual(created.location, { directory: '/work' })
+    assert.equal(created.agent, 'build')
+    assert.deepEqual(created.model, { id: 'm1', providerID: 'p' })
+
+    const body = await buildPrompt(server, 'hello', { files: [{ filename: 'n.txt', mime: 'text/plain', base64: Buffer.from('inline me').toString('base64') }] })
+    assert.equal(body.parts, undefined)
+    assert.match(body.text, /hello/)
+    assert.match(body.text, /inline me/)
+    assert.equal(body.files.length, 1)
+    assert.match(body.files[0].uri, /^data:text\/plain;base64,/)
+    assert.equal(body.agent, undefined)
+
+    const sent = await sendSessionMessage(server, 'ses_1', body, { wait: false, agent: 'build', model: { providerID: 'p', modelID: 'm1' } })
+    assert.equal(sent.accepted, true)
+    assert.ok(lastRequest(fake, 'POST', '/api/session/ses_1/prompt'))
+    assert.ok(lastRequest(fake, 'POST', '/api/session/ses_1/agent'))
+    const modelBody = JSON.parse(lastRequest(fake, 'POST', '/api/session/ses_1/model').body)
+    assert.deepEqual(modelBody.model, { id: 'm1', providerID: 'p' })
+
+    await prepareTurn(server, 'ses_1', { agent: 'plan' })
+    assert.deepEqual(JSON.parse(lastRequest(fake, 'POST', '/api/session/ses_1/agent').body), { agent: 'plan' })
+
+    assert.equal(await captureTurnBaseline(server, 'ses_1'), 'msg_idle')
+    assert.equal(extractAssistant({ type: 'assistant', content: [{ type: 'text', text: 'answer' }] }).text, 'answer')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 interactions: permission decisions and typed form answers', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const approvals = []
+    const questions = []
+    const interactions = createInteractions({
+      permissionMode: 'ask',
+      questionPolicy: 'reject',
+      activeRuns: new Map([['ses_1', { agent: 'lead', directory: '/work' }]]),
+      getUserQuestions: function () {
+        return {
+          ask: function (request) {
+            questions.push(request.questions)
+            return Promise.resolve({
+              answers: [
+                { id: 'q0', selected: ['Blue'] },
+                { id: 'q1', custom: '7' },
+                { id: 'q2', selected: ['A', 'B'] },
+              ],
+            })
+          },
+        }
+      },
+      getApproval: function () {
+        return { request: function (request) { approvals.push(request); return Promise.resolve('allowed-once') } }
+      },
+    })
+
+    interactions.handlePermission(server, { agent: 'lead', sessionId: 'ses_1' }, { id: 'per_1', sessionID: 'ses_1', action: 'read', resources: ['a.txt'] })
+    await new Promise(function (resolve) { setTimeout(resolve, 80) })
+    assert.equal(approvals.length, 1)
+    assert.equal(approvals[0].toolName, 'opencode:read')
+    const permissionReply = lastRequest(fake, 'POST', '/api/session/ses_1/permission/per_1/reply')
+    assert.deepEqual(JSON.parse(permissionReply.body), { decision: 'once' })
+
+    interactions.handleQuestion(server, { agent: 'lead', sessionId: 'ses_1' }, {
+      form: {
+        id: 'frm_1',
+        sessionID: 'ses_1',
+        title: 'Questions',
+        fields: [
+          { key: 'q0', title: 'Color', description: 'Favorite color?', type: 'string', options: [{ value: 'red', label: 'Red' }, { value: 'blue', label: 'Blue' }], custom: true },
+          { key: 'q1', title: 'Count', description: 'How many?', type: 'integer' },
+          { key: 'q2', title: 'Tags', description: 'Pick tags', type: 'multiselect', options: [{ value: 'a', label: 'A' }, { value: 'b', label: 'B' }] },
+        ],
+      },
+    })
+    await new Promise(function (resolve) { setTimeout(resolve, 80) })
+    assert.equal(questions.length, 1)
+    assert.equal(questions[0][0].id, 'q0')
+    assert.equal(questions[0][0].question, 'Favorite color?')
+    const formReply = lastRequest(fake, 'POST', '/api/session/ses_1/form/frm_1/reply')
+    assert.deepEqual(JSON.parse(formReply.body), { answer: { q0: 'blue', q1: 7, q2: ['a', 'b'] } })
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 interactions: reject policy dismisses the form with DELETE', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const interactions = createInteractions({
+      permissionMode: 'ask',
+      questionPolicy: 'reject',
+      activeRuns: new Map(),
+      getUserQuestions: function () { return undefined },
+      getApproval: function () { return undefined },
+    })
+    interactions.handleQuestion(server, undefined, { form: { id: 'frm_1', sessionID: 'ses_1', title: 'Q', fields: [{ key: 'q0', type: 'string' }] } })
+    await new Promise(function (resolve) { setTimeout(resolve, 80) })
+    const dismissed = fake.requests.filter(function (request) { return request.method === 'DELETE' }).pop()
+    assert.ok(dismissed)
+    assert.equal(dismissed.url, '/api/session/ses_1/form/frm_1')
+  } finally {
+    await fake.close()
+  }
+})

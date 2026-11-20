@@ -1,12 +1,46 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 (2026-11-20)
 
-Phases 1–2 of the OpenCode 2 migration (transport layer, then SSE/completion) plus repository
-hygiene; `package.json` stays at `0.1.0`.
+OpenCode 2 support, end to end. The plugin now speaks both OpenCode 1.18.x (v1 API) and
+OpenCode 2.x (v2 API) from the same install; the 26 `opencode_*` tool names are unchanged and
+v1 behaviour is preserved. Completes the phased plan in `docs/opencode-v2-migration.zh.md`
+(phases 1–2 shipped earlier as transport + SSE/completion; this release adds the read-only
+surface, prompts/delegation, permissions/forms, workspace/manage calls and tool semantics).
 
 ### Added
 
+- OpenCode 2 read-only surface: `/api/info` health, `/api/project` (`canonical`), `/api/session`
+  (`{data,cursor}`, `location.directory`, `?directory=` filtering), `/api/session/{id}/message`
+  (`order=desc` fetched then presented oldest-first, `content[]` text/reasoning/tool parts),
+  `/api/agent` (`id`/`name`/`mode`/`hidden`), `/api/session/active` and `/api/session/{id}/diff`;
+  session info reports `outcome`/`cost`/`tokens` and no longer claims a todo list on v2.
+- OpenCode 2 catalogs: providers and models from `/api/provider` + `/api/model` +
+  `/api/model/default` (credentials never surfaced, disabled models hidden), commands (name and
+  description only), skills (`path` instead of `location`), references, MCP status objects and
+  session search through the list endpoint; `/experimental/tool/ids` is reported as unavailable.
+- OpenCode 2 prompts and delegation: `{text,files:[{uri,name}]}` prompt bodies, directory in the
+  create body (`location.directory`), agent/model applied as session state
+  (`POST /api/session/{id}/agent|model`), completion from `session.execution.*` with the `idle`
+  message outcome as the polling safety net, and `/api/session/{id}/interrupt` for aborts.
+- OpenCode 2 workspace and session management: asynchronous shells (`POST /api/shell`, poll
+  `/api/shell/{id}`, read `/api/shell/{id}/output`), `{location,data}` VCS status/diff with
+  `mode=working|branch|committed` (`git`→`working`), raw `/api/fs/read/*` file reads,
+  `/api/fs/find` path search, fork (`before`), compact in place of summarize, `init` as the
+  built-in command and children through `GET /api/session?parentID=`.
+- OpenCode 2 interactions: session-scoped permissions replied with `once|always|reject` and
+  questions bridged as forms with typed fields (string/number/integer/boolean/multiselect),
+  `{answer:{key:value}}` replies and `DELETE` dismissal; `form.created|replied|cancelled` map to
+  the canonical question events so the SSE fast path and the polling fallback both work.
+- `lib/http.js` helpers shared by the v2 branches: `apiVersionOf`, `unwrap`, `unwrapList`,
+  `withLocation`, `opencodeValue` and `opencodeRaw` (raw `/api/fs/read/*` bodies).
+- `test/v2-surface.test.js`: 8 offline tests over a fake v2 server (sessions/messages/agents,
+  catalogs and secret redaction, workspace and async shell, manage calls, prompt bodies and
+  agent/model session state, permission/form bridging, explicit unsupported paths).
+- `scripts/e2e-live.mjs` (`npm run e2e`): live acceptance run against a real `opencode serve`,
+  for v1 and v2, covering probe, read surface, delegation, follow-up, shell, workspace calls,
+  fork/children/compact, abort and the version-specific unsupported paths; optional
+  `OPC_LIVE_INTERACTIONS=1` exercises the approval/question bridges.
 - CI: `.github/workflows/check.yml` runs `npm run check` on push to the main branches and on every
   pull request, with Node 22.
 - `.gitattributes` (LF normalization, PNG/JPG binary, SVG text/eol=lf) and `.editorconfig`
@@ -30,6 +64,19 @@ hygiene; `package.json` stays at `0.1.0`.
 
 ### Changed
 
+- `lib/sessions.js`, `lib/catalog.js`, `lib/delegate.js`, `lib/session-run.js`,
+  `lib/interactions.js`, `lib/workspace.js`, `lib/manage.js`, `lib/routes.js` and `lib/tools.js`
+  now branch on the detected API version and expose one normalized shape to routes/tools, so a
+  single install aggregates v1 and v2 servers. Every version probe runs before a version-specific
+  path is chosen (a fresh server is never assumed to be v1).
+- Unsupported-on-v2 features fail loudly instead of returning empty data: `opencode_share`,
+  `opencode_tools`, `opencode_find(kind=text)` and the `opencode_session_info` todo list return
+  explicit "not available on OpenCode 2" messages; v1 keeps the old behaviour.
+- `opencode_summarize` maps to v2 `compact` (the session's own model is used, so its `model`
+  argument is optional on v2); `opencode_init` runs the built-in `init` command; `opencode_shell`
+  runs asynchronously in the session workspace; `opencode_git_diff` accepts `committed` and maps
+  `git` to v2's `working`.
+- `package.json`: version `0.2.0`; the plugin is still not published to npm.
 - `lib/http.js`: transport-level OpenCode API version support (Phase 1 of
   `docs/opencode-v2-migration.zh.md`). Servers default to `apiVersion: auto`, which probes
   `GET /api/info` with HTTP Basic auth and switches to `/api`-prefixed requests for OpenCode 2; a
