@@ -1,4 +1,45 @@
-# Changelog
+## 0.3.0 (2026-11-20)
+
+Multi-server subagent routing, accurate stop reasons, and a crash fix in the shared prompt path.
+
+### Added
+
+- `opencode-auto` routed provider. Per-server providers are pinned to one machine; when more than
+  one server is configured the plugin also registers `opencode-auto`, which orders candidates per
+  start (`directory` → `sticky` → `least-busy` → `round-robin`) and falls back to the next server
+  when a start fails before the run is published. The chosen server is appended to the child
+  session title (`dsh subagent: <label> @<server>`) and logged.
+- `routing` config block: `providerName` (default `opencode-auto`), `policy`, `sticky`,
+  `failover`, `stickyTtlMs`. Enabled by default when `servers.length > 1`; set
+  `routing.enabled: false` to opt out.
+- `opencode_subagent_auto` tool row example (add `tool-opencode-auto` with
+  `provider: opencode-auto`).
+- `stopReason` fidelity: OpenCode's `finish=length` now maps to dsh `max-tokens` and
+  `content-filter` to `refusal` (was always `completed`), so the parent's settlement notice says
+  "ran out of room before it finished" / "declined the task". `finish=error`/`error` map to
+  `error`; cancellation still wins with `aborted`.
+- Actionable `LocationNotFoundError` diagnostics: a child cwd the remote cannot see now reports
+  "server <id> cannot see directory <dir>; configure pathMap …" instead of a bare HTTP 404
+  (OpenCode creates the session first and rejects the prompt).
+
+### Fixed
+
+- Refused/failed prompts leaked a pending completion waiter: disposing or aborting afterwards
+  produced an unhandled rejection (`opencode: aborted`) that could crash the host process after
+  the run had already settled as an error. Every early-exit path now settles the waiter and marks
+  the abandoned promises handled (`lib/delegate.js`).
+
+### Changed
+
+- `npm test` covers 56 cases (adds `test/provider.test.js` for finish/stopReason mapping and
+  `test/routing.test.js` for routing policies, directory scoping, tie rotation and failover).
+- `package.json`: version `0.3.0`.
+
+### Verified
+
+- Live routed provider across n100 + m65 (OpenCode 2.3.0): directory routing (`/tmp` → n100,
+  `/home/yhuan` → m65), round-robin alternating (`n100 → m65 → n100 → m65`), failover from a dead
+  endpoint to n100, and the missing-directory diagnostic.
 
 ## 0.2.0 (2026-11-20)
 

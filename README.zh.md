@@ -278,6 +278,11 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
     question: reject             # reject（默认）| ignore
     pathMap:                     # 本地/远端路径布局不同时
       - { from: /home/yhuan, to: /home/yhuan }
+    routing:                     # 多 server 的子代理派发（servers > 1 时默认开启）
+      providerName: opencode-auto
+      policy: [directory, sticky, least-busy, round-robin]
+      sticky: true               # 同一父 agent 的子代理固定在同一台
+      failover: true             # start 发布前失败时换下一台
 ```
 
 `apiVersion: auto`（默认）每台 server 探测一次 `GET /api/info`。若探测被 401 拒绝、未配置密码，
@@ -298,6 +303,34 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
         toolName: opencode_subagent_n100
 ```
 
+### 多台 server：`opencode-auto`
+
+`opencode-<server>` provider 与单台 server 绑定，因此一个工具行永远派发到同一台机器。配置了多台
+server 时，插件额外注册一个路由 provider `opencode-auto`（可用 `routing` 配置），每次 start 依次
+决策：
+
+1. `directory` —— `directory` 覆盖子代理 cwd 的那台（需要各 server 配置 `directory`）；
+2. `sticky` —— 该父 agent 的第一个子代理落在哪台，后续仍落那台；
+3. `least-busy` —— 运行中会话最少的一台（`/session/active`），并列时轮转；
+4. `round-robin` —— 其余情况下轮转。
+
+若 start 在 run 发布前失败（不可达 / 5xx / 超时），`failover: true` 会换下一台候选；选中的 server
+会写进会话标题（`dsh subagent: <label> @n100`）并打日志。工具行示例：
+
+```yaml
+- insert:
+    - id: tool-opencode-auto
+      name: "@deepseek-ai/dsh-tool-subagent"
+      config:
+        provider: opencode-auto
+        maxDepth: provider-managed
+        toolName: opencode_subagent_auto
+```
+
+每台 server 配置 `directory` 才能启用目录路由；不配则退化为 sticky / least-busy / round-robin。
+**续聊不路由**：远端会话 id 属于某一台 server，续聊请用固定工具或给 `opencode_subagent` 传
+`server`。
+
 ## Subagent 接缝
 
 原生 `opencode_subagent_<server>` 工具接入 dsh 的 `ctx.subagents` provider 接缝。
@@ -305,7 +338,9 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
 [docs/subagent-seam.md](docs/subagent-seam.md)。`opencode_subagent` 与原生 provider 复用同一条
 session 运行生命周期（`lib/session-run.js`）：同一套建会话、交互跟踪、异步 prompt + SSE 完成
 等待与中止逻辑。原生 subagent 会话标题为 `dsh subagent: <label>`，插件页可直接识别（页面现在也
-显示会话 id 和运行中服务器的当前工具）。
+显示会话 id 和运行中服务器的当前工具）。provider 会如实上报 `stopReason`——`finish=length` 映射为
+`max-tokens`、`content-filter` 映射为 `refusal`，dsh 的结算通知会显示"ran out of room"/
+"declined the task" 而不是笼统的完成。多台 server 时由 `opencode-auto` 路由（见上）。
 
 ## 文档
 
