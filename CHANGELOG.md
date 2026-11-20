@@ -1,3 +1,23 @@
+## 0.5.1 (2026-11-20)
+
+Report non-zero exit codes from a cleanly-exited shell.
+
+### Fixed
+
+- `opencode_shell` only printed `exit N` for non-`exited` states, so a command that
+  ran and failed (`exit 3`, status `exited`) looked successful with empty output.
+  A non-zero exit (and `signal` when present) is now reported as `(shell exited, exit 3)`.
+
+### Changed
+
+- `npm test`: 68 cases (adds the failed-command case).
+- `package.json`: version `0.5.1`.
+
+### Verified
+
+- Found during a live 0.5.0 check: `opencode_shell` with `echo hello-050; exit 3` showed no exit
+  code; the fix is covered by the fake server and awaits the next dsh restart to show in the tool.
+
 ## 0.5.0 (2026-11-20)
 
 Read-side detail improvements: see what a remote session actually did, and stop
