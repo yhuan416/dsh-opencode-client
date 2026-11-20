@@ -1,3 +1,23 @@
+## 0.4.2 (2026-11-20)
+
+Session info shows the reasoning variant.
+
+### Fixed
+
+- `opencode_session_info` printed `model: provider/model` even when the session used a variant;
+  it now renders `provider/model#variant` (the server's default variant is omitted as noise).
+
+### Changed
+
+- `npm test`: 62 cases (adds the model-label test).
+- `package.json`: version `0.4.2`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): a session created with
+  `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high` reports `variant:"high"` over the API and
+  now renders as `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high`.
+
 ## 0.4.1 (2026-11-20)
 
 OpenCode 2 model variants are selectable, not just listable.
