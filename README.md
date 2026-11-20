@@ -286,7 +286,7 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
         password: "<OPENCODE_SERVER_PASSWORD>"
         # directory: /home/yhuan/workspace   # default remote dir when the caller does not give one
         # agent: plan            # default OpenCode agent for delegation
-        # model: deepseek/deepseek-chat      # default model "provider/model"
+        # model: deepseek/deepseek-chat      # default model "provider/model"; v2 also "provider/model#variant"
       # OpenCode 1.18.x: password is optional (recommended when exposed over the network).
       - id: m65
         label: 4.65 opencode 1.18
