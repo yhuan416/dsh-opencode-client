@@ -231,3 +231,46 @@ test('v2: execution.interrupted completes as interrupted', async function () {
     await fake.close()
   }
 })
+test('v2: permission and form events reach the interaction bridge', async function () {
+  let stream
+  const fake = await startServer(function (request, response) {
+    if (request.url === '/api/info') {
+      replyJson(response, 200, { version: '2.3.0' })
+      return
+    }
+    if (request.url === '/api/event') {
+      openSse(response)
+      stream = response
+      return
+    }
+    replyJson(response, 404, {})
+  })
+  const seen = []
+  const events = createEventStream({
+    activeRuns: new Map(),
+    handlePermission: function (server, run, data) { seen.push({ kind: 'permission', data: data }) },
+    handleQuestion: function (server, run, data) { seen.push({ kind: 'question', data: data }) },
+  })
+  const server = makeServer({ id: 'v2-bridge', url: fake.url, password: 'secret', apiVersion: '2' })
+  let dispose
+  try {
+    dispose = events.subscribeEvents(server)
+    await waitFor(function () { return server.sse.state === 'open' && stream !== undefined })
+    writeEvent(stream, {
+      id: 'evt_1', created: 1, type: 'permission.asked',
+      data: { id: 'per_1', sessionID: SES, action: 'read', resources: ['a.txt'] },
+    })
+    writeEvent(stream, {
+      id: 'evt_2', created: 2, type: 'form.created',
+      data: { form: { id: 'frm_1', sessionID: SES, title: 'Questions', fields: [{ key: 'q0', type: 'string' }] } },
+    })
+    await waitFor(function () { return seen.length === 2 })
+    assert.equal(seen[0].kind, 'permission')
+    assert.equal(seen[0].data.action, 'read')
+    assert.equal(seen[1].kind, 'question')
+    assert.equal(seen[1].data.form.id, 'frm_1')
+  } finally {
+    if (dispose !== undefined) dispose()
+    await fake.close()
+  }
+})

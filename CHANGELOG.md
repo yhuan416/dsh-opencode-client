@@ -1,12 +1,225 @@
-# Changelog
+## 0.5.1 (2026-11-20)
 
-## Unreleased
+Report non-zero exit codes from a cleanly-exited shell.
 
-Phases 1–2 of the OpenCode 2 migration (transport layer, then SSE/completion) plus repository
-hygiene; `package.json` stays at `0.1.0`.
+### Fixed
+
+- `opencode_shell` only printed `exit N` for non-`exited` states, so a command that
+  ran and failed (`exit 3`, status `exited`) looked successful with empty output.
+  A non-zero exit (and `signal` when present) is now reported as `(shell exited, exit 3)`.
+
+### Changed
+
+- `npm test`: 68 cases (adds the failed-command case).
+- `package.json`: version `0.5.1`.
+
+### Verified
+
+- Found during a live 0.5.0 check: `opencode_shell` with `echo hello-050; exit 3` showed no exit
+  code; the fix is covered by the fake server and awaits the next dsh restart to show in the tool.
+
+## 0.5.0 (2026-11-20)
+
+Read-side detail improvements: see what a remote session actually did, and stop
+silently losing shell output.
 
 ### Added
 
+- `opencode_messages`: tool lines now carry the call input summary and the first
+  output line (`[tool] bash: completed · npm test → all green`); new `type=` filter
+  (`user|assistant|shell|system|synthetic|idle|...`, server-side on OpenCode 2, local on v1).
+  Bookkeeping message kinds are hidden by default and rendered only when explicitly filtered.
+- `opencode_shell`: follows the v2 output cursor across pages (up to 1 MiB), and reports
+  truncation explicitly (`[output truncated at N bytes; cursor=M]`), plus exit code and
+  `signal` when the shell did not exit cleanly.
+- `opencode_sessions`: rows carry the model (with `#variant`), agent, outcome and non-zero
+  cost when the server reports them.
+- `opencode_session_info`: `model: (server default)` when the session has no model, plus
+  parent-session/fork source and created/updated timestamps.
+- `opencode_models`: OpenCode 2 token limits are listed (`[ctx 1M, out 384k]`).
+- `opencode_abort`: an idle session now reports `nothing to interrupt (interrupted=false)`
+  instead of a generic failure.
+
+### Changed
+
+- `npm test`: 67 cases (new detail tests for session rows, tool lines + type filter, shell
+  truncation/pagination, session/model metadata and idle abort).
+- `package.json`: version `0.5.0`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): session rows show
+  `alibaba-token-plan-cn/deepseek-v4.1-flash#high · agent=build · succeeded`; message tool
+  lines show `bash: completed · cd … && git add … → M CHANGELOG.md …`; `type=user` filters
+  server-side; `seq 1 200000` returns 1 MiB with
+  `[output truncated at 1288895 bytes; cursor=1048576]`; model listing shows `[ctx 1M, …]`;
+  aborting an idle session returns false.
+
+## 0.4.2 (2026-11-20)
+
+Session info shows the reasoning variant.
+
+### Fixed
+
+- `opencode_session_info` printed `model: provider/model` even when the session used a variant;
+  it now renders `provider/model#variant` (the server's default variant is omitted as noise).
+
+### Changed
+
+- `npm test`: 62 cases (adds the model-label test).
+- `package.json`: version `0.4.2`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): a session created with
+  `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high` reports `variant:"high"` over the API and
+  now renders as `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high`.
+
+## 0.4.1 (2026-11-20)
+
+OpenCode 2 model variants are selectable, not just listable.
+
+### Added
+
+- `model` accepts `"providerID/modelID#variant"` (e.g.
+  `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high`). The variant rides the v2
+  `Model.Ref.variant` field when the session is created or the model is switched, and shows up on
+  the remote session (`session.model.variant`). Plain `"provider/model"` still means the model
+  default; `opencode_models` lists the variant ids per model.
+- v1 stays strict: prompt bodies only send `{providerID, modelID}` (the `variant` field is
+  v2-only), while v2 session creation carries the full `Model.Ref`.
+
+### Changed
+
+- `npm test`: 61 cases (adds the variant parse/ref shape test).
+- `package.json`: version `0.4.1`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): delegating with
+  `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high` created a session whose
+  `model.variant` is `high`; omitting the variant yields the server default.
+
+## 0.4.0 (2026-11-20)
+
+OpenCode 2 compatibility backfill: three v1 capabilities that v2 removed or degraded are restored
+through v2-native fallbacks, and message pagination is now correct for long sessions.
+
+### Added
+
+- `opencode_find kind=text` works on OpenCode 2 again. v2 removed `/find?pattern=`, so the plugin
+  runs a workspace `grep -rIn -F` through the async shell (`lib/workspace.js::runShellCommand`) and
+  returns the same `path:line: text` shape (first 100 matches, literal substring, `.git` skipped).
+- `opencode_session_info` todo list works on OpenCode 2 again, derived from the last `todowrite`
+  tool call in the session (`state.input.todos`); output marks it `[derived from the last todowrite
+  call]`. v1 keeps using `/session/{id}/todo`.
+- `opencode_models` surfaces OpenCode 2 model `variants` (reasoning-effort ids) as
+  `model{none|low|high}` so a variant can be picked without guessing.
+
+### Fixed
+
+- `opencode_messages` follows the v2 cursor (`cursor.next`) instead of silently truncating at the
+  server page size: requesting N messages now pages until N entries are collected (bounded to 20
+  pages / 4000 raw entries) and keeps exactly the newest N.
+- `opencode_find kind=text` no longer answers "not available on OpenCode 2".
+
+### Changed
+
+- `npm test` covers 60 cases (4 new v2-compat tests: shell-grep search, cursor pagination, derived
+  todos, model variants).
+- `package.json`: version `0.4.0`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): content search returned `./a.txt:1: alpha needle here` (2 hits);
+  a session that used `todowrite` reported all 6 todos with priorities; a 199-message session
+  returned 149 of 150 requested messages (one raw entry is not a text message); model listing
+  showed `qwen4-max-preview{none|low|medium|xhigh}` and `deepseek-v4.1-flash-1017{none|low|high}`.
+
+## 0.3.0 (2026-11-20)
+
+Multi-server subagent routing, accurate stop reasons, and a crash fix in the shared prompt path.
+
+### Added
+
+- `opencode-auto` routed provider. Per-server providers are pinned to one machine; when more than
+  one server is configured the plugin also registers `opencode-auto`, which orders candidates per
+  start (`directory` → `sticky` → `least-busy` → `round-robin`) and falls back to the next server
+  when a start fails before the run is published. The chosen server is appended to the child
+  session title (`dsh subagent: <label> @<server>`) and logged.
+- `routing` config block: `providerName` (default `opencode-auto`), `policy`, `sticky`,
+  `failover`, `stickyTtlMs`. Enabled by default when `servers.length > 1`; set
+  `routing.enabled: false` to opt out.
+- `opencode_subagent_auto` tool row example (add `tool-opencode-auto` with
+  `provider: opencode-auto`).
+- `stopReason` fidelity: OpenCode's `finish=length` now maps to dsh `max-tokens` and
+  `content-filter` to `refusal` (was always `completed`), so the parent's settlement notice says
+  "ran out of room before it finished" / "declined the task". `finish=error`/`error` map to
+  `error`; cancellation still wins with `aborted`.
+- Actionable `LocationNotFoundError` diagnostics: a child cwd the remote cannot see now reports
+  "server <id> cannot see directory <dir>; configure pathMap …" instead of a bare HTTP 404
+  (OpenCode creates the session first and rejects the prompt).
+
+### Fixed
+
+- Refused/failed prompts leaked a pending completion waiter: disposing or aborting afterwards
+  produced an unhandled rejection (`opencode: aborted`) that could crash the host process after
+  the run had already settled as an error. Every early-exit path now settles the waiter and marks
+  the abandoned promises handled (`lib/delegate.js`).
+
+### Changed
+
+- `npm test` covers 56 cases (adds `test/provider.test.js` for finish/stopReason mapping and
+  `test/routing.test.js` for routing policies, directory scoping, tie rotation and failover).
+- `package.json`: version `0.3.0`.
+
+### Verified
+
+- Live routed provider across n100 + m65 (OpenCode 2.3.0): directory routing (`/tmp` → n100,
+  `/home/yhuan` → m65), round-robin alternating (`n100 → m65 → n100 → m65`), failover from a dead
+  endpoint to n100, and the missing-directory diagnostic.
+
+## 0.2.0 (2026-11-20)
+
+OpenCode 2 support, end to end. The plugin now speaks both OpenCode 1.18.x (v1 API) and
+OpenCode 2.x (v2 API) from the same install; the 26 `opencode_*` tool names are unchanged and
+v1 behaviour is preserved. Completes the phased plan in `docs/opencode-v2-migration.zh.md`
+(phases 1–2 shipped earlier as transport + SSE/completion; this release adds the read-only
+surface, prompts/delegation, permissions/forms, workspace/manage calls and tool semantics).
+
+### Added
+
+- OpenCode 2 read-only surface: `/api/info` health, `/api/project` (`canonical`), `/api/session`
+  (`{data,cursor}`, `location.directory`, `?directory=` filtering), `/api/session/{id}/message`
+  (`order=desc` fetched then presented oldest-first, `content[]` text/reasoning/tool parts),
+  `/api/agent` (`id`/`name`/`mode`/`hidden`), `/api/session/active` and `/api/session/{id}/diff`;
+  session info reports `outcome`/`cost`/`tokens` and no longer claims a todo list on v2.
+- OpenCode 2 catalogs: providers and models from `/api/provider` + `/api/model` +
+  `/api/model/default` (credentials never surfaced, disabled models hidden), commands (name and
+  description only), skills (`path` instead of `location`), references, MCP status objects and
+  session search through the list endpoint; `/experimental/tool/ids` is reported as unavailable.
+- OpenCode 2 prompts and delegation: `{text,files:[{uri,name}]}` prompt bodies, directory in the
+  create body (`location.directory`), agent/model applied as session state
+  (`POST /api/session/{id}/agent|model`), completion from `session.execution.*` with the `idle`
+  message outcome as the polling safety net, and `/api/session/{id}/interrupt` for aborts.
+- OpenCode 2 workspace and session management: asynchronous shells (`POST /api/shell`, poll
+  `/api/shell/{id}`, read `/api/shell/{id}/output`), `{location,data}` VCS status/diff with
+  `mode=working|branch|committed` (`git`→`working`), raw `/api/fs/read/*` file reads,
+  `/api/fs/find` path search, fork (`before`), compact in place of summarize, `init` as the
+  built-in command and children through `GET /api/session?parentID=`.
+- OpenCode 2 interactions: session-scoped permissions replied with `once|always|reject` and
+  questions bridged as forms with typed fields (string/number/integer/boolean/multiselect),
+  `{answer:{key:value}}` replies and `DELETE` dismissal; `form.created|replied|cancelled` map to
+  the canonical question events so the SSE fast path and the polling fallback both work.
+- `lib/http.js` helpers shared by the v2 branches: `apiVersionOf`, `unwrap`, `unwrapList`,
+  `withLocation`, `opencodeValue` and `opencodeRaw` (raw `/api/fs/read/*` bodies).
+- `test/v2-surface.test.js`: 8 offline tests over a fake v2 server (sessions/messages/agents,
+  catalogs and secret redaction, workspace and async shell, manage calls, prompt bodies and
+  agent/model session state, permission/form bridging, explicit unsupported paths).
+- `scripts/e2e-live.mjs` (`npm run e2e`): live acceptance run against a real `opencode serve`,
+  for v1 and v2, covering probe, read surface, delegation, follow-up, shell, workspace calls,
+  fork/children/compact, abort and the version-specific unsupported paths; optional
+  `OPC_LIVE_INTERACTIONS=1` exercises the approval/question bridges.
 - CI: `.github/workflows/check.yml` runs `npm run check` on push to the main branches and on every
   pull request, with Node 22.
 - `.gitattributes` (LF normalization, PNG/JPG binary, SVG text/eol=lf) and `.editorconfig`
@@ -30,6 +243,19 @@ hygiene; `package.json` stays at `0.1.0`.
 
 ### Changed
 
+- `lib/sessions.js`, `lib/catalog.js`, `lib/delegate.js`, `lib/session-run.js`,
+  `lib/interactions.js`, `lib/workspace.js`, `lib/manage.js`, `lib/routes.js` and `lib/tools.js`
+  now branch on the detected API version and expose one normalized shape to routes/tools, so a
+  single install aggregates v1 and v2 servers. Every version probe runs before a version-specific
+  path is chosen (a fresh server is never assumed to be v1).
+- Unsupported-on-v2 features fail loudly instead of returning empty data: `opencode_share`,
+  `opencode_tools`, `opencode_find(kind=text)` and the `opencode_session_info` todo list return
+  explicit "not available on OpenCode 2" messages; v1 keeps the old behaviour.
+- `opencode_summarize` maps to v2 `compact` (the session's own model is used, so its `model`
+  argument is optional on v2); `opencode_init` runs the built-in `init` command; `opencode_shell`
+  runs asynchronously in the session workspace; `opencode_git_diff` accepts `committed` and maps
+  `git` to v2's `working`.
+- `package.json`: version `0.2.0`; the plugin is still not published to npm.
 - `lib/http.js`: transport-level OpenCode API version support (Phase 1 of
   `docs/opencode-v2-migration.zh.md`). Servers default to `apiVersion: auto`, which probes
   `GET /api/info` with HTTP Basic auth and switches to `/api`-prefixed requests for OpenCode 2; a

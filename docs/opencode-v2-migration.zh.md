@@ -1,8 +1,8 @@
 # OpenCode v2（2.3.0）兼容缺口与迁移计划
 
-> 状态：**方案与结论，运行时未改**。本文是 `dsh-opencode-client` 0.1.0 对 OpenCode 2.3.0 的实测兼容报告和可执行迁移计划；代码迁移尚未开始。
+> 状态：**已实施（0.2.0，2026-11-20）**。本文最初是 `dsh-opencode-client` 0.1.0 对 OpenCode 2.3.0 的实测兼容报告和迁移计划，现已按计划完成 Phase 1–4（传输层、SSE/完成判定、只读面、运行/委派/交互、工作区/管理），26 个 `opencode_*` 工具在 v2 上要么可用、要么明确报“不支持”，v1 行为不变。实施结果见 §0.4 与 §7。
 >
-> 实测日期：2026-11-18。实测对象：`opencode v2.3.0`（Linux x64 官方 release）。相关 issue：<https://github.com/yhuan416/dsh-opencode-client/issues/1>。
+> 实测日期：2026-11-18（首测）／2026-11-20（实施与回归）。实测对象：`opencode v2.3.0`（Linux x64 官方 release）。相关 issue：<https://github.com/yhuan416/dsh-opencode-client/issues/1>。
 >
 > 本文中的“v1”指 OpenCode 1.18.x/1.19.x 的 `/session`、`/global/event` 等接口；“v2”指 2.x 的 `/api/*` 接口。
 
@@ -23,7 +23,7 @@
 5. **`prompt` 的语义变了**：v1 的 `POST /api/session/{id}/prompt_async` 变成 `POST /api/session/{id}/prompt`；请求体从 `{parts, agent, model}` 变成 `{text, files, ...}`，**agent/model 不再放在 prompt body**，而是通过 `POST /api/session/{id}/agent`、`POST /api/session/{id}/model` 设置（包括创建会话时指定）。附件也从 `FilePartInput` 变成 `{uri, name}` 的 `FileAttachment`。
 6. **完成信号不能用 `session.idle`**：`session.idle`/`session.status` 仍出现在 2.3.0 的事件枚举和 schema 里，但本次实测的真实执行都没有发出；实际可用的完成信号是 `session.execution.succeeded` / `session.execution.failed` / `session.execution.interrupted`，轮询兜底可看 `Session.Message.Idle` 消息的 `outcome`。另有 `POST /api/experimental/session/{id}/wait` 可阻塞等待会话空闲（实测运行中调用约 8.5s 后返回 204）。
 7. **权限和提问改成 session 作用域**：权限列表是 `GET /api/permission/request`（或 `GET /api/session/{id}/permission`），回复是 `POST /api/session/{sid}/permission/{rid}/reply`，body `{decision: "once"|"always"|"reject"}`；提问变成 form：`GET /api/session/{sid}/form`，回复 `POST /api/session/{sid}/form/{fid}/reply` `{answer:{key:value}}`，拒绝/取消用 `DELETE /api/session/{sid}/form/{fid}`。
-8. **一批 v1 接口被移除，部分有替代、部分没有**：`/session/{id}/todo`、`/session/{id}/share`、`/session/{id}/children`、`/session/{id}/summarize`、`/session/{id}/init`、`/experimental/tool/ids`、`/config/providers`、`/session/status`、`/global/health`。children→`session?parentID=`、summarize→`compact`、init→`command init`、models→`provider+model`、status→`session/active`、health→`api/info`；**share、todo、tool ids、文本搜索没有 v2 对应接口**，必须产品决策（删除或降级）。
+8. **一批 v1 接口被移除，部分有替代、部分没有**：`/session/{id}/todo`、`/session/{id}/share`、`/session/{id}/children`、`/session/{id}/summarize`、`/session/{id}/init`、`/experimental/tool/ids`、`/config/providers`、`/session/status`、`/global/health`。children→`session?parentID=`、summarize→`compact`、init→`command init`、models→`provider+model`、status→`session/active`、health→`api/info`；**share、todo、tool ids、文本搜索没有 v2 对应接口**，必须产品决策（删除或降级）。→ 后续决策：share/tool ids 显式失败；todo 与文本搜索在 0.4.0 用 v2 原生能力补回（`todowrite` 推导 / workspace grep）。
 9. **当前 0.1.0 的“在线”判断也不成立**：`collectServer` 用 `/global/health` 的 `healthy === true` 判断在线；v2 没有该接口，必须改用 `/api/info` 的 200/version。
 10. **工作量**：v2-only 约 **5–8 人日**；保留 v1 的双栈约 **6.5–9.5 人日**（含测试/文档；不含 Web UI 代理和真实 provider 矩阵。Web UI 如果要求“嵌入后免登录”，另需 0.5–1 人日做一个 dsh 侧认证代理）。
 
@@ -35,6 +35,18 @@
 - 实现方式：在 `lib/http.js` 增加 `apiVersion: auto|1|2` 和版本探测；把 v1 的请求/事件解析保留为兼容分支，新增 v2 分支；只在语义真正不同的地方（prompt、SSE、permission/form、shell）写双路径，路径/包络/字段这类机械差异放到 helper 里。
 - 如果维护者明确接受“0.1.x 留在 v1、0.2.0 只支持 v2”，则走 **B0：v2-only**，可省 1.5–2 人日；代码结构上仍建议保留 `apiVersion` 抽象，便于以后再接 v3。
 - **不推荐**把 v1 sidecar 当长期方案（只能临时救急，见 §4.1 选项 A）；**不推荐** v1→v2 转换 shim（维护两套语义，长期成本最高，见选项 C）。
+
+### 0.4 实施结果（0.2.0，2026-11-20）
+
+- **路线**：按推荐 **B1（v2-first 双栈）** 实施——同一版本同时支持 1.18.x 与 2.x，`apiVersion: auto` 探测，v1 行为保持不变。
+- **传输/错误可见性（Phase 0/1）**：`lib/http.js` 版本探测 + `/api` 前缀 + Basic auth；401/HTML/非 JSON/网络错误抛 `OpenCodeError`；新增 `apiVersionOf`/`unwrap`/`unwrapList`/`withLocation`/`opencodeValue`/`opencodeRaw`。所有分支前都先完成探测（不会把新 server 误判成 v1）。
+- **事件（Phase 2）**：`lib/events.js` 双栈规范事件；v2 完成信号只用 `session.execution.*`（`idle` 消息 outcome 作轮询兜底）；权限/表单事件映射到 canonical question/permission。
+- **只读面（Phase 1）**：`sessions.js`/`catalog.js` 覆盖 health、project、session、message、agent、model/provider、command、skill、reference、MCP、status、diff。
+- **运行/委派（Phase 2）**：`delegate.js`/`session-run.js` 使用 `{text,files}` prompt、创建时 `location.directory`、会话级 agent/model、`interrupt`；完成用 execution 事件 + IDLE 轮询。
+- **交互（Phase 3）**：session 作用域权限（`decision: once|always|reject`）与表单（类型化字段、`{answer:{key:value}}`、`DELETE` 取消）桥接到 dsh 审批/提问。
+- **工作区/管理（Phase 4）**：shell 走 `POST /api/shell` + 轮询 + `/output`；vcs `mode=working|branch|committed`；`/api/fs/read/*` 原始字节；`/api/fs/find`；fork `{before}`、compact、`init` 命令、`parentID` 子会话。
+- **不可用功能**（决策：明确报错/降级，不伪造）：`opencode_share`、`opencode_tools`；`opencode_find(kind=text)` 与 `session_info` 的 todo 在 0.4.0 以 v2 原生能力补回（workspace grep、`todowrite` 推导），消息按 cursor 分页；v1 保持原样。
+- **验证**：`npm test`（45 项离线测试，含 8 项 v2 面测试）、`npm run check`、`npm run e2e` 对真实 v2.3.0（n100/e5）与本地 v1.18.10 各 10/10 步通过。
 
 ---
 
@@ -333,7 +345,7 @@
 
 **推荐 B1**。如果维护者决定不保留 1.x，则 B0；两者都从 Phase 0 开始，代码结构都保留 `apiVersion`，所以 Phase 0 不会白做。
 
-### 4.2 Phase 0 — 让失败可见 + 版本探测 + 契约夹具（0.5–1 人日）
+### 4.2 Phase 0 — 让失败可见 + 版本探测 + 契约夹具（已完成）
 
 目标：**在任何功能迁移前，先把“静默空结果”变成明确错误，并能识别 v1/v2。**
 
@@ -347,7 +359,7 @@
 
 **退出标准**：对 2.3.0 执行 `opencode_sessions`/`opencode_models` 时，如果未配置密码/服务端不兼容，工具返回明确错误（含 401/HTML 提示），不再是“0 条”；对 1.18.x 行为不变；`npm run check` 通过。
 
-### 4.3 Phase 1 — 只读面（会话/消息/目录/状态）（1–1.5 人日）
+### 4.3 Phase 1 — 只读面（会话/消息/目录/状态）（已完成）
 
 目标：v2 上“看得见”——列会话、读消息、看 agents/models/commands/skills/references/mcp、看 status。
 
@@ -361,7 +373,7 @@
 
 **退出标准**：v2 server 下列会话/读消息/列目录有真实数据；分页/搜索/目录过滤正确；v1 全部现有只读行为不回归；错误路径有测试。
 
-### 4.4 Phase 2 — 运行/委派/SSE 完成（1.5–2 人日）
+### 4.4 Phase 2 — 运行/委派/SSE 完成（已完成）
 
 目标：v2 上“跑得通”——委派、续聊、完成等待、进度、abort。
 
@@ -376,7 +388,7 @@
 
 **退出标准**：v2 上 `opencode_subagent` 能返回最终文本；`opencode_prompt(wait=true)` 能等到本轮结束；abort 生效；progress 有 tool/step/tail；v1 委派不回归。
 
-### 4.5 Phase 3 — 权限/提问交互（0.5–1 人日）
+### 4.5 Phase 3 — 权限/提问交互（已完成）
 
 目标：v2 上审批卡/提问 UI 继续工作。
 
@@ -388,7 +400,7 @@
 
 **退出标准**：v2 上 dsh 审批卡能允许/拒绝；dsh 提问 UI 能回答/取消；远端继续执行；事件丢失时轮询兜底；v1 不回归。
 
-### 4.6 Phase 4 — 工作区/写操作/移除功能（1–1.5 人日）
+### 4.6 Phase 4 — 工作区/写操作/移除功能（已完成）
 
 目标：把剩余工具补齐或明确标记不可用。
 
@@ -403,7 +415,7 @@
 
 **退出标准**：26 个工具在 v2 上要么工作、要么明确“不支持”；无静默空结果；文件/ git/shell 真实可用；v1 回归。
 
-### 4.7 Phase 5 — UI/文档/发布（0.5–1 人日）
+### 4.7 Phase 5 — UI/文档/发布（文档已完成，UI 嵌入登录仍为已知限制）
 
 - [ ] Web UI：确认 iframe 打开 v2 SPA 时的登录流程；如果要求免登录，增加 dsh 侧反向代理（注入 Basic auth，不把密码放 URL）；验证 session 深链。
 - [ ] `COMPATIBILITY.md`：加入 2.3.0 实测矩阵、v1/v2 支持策略、已知限制。
@@ -517,13 +529,21 @@
 
 ---
 
-## 7. 立即可执行的第一步（本计划之后）
+## 7. 实施记录（0.2.0，已完成）
 
-1. 先做 Phase 0 的 `lib/http.js` 错误可见化（0.5 天），这是后续所有验证的前提。
-2. 用 2.3.0 抓 fixtures（session/message/prompt/SSE/permission/form/tool/execution），进 `test/fixtures/v2/`。
-3. 实现 `apiVersion` 探测（`/api/info` vs `/global/health`），在插件页/日志显示 `online v2.3.0`、`unauthorized`、`incompatible`。
-4. 再按 Phase 1 → 2 → 3 → 4 推进；每个 Phase 结束都跑 v1 回归 + v2 fixture/e2e。
-5. 最后再决定 share/todo/tool ids/text find 的产品处理，不要在没有决策前“假装支持”。
+原计划的执行顺序已全部走完，实际落地情况：
+
+1. **Phase 0/1 传输**：`lib/http.js` 错误可见化 + `apiVersion` 探测 + v2 前缀/Basic auth；新增 `apiVersionOf`/`unwrap`/`unwrapList`/`withLocation`/`opencodeValue`/`opencodeRaw`。
+2. **Phase 2 SSE**：`lib/events.js` 统一事件模型；v2 完成只用 `session.execution.*`，`session.idle`/`session.status` 仅记录。
+3. **只读面**：`lib/sessions.js`、`lib/catalog.js` 全量 v2 分支（会话/消息/agent/provider+model/command/skill/reference/MCP/active/diff）。
+4. **运行/委派**：`lib/delegate.js`、`lib/session-run.js`、`lib/run.js`、`lib/provider.js`；v2 prompt、会话级 agent/model、interrupt、execution 完成。
+5. **交互**：`lib/interactions.js` 权限 `decision` 与表单字段/回复/DELETE；SSE 快路径 + session 级轮询兜底。
+6. **工作区/管理**：`lib/workspace.js`（异步 shell、fs 原始字节、vcs mode 映射）、`lib/manage.js`（fork/compact/init/children）。
+7. **工具与路由**：`lib/tools.js`、`lib/routes.js` 适配 v2 语义；share/tools/text-find/todo 在 v2 明确报错。
+8. **测试**：`test/v2-surface.test.js`（8 项离线）覆盖只读面、目录作用域、prompt/agent/model、权限/表单、不可用路径；`scripts/e2e-live.mjs`（`npm run e2e`）对 v1/v2 真实 server 各跑 10 步验收。
+9. **决策**（对应 §6“需要 owner 决策的点”）：采用 B1 双栈；移除功能选“明确报错/降级”，不伪造；Web UI 嵌入暂接受手动登录；目标版本以 2.3.0 为基线并在 `/api/info` 版本上做能力判断；发布版本定为 **0.2.0**（minor，能力新增）。
+
+已知遗留：v2 Web UI iframe 的免登录代理未做（手动登录）；v2 仍在快速演进，建议后续以 `/api/info` 版本 + 契约测试做持续校验。
 
 ---
 

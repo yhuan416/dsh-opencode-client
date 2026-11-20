@@ -3,7 +3,29 @@
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
 > 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
 >
-> **当前里程碑：v0.1.0（2026-11-06）** —— P1–P5 完成；剩余为上游阻塞项、明确暂缓项和 P6 提案。
+> **当前里程碑：v0.5.1（2026-11-21）** —— OpenCode v2（2.3.0）兼容主链路完成：双栈、原生 subagent、`opencode-auto` 路由、模型 variants/选择、v1 能力回填（文本搜索/todo/分页）、读取细节增强。详见「10. 后续迭代计划」。
+
+## 0.1 v0.2.0 新增（OpenCode v2 端到端）
+
+- [x] 传输/探测：`apiVersion: auto|1|2`，`/api/info` + Basic auth 探测，v1 回退原因记录；401/HTML/非 JSON/网络错误 `OpenCodeError`（不再静默空结果）
+- [x] 只读面：session/project/message/agent/provider+model/command/skill/reference/MCP/active/diff 的 v2 解包、字段映射与目录作用域
+- [x] 运行/委派：`{text,files}` prompt、创建时 `location.directory`、会话级 agent/model、execution 事件完成判定、`interrupt`
+- [x] 交互：session 作用域权限（`once|always|reject`）+ 表单（类型化字段、`{answer}`、`DELETE` 取消）桥接 dsh 审批/提问
+- [x] 工作区/管理：异步 shell（`/api/shell` + `/output`）、vcs `mode=working|branch|committed`、`/api/fs/read/*` 原始字节、`/api/fs/find`、fork `{before}`、compact、`init` 命令、`parentID` 子会话
+- [x] 不可用功能明确报错：v2 的 share / tool ids / 文本搜索 / session todo
+- [x] 测试：`test/v2-surface.test.js`（8 项离线）+ `scripts/e2e-live.mjs`（v1/v2 真实 server 各 10 步，`npm run e2e`）
+- [x] 文档：COMPATIBILITY 兼容矩阵、CHANGELOG 0.2.0、README/工具文档/架构文档同步
+- [ ] v2 Web UI iframe 免登录（dsh 侧注入 Basic auth 的代理）——**遗留：目前需在嵌入的 v2 UI 里手动登录**
+- [ ] v2 share/todo/tool-ids/text-search 的替代方案（外部存储或 shell 近似）——**暂缓：当前明确报错**
+- [ ] v2 版本矩阵（2.3.0 之外）与 nightly e2e——**建议后续用 `/api/info` 版本 + 契约测试持续校验**
+- [ ] v2 深度整合（消息队列/steer、revert 检查点、worktree、stats/成本、export/import、调度桥、PTY、反向 MCP）——见 [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md)，建议按 0.3.0/0.4.0/0.5.0 分版推进
+- [ ] dsh subagent seam 升级（0.3.0/0.4.0）——见 [docs/subagent-seam.md](docs/subagent-seam.md)：
+      ~~P1 `stopReason` 保真（max-tokens/refusal）~~ ✅ 0.3.0；~~P3 `opencode-auto` 路由 provider~~ ✅ 0.3.0；
+      P2 `outputSchema: true` + `agentOptions: true`（配合 `subagentModelMap`），
+      以打通 workflow 的 `agent(...,{schema})` / `agent(...,{provider,model})` 与 per-provider 工具的模型选择；
+      订阅 `subagent/start|end` 事件，在插件页展示远端子代理运行/结算
+- [ ] workflow 后端切到 opencode（配置级，无代码）：把 profile 里 agent 工具组内 `workflow-ptc.provider` 从 `spawn` 改为 `opencode-<id>`，
+      让 workflow 编排跑在远端 opencode；需先完成 P2 capability，并评估远端并发/成本/延迟与 cwd 映射
 
 ## 0. 已完成（基线）
 
@@ -60,7 +82,7 @@
 
 ## 5. P4 — 权限/实时增强
 
-- [x] 工具进度事件（v1 SSE `message.part.updated`/`session.status`/`session.idle`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。v2 `session.next.tool.*` 在 1.18.x 不发，已按 v1 实现。
+- [x] 工具进度事件（v1 SSE `message.part.updated`/`session.status`/`session.idle`；v2 `session.text.*`/`reasoning.*`/`tool.*`/`step.*`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。
 - [x] 完成等待改为 **SSE `session.idle` 事件驱动** + 5s 轮询兜底（原 1.5s 纯轮询）。
 - [x] 流式文本 tail：`message.part.delta` 记录 400 字符（未做完整流式渲染，够用于进度展示）。
 - [ ] v2 `POST /api/session/{id}/wait`：**上游不可用**——1.18.31/1.18.33 实测 503 `Session wait is not available yet`，已由 SSE wait 替代。
@@ -115,10 +137,66 @@
 
 ## 9. 决策记录
 
-- **v1 为基线，v2 可选**：v1 覆盖 share/todo/diff/fork 等；v2 补 wait/steer/history，按 `/api/health` 探测后增量使用。
+- **双栈（v2-first + v1 兼容）**：同一版本同时支持 v1（1.18.x）与 v2（2.x），按 `/api/info` 探测；v1 行为保持不变，v2 缺失能力（share/todo/tool ids/文本搜索）明确报错而不是伪造。
+- **v2 语义跟随上游**：prompt 改 `{text,files}`、agent/model 走会话状态、完成看 `session.execution.*`、权限 `decision`、提问变表单、shell 异步；不做 v1→v2 翻译 shim。
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。
 - **产品定位**：核心是`opencode_subagent_<server>` 原生 subagent 后端；`opencode_subagent`/`opencode_prompt` 提供可控委派与续聊；UI 只做入口（左侧栏/右侧栏/会话头/嵌入原生 OpenCode），不做聚合工作台、聊天页或 LLM 桥接。
 - **原生 subagent 一次性、远端会话可续**：外部 provider 无法实现 `prepareContinuable`；续用通过 `opencode_subagent(session=)`（任务级）或 `opencode_prompt`（消息级）。
 - **直接操作 vs 委派**：确定性操作走 shell/read/git 等直连工具；开放式任务才走远端 agent。
+
+## 10. 后续迭代计划（2026-11-21 起）
+
+> 分支策略不变：`feat/opencode-v2-support` 独立演进，master 不动；每个版本 = 代码 + 测试 + e2e + 文档 + 真机重启验证。
+
+### 10.0 v0.5.2 —— 收尾当前批次（立即，~0.5 天）
+
+- [ ] 重启验证 0.5.1（非零退出码显示）；补 `read_file` 截断提示（现在直接截 40k 无提示）
+- [ ] `opencode_children` 补 `outcome/model/mode` 字段
+- [ ] `opencode_find` 支持 `kind=dir`（v2 `/fs/find?type=directory`）
+
+### 10.1 v0.6.0 —— v2 读取面补全（1–2 天）
+
+- [ ] `opencode_git_diff` 支持 `untracked` / `context` / `base`（v2 参数）
+- [ ] `opencode_sessions` 改用 v2 服务端 `search/directory/archived/cursor`，去掉 500 条截断
+- [ ] `opencode_messages` 可选 `include`（system/synthetic）与 type+limit 组合的边界整理
+- [ ] 结构化输出校验强化：`type/enum/items/properties`（workflow 同款子集），减少假“structured”
+- [ ] `execution.failed` 错误结构化：透出 `error.name/data` 摘要
+- 验收：离线 75+ 测试；e2e 增加 1–2 步；真机重启验证
+
+### 10.2 v0.7.0 —— v2 交互与观测（2–3 天，opencode 独有）
+
+- [ ] `opencode_prompt` 支持 `delivery: steer|queue`（运行中插话/排队）
+- [ ] 新工具 `opencode_inbox`：列出/改投递/取消队列消息
+- [ ] 新工具 `opencode_stats`：`/experimental/session/stats` 聚合（会话/step/cost/工具成功率/活跃度）
+- [ ] `opencode_session_context`（或 session_info 扩展）：读模型实际上下文（`/session/{id}/context`）
+- 验收：真机演示 steer/queue/inbox 闭环；stats 面板数据一致
+
+### 10.3 v0.8.0 —— 安全与工作区（3–5 天）
+
+- [ ] `opencode_revert` 检查点：`stage` 预览 → dsh 审批 → `commit`/discard
+- [ ] `opencode_worktree`：create/list/remove；委派会话建在独立 worktree，完成后 diff/验收
+- [ ] `export` / `import` / `move` / `migration/v1` 诊断（跨 server 迁移、归档、v1→v2 状态）
+- 验收：revert/worktree 的安全 e2e（误操作可回滚、主工作区不被直改）
+
+### 10.4 v0.9.0 —— 编排（DSH 侧深整合，3–5 天）
+
+- [ ] provider 广告 `outputSchema: true`（prompt 约束 + 本地校验）→ workflow `agent(...,{schema})`
+- [ ] provider 广告 `agentOptions: true` + `subagentModelMap`（dsh 路由 → opencode `Model.Ref+variant`）→ workflow `agent(...,{provider,model})` 与原生工具模型选择；`maxTokens` 明确拒绝
+- [ ] `workflow-ptc.provider` 切 `opencode-auto`（配置级）+ 并发/成本护栏
+- [ ] 订阅 `subagent/start|end`，插件页展示远端子代理运行/结算
+- 验收：workflow 扇出跑在远端 opencode，结构化出参；原生子代理树可观测
+
+### 10.5 v1.0 候选 —— 终端/远端管理/反向调用（按需，暂不排期）
+
+- [ ] PTY 终端（`pty`/`persistent-pty`/per-session terminal）
+- [ ] 远端能力管理（MCP/plugin/config/integration；高风险，只读优先 + 审批）
+- [ ] `client-mcp`/`rpc` 反向调用（安全评审 + ticket 生命周期）
+- [ ] 发布决策：是否合入 master、是否发 npm、文档/迁移指南定稿
+
+### 固定动作与边界
+
+- 每版：`npm run check` + `npm run e2e`（n100+m65；v1 本地 1.18.10）+ CHANGELOG/README/TOOLS 同步 + 真机重启验证。
+- 永不支持（seam/上游限制）：`opencode_share`、`opencode_tools`、agent-team teammate、外部 `send_message`/`prepareContinuable`。
+- 待决策：routing 的 per-server `directory` 是否进模板默认；workflow backend 是否默认开；1.0 的合并/发布方式。
