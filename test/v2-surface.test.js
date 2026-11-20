@@ -202,11 +202,14 @@ function handle(entry, response) {
     if (command.indexOf('grep') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_grep', status: 'running', command: command } })
     if (command.indexOf('big') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_big', status: 'running', command: command } })
     if (command.indexOf('page') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_page', status: 'running', command: command } })
+    if (command.indexOf('fail') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_fail', status: 'running', command: command } })
     return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'running', command: command } })
   }
   if (path === '/api/shell/sh_grep') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_grep', status: 'exited', exit: 0 } })
   if (path === '/api/shell/sh_big') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_big', status: 'exited', exit: 0 } })
   if (path === '/api/shell/sh_page') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_page', status: 'exited', exit: 0 } })
+  if (path === '/api/shell/sh_fail') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_fail', status: 'exited', exit: 3 } })
+  if (path === '/api/shell/sh_fail/output') return json(response, 200, { location: { directory: '/work' }, data: { output: '', cursor: 0, size: 0, truncated: false } })
   if (path === '/api/shell/sh_page/output') {
     const cursor = url.searchParams.get('cursor')
     if (cursor === '4') return json(response, 200, { location: { directory: '/work' }, data: { output: 'bbbb', cursor: 8, size: 8, truncated: false } })
@@ -646,6 +649,18 @@ test('v2 detail: shell output follows the cursor across pages', async function (
       return request.url.indexOf('/api/shell/sh_page/output') >= 0 && request.url.indexOf('cursor=4') >= 0
     })
     assert.equal(pageTwo.length, 1)
+  } finally {
+    await fake.close()
+  }
+})
+
+
+test('v2 detail: a non-zero exit is reported even when the shell exited', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const shell = await runShell(server, 'ses_1', 'fail build')
+    assert.match(shell.text, /\(shell exited, exit 3\)/)
   } finally {
     await fake.close()
   }
