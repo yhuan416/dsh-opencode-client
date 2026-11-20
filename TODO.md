@@ -3,7 +3,21 @@
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
 > 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
 >
-> **当前里程碑：v0.1.0（2026-11-06）** —— P1–P5 完成；剩余为上游阻塞项、明确暂缓项和 P6 提案。
+> **当前里程碑：v0.2.0（2026-11-20）** —— OpenCode v2（2.3.0）端到端支持完成（双栈：v1 1.18.x + v2 2.x），见下方「0.1 v0.2.0 新增」。剩余为上游阻塞项、明确暂缓项和 P6 提案。
+
+## 0.1 v0.2.0 新增（OpenCode v2 端到端）
+
+- [x] 传输/探测：`apiVersion: auto|1|2`，`/api/info` + Basic auth 探测，v1 回退原因记录；401/HTML/非 JSON/网络错误 `OpenCodeError`（不再静默空结果）
+- [x] 只读面：session/project/message/agent/provider+model/command/skill/reference/MCP/active/diff 的 v2 解包、字段映射与目录作用域
+- [x] 运行/委派：`{text,files}` prompt、创建时 `location.directory`、会话级 agent/model、execution 事件完成判定、`interrupt`
+- [x] 交互：session 作用域权限（`once|always|reject`）+ 表单（类型化字段、`{answer}`、`DELETE` 取消）桥接 dsh 审批/提问
+- [x] 工作区/管理：异步 shell（`/api/shell` + `/output`）、vcs `mode=working|branch|committed`、`/api/fs/read/*` 原始字节、`/api/fs/find`、fork `{before}`、compact、`init` 命令、`parentID` 子会话
+- [x] 不可用功能明确报错：v2 的 share / tool ids / 文本搜索 / session todo
+- [x] 测试：`test/v2-surface.test.js`（8 项离线）+ `scripts/e2e-live.mjs`（v1/v2 真实 server 各 10 步，`npm run e2e`）
+- [x] 文档：COMPATIBILITY 兼容矩阵、CHANGELOG 0.2.0、README/工具文档/架构文档同步
+- [ ] v2 Web UI iframe 免登录（dsh 侧注入 Basic auth 的代理）——**遗留：目前需在嵌入的 v2 UI 里手动登录**
+- [ ] v2 share/todo/tool-ids/text-search 的替代方案（外部存储或 shell 近似）——**暂缓：当前明确报错**
+- [ ] v2 版本矩阵（2.3.0 之外）与 nightly e2e——**建议后续用 `/api/info` 版本 + 契约测试持续校验**
 
 ## 0. 已完成（基线）
 
@@ -60,7 +74,7 @@
 
 ## 5. P4 — 权限/实时增强
 
-- [x] 工具进度事件（v1 SSE `message.part.updated`/`session.status`/`session.idle`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。v2 `session.next.tool.*` 在 1.18.x 不发，已按 v1 实现。
+- [x] 工具进度事件（v1 SSE `message.part.updated`/`session.status`/`session.idle`；v2 `session.text.*`/`reasoning.*`/`tool.*`/`step.*`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。
 - [x] 完成等待改为 **SSE `session.idle` 事件驱动** + 5s 轮询兜底（原 1.5s 纯轮询）。
 - [x] 流式文本 tail：`message.part.delta` 记录 400 字符（未做完整流式渲染，够用于进度展示）。
 - [ ] v2 `POST /api/session/{id}/wait`：**上游不可用**——1.18.31/1.18.33 实测 503 `Session wait is not available yet`，已由 SSE wait 替代。
@@ -115,7 +129,8 @@
 
 ## 9. 决策记录
 
-- **v1 为基线，v2 可选**：v1 覆盖 share/todo/diff/fork 等；v2 补 wait/steer/history，按 `/api/health` 探测后增量使用。
+- **双栈（v2-first + v1 兼容）**：同一版本同时支持 v1（1.18.x）与 v2（2.x），按 `/api/info` 探测；v1 行为保持不变，v2 缺失能力（share/todo/tool ids/文本搜索）明确报错而不是伪造。
+- **v2 语义跟随上游**：prompt 改 `{text,files}`、agent/model 走会话状态、完成看 `session.execution.*`、权限 `decision`、提问变表单、shell 异步；不做 v1→v2 翻译 shim。
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。

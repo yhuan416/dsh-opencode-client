@@ -32,48 +32,68 @@ dsh integration points used (each must exist for the plugin to load):
 
 ## OpenCode compatibility
 
-- **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (all expose the v1 and v2 APIs).
-- The plugin uses the **v1 HTTP API** as its baseline:
-  `/global/health`, `/global/event` (SSE), `/project`, `/session`, `/session/{id}/message`,
-  `/session/{id}/prompt_async`, `/session/{id}/abort`, `/session/{id}/todo`,
-  `/session/{id}/diff`, `/session/{id}/share`, `/session/status`, `/permission`,
-  `/permission/{id}/reply`, `/question`, `/question/{id}/reply|reject`, `/agent`.
-- v2 (`/api/*`): present in 1.18.x; only the transport and SSE layers probe/use it (next bullets).
-- **OpenCode 2 — measured 2026-11-18 against `2.3.0`: transport supported, not compatible end to
-  end.** The v1 HTTP API is gone
-  (the old paths now return the web SPA), the API moved to an authenticated `/api/*` surface, and the
-  SSE event taxonomy was rewritten. See
-  [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) for the measured break list,
-  affected modules, phased migration plan and tests. The v2 API surface is not migrated yet (only
-  the transport and SSE layers below).
-  OpenCode 2 uses the same `opencode` command and cannot be installed alongside OpenCode 1;
-  `opencode serve --help` in v2 describes only the v2 API/web server (no v1 compatibility flag).
-- **Transport layer (Phase 1, implemented)**: `lib/http.js` detects the API version per server.
-  In `auto` mode (the default) it probes `GET /api/info` with HTTP Basic auth (user `opencode`,
-  password from `OPENCODE_SERVER_PASSWORD`); a server that reports OpenCode 2 gets every request
-  prefixed with `/api` plus the Basic header, while v1 paths stay untouched. Probe failure, a
-  missing password or HTTP 401 falls back to v1 and records one diagnosable reason on
-  `server.versionProbe` (logged once at startup). Transport failures — 401, HTML/SPA bodies,
-  non-JSON bodies, other non-2xx responses and network/timeout errors — raise `OpenCodeError`
-  instead of degrading to empty results. Force a version per server with `apiVersion: 1|2`.
-- **SSE and completion detection (Phase 2, implemented)**: `lib/events.js` maps both wire formats
-  into one canonical event model; `lib/sse.js` subscribes to v1 `/global/event` or v2
-  `/api/event` (with the `/api` prefix and Basic header) according to the detected version.
-  Completion is version-split: v1 keeps `session.idle` / idle `session.status` with the polling
-  fallback, v2 uses `session.execution.succeeded|failed|interrupted` only (`session.idle` and
-  `session.status` are not completion signals on v2). Permissions/forms, directory scoping and
-  the `opencode_*` tool surface remain **v1-only**, so OpenCode 2 is still unsupported end to end.
+Both API generations are supported from one install. The server API version is detected per
+server (`apiVersion: auto | 1 | 2`): `auto` probes `GET /api/info` with HTTP Basic auth
+(username `opencode`, password from the serve process' `OPENCODE_SERVER_PASSWORD`); a server
+reporting OpenCode >= 2 gets every request prefixed with `/api` plus the Basic header, while v1
+paths stay untouched. Probe failure, a missing password or HTTP 401 falls back to v1 and records
+one diagnosable reason on `server.versionProbe` (logged at startup). Force a version per server
+with `apiVersion: 1|2`.
+
+| Capability | OpenCode 1.18.x (v1 API) | OpenCode 2.x (v2 API) |
+|---|---|---|
+| Version/health probe | `/global/health` | `/api/info` |
+| Project/session discovery | `/project` (`worktree`), `/session` | `/api/project` (`canonical`), `/api/session` (`{data,cursor}`, `location.directory`, `?directory=`) |
+| Messages | `info` + `parts` | `content[]`; fetched `order=desc` and presented oldest-first |
+| Agents | `/agent` (`name`/`native`) | `/api/agent` (`id`/`name`/`mode`/`hidden`) |
+| Models | `/config/providers` | `/api/provider` + `/api/model` + `/api/model/default` |
+| Commands / skills / references / MCP | bare arrays | `{location,data}`; commands keep only name/description, skills expose `path`, MCP `status` is an object |
+| Prompt | `prompt_async` `{parts,agent,model}` | `prompt` `{text,files}`; agent/model are session state (`/agent`, `/model`) |
+| Completion | `session.idle` + message polling | `session.execution.succeeded\|failed\|interrupted` + `idle` message `outcome` |
+| Abort | `/session/{id}/abort` | `/session/{id}/interrupt` (`{interrupted}`) |
+| Status | `/session/status` | `/session/active` |
+| Permissions | `/permission` + `/permission/{id}/reply {reply}` | session-scoped `/session/{sid}/permission` + `/reply {decision: once\|always\|reject}` |
+| Questions | `/question` + `/reply|/reject` | forms: `/session/{sid}/form` + `/reply {answer:{key:value}}` / `DELETE` |
+| Shell | synchronous `/session/{id}/shell` | asynchronous `POST /api/shell` + `/api/shell/{id}/output` |
+| VCS status/diff | `/vcs/status`, `/vcs/diff?mode=git|branch` | `{location,data}`, `mode=working|branch|committed` (`git`→`working`) |
+| File read / find | `/file/content`, `/find/file`, `/find` | raw `/api/fs/read/*`, `/api/fs/find` (file paths only) |
+| Fork / summarize / init / children | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` |
+| Share / tool ids / text search / todos | available | **not available** (explicit error, never silent empty data) |
+
+- **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`
+  (Linux x64, live server; measured 2026-11-18, v2 surface completed 2026-11-20).
+- v1 remains the baseline for existing installs: all 26 `opencode_*` tools keep their names and
+  v1 behaviour. `COMPATIBILITY` is aggregated across servers, so one profile can mix v1 and v2.
+- Transport failures are never degraded into "0 results": 401, HTML/SPA bodies, non-JSON bodies,
+  other non-2xx responses and network/timeout errors raise `OpenCodeError`, and per-server
+  discovery failures are reported in the tool output.
+- v2 session listing pages the API (v1 returns everything): one request asks for the 500 newest
+  sessions per server and the tool output says so when more exist; older sessions stay reachable
+  through `opencode_search`.
+- v2 limitations (all explicit, never silent): `opencode_share`, `opencode_tools`,
+  `opencode_find(kind=text)` and the `opencode_session_info` todo list have no v2 endpoint;
+  `opencode_shell` runs asynchronously in the session workspace and does not append a message to
+  the session history; `opencode_summarize` maps to `compact` (session's own model, so `model` is
+  optional on v2); `opencode_init` runs the built-in `init` command; `find` only searches file
+  paths, so text search needs `opencode_shell` + `rg`/`grep`.
+- The live acceptance run for both generations is `npm run e2e` (`scripts/e2e-live.mjs`) with
+  `OPC_LIVE_URL` / `OPC_LIVE_PASSWORD` / `OPC_LIVE_DIR` and optional `OPC_LIVE_INTERACTIONS=1`.
 
 Known upstream issues that shape the integration:
 
 - `format: {type:"json_schema"}` (structured output) persists a `retryCount` field in the user
   message and makes `GET /session/{id}/message` return 400 afterwards (1.18.10 and 1.18.31).
   The plugin therefore uses prompt-enforced JSON (`schema` parameter) instead of `format`.
-- Live progress comes from the v1 SSE stream (`message.part.updated`, `message.part.delta`,
-  `session.status`, `session.idle`); the v2 `session.next.tool.*` events are not emitted by 1.18.x.
-- `POST /api/session/{id}/wait` (v2) returns `503 Session wait is not available yet` on 1.18.31 and
-  1.18.33; completion is therefore detected from SSE (`session.idle`/`session.status`) with a polling
-  fallback instead of the v2 wait endpoint.
+- Live progress on v1 comes from `message.part.updated` / `message.part.delta` /
+  `session.status` / `session.idle`; v2 reports progress through `session.text.*`,
+  `session.reasoning.*`, `session.tool.*` and `session.step.*`, which `lib/events.js` maps to the
+  same canonical model.
+- `POST /api/session/{id}/wait` (v2) returns `503 Session wait is not available yet` on 1.18.31
+  and 1.18.33, so completion uses SSE events (`session.idle` on v1, `session.execution.*` on v2)
+  with a polling fallback instead of the v2 wait endpoint.
+- `session.idle` / `session.status` still exist in the 2.3.0 schema but are not emitted for
+  completed v2 runs; they are logged as informational events and are never used as v2
+  completion signals.
 - `GET /experimental/capabilities` reports `backgroundSubagents: false` on 1.18.31.
 - Servers are single-tenant and have no server-side federation; multiple servers are aggregated by
   this client.
