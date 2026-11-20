@@ -146,7 +146,8 @@ v2 上插件还会替你吸收这些 API 差异：
   `session.idle`）。
 - 权限审批使用 `once|always|reject`；提问变成带类型字段（string / number / integer / boolean /
   multiselect）的 form。
-- `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）。
+- `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）；v2 输出按 cursor 翻页（最多 1 MiB），
+  截断会显式提示，并带 exit/signal。
 - `opencode_summarize` 映射到 `compact`（使用会话自身的 model，因此 v2 上 `model` 可省略）；
   `opencode_init` 执行内置 `init` 命令；`opencode_git_diff` 把 `git` 映射为 v2 的
   `working`；`opencode_find` 在 v2 上会把 glob 查询退化成子串再试一次（v2 端点不认 `*`/`?`）。
@@ -178,12 +179,14 @@ v2 上插件还会替你吸收这些 API 差异：
   `agent` 与 `model`。
 - **发现** — `GET /api/opencode-client/list`（健康状态、projects、按目录分组的 sessions；v2 的
   目录取自 `location.directory`）。
-- **会话列表** — 工具 `opencode_sessions` + `GET /api/opencode-client/sessions`。
+- **会话列表** — 工具 `opencode_sessions` + `GET /api/opencode-client/sessions`；每行在服务端提供时带
+  model（含 `#variant`）、agent、outcome 与 cost。
 - **会话消息** — 工具 `opencode_messages` + `GET /api/opencode-client/messages`（含 text / tool /
-  file part；v2 的 `content[]` text/reasoning/tool part 会归一化）；可用来判断某会话是否值得续用。
-- **会话信息** — 工具 `opencode_session_info`（title/summary/todos/diff；OpenCode 2 上 todo 列表
-  不可用，但会报告 outcome/cost/tokens 与改动 diff）与 `opencode_share`（share/unshare 链接；
-  仅 v1 —— OpenCode 2 移除了该端点，工具会明确说明）。
+  file part；v2 的 `content[]` text/reasoning/tool part 会归一化）；tool 行带调用入参摘要与输出首行，
+  `type=` 可按消息类型过滤（v2 服务端过滤）；可用来判断某会话是否值得续用。
+- **会话信息** — 工具 `opencode_session_info`（title/summary/todos/diff、model#variant、agent、
+  parent/fork 来源与时间；无 model 时显示 `(server default)`；OpenCode 2 的 todo 从 `todowrite`
+  推导）与 `opencode_share`（share/unshare 链接；仅 v1 —— OpenCode 2 移除了该端点，工具会明确说明）。
 - **会话管理** — `opencode_fork`、`opencode_children`、`opencode_summarize`（mutating；v2 映射为
   `compact`，使用会话自身 model，`model` 可省略）、`opencode_init`（写 AGENTS.md，需
   `confirm=true`；v2 执行内置 `init` 命令）。

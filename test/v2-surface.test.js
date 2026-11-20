@@ -28,6 +28,9 @@ const SESSION = {
   id: 'ses_1',
   projectID: 'p1',
   title: 'demo session',
+  agent: 'build',
+  model: { id: 'm1', providerID: 'p', variant: 'high' },
+  parentID: 'ses_root',
   outcome: 'succeeded',
   cost: 0.5,
   tokens: { input: 10, output: 20, reasoning: 3 },
@@ -115,21 +118,20 @@ function handle(entry, response) {
   if (path === '/api/session/ses_1/message') {
     const type = url.searchParams.get('type')
     if (type === 'idle') return json(response, 200, { data: [{ id: 'msg_idle', type: 'idle', outcome: 'succeeded', time: { created: 300 } }] })
-    return json(response, 200, {
-      data: [
+    const allMessages = [
         { id: 'msg_idle', type: 'idle', outcome: 'succeeded', time: { created: 300 } },
         {
           id: 'msg_a', type: 'assistant', time: { created: 200, completed: 250 }, agent: 'build', model: { id: 'm1', providerID: 'p' },
           content: [
             { type: 'reasoning', text: 'thinking' },
             { type: 'text', text: 'the answer' },
-            { type: 'tool', id: 'call_1', name: 'read', state: { status: 'completed', input: {}, content: [] }, time: { created: 210 } },
+            { type: 'tool', id: 'call_1', name: 'read', state: { status: 'completed', input: { path: 'src/a.js' }, content: [{ type: 'text', text: 'export const a = 1' }] }, time: { created: 210 } },
           ],
         },
         { id: 'msg_u', type: 'user', time: { created: 100 }, text: 'the question', files: [{ uri: 'data:text/plain;base64,eA==', name: 'note.txt' }] },
-      ],
-      cursor: {},
-    })
+    ]
+    const filtered = type === null ? allMessages : allMessages.filter(function (message) { return message.type === type })
+    return json(response, 200, { data: filtered, cursor: {} })
   }
   if (path === '/api/session/ses_1') return json(response, 200, { data: SESSION })
   if (path === '/api/session/ses_1/diff') return json(response, 200, { data: [] })
@@ -137,6 +139,7 @@ function handle(entry, response) {
   if (path === '/api/session/ses_1/agent') return noContent(response)
   if (path === '/api/session/ses_1/model') return noContent(response)
   if (path === '/api/session/ses_1/interrupt') return json(response, 200, { interrupted: true })
+  if (path === '/api/session/ses_idle/interrupt') return json(response, 200, { interrupted: false })
   if (path === '/api/session/ses_1/fork') return json(response, 200, { data: { id: 'ses_fork', title: 'demo session (fork #1)', time: { updated: 400 }, location: { directory: '/work' } } })
   if (path === '/api/session/ses_1/compact') return json(response, 200, { data: { type: 'compaction' } })
   if (path === '/api/session/ses_1/command') return noContent(response)
@@ -162,7 +165,7 @@ function handle(entry, response) {
   if (path === '/api/model') return json(response, 200, {
     location: { directory: '/work' },
     data: [
-      { id: 'm1', modelID: 'm1', providerID: 'p', name: 'Model One', enabled: true, settings: { apiKey: 'secret' }, variants: [{ id: 'minimal' }, { id: 'high' }] },
+      { id: 'm1', modelID: 'm1', providerID: 'p', name: 'Model One', enabled: true, settings: { apiKey: 'secret' }, variants: [{ id: 'minimal' }, { id: 'high' }], limit: { context: 1000000, output: 32000 } },
       { id: 'm2', modelID: 'm2', providerID: 'p', name: 'Model Two', enabled: false },
     ],
   })
@@ -197,9 +200,19 @@ function handle(entry, response) {
     const body = entry.body === '' ? {} : JSON.parse(entry.body)
     const command = typeof body.command === 'string' ? body.command : ''
     if (command.indexOf('grep') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_grep', status: 'running', command: command } })
+    if (command.indexOf('big') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_big', status: 'running', command: command } })
+    if (command.indexOf('page') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_page', status: 'running', command: command } })
     return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'running', command: command } })
   }
   if (path === '/api/shell/sh_grep') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_grep', status: 'exited', exit: 0 } })
+  if (path === '/api/shell/sh_big') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_big', status: 'exited', exit: 0 } })
+  if (path === '/api/shell/sh_page') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_page', status: 'exited', exit: 0 } })
+  if (path === '/api/shell/sh_page/output') {
+    const cursor = url.searchParams.get('cursor')
+    if (cursor === '4') return json(response, 200, { location: { directory: '/work' }, data: { output: 'bbbb', cursor: 8, size: 8, truncated: false } })
+    return json(response, 200, { location: { directory: '/work' }, data: { output: 'aaaa', cursor: 4, size: 8, truncated: false } })
+  }
+  if (path === '/api/shell/sh_big/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'line 1\nline 2\n', cursor: 1234, size: 1234, truncated: true } })
   if (path === '/api/shell/sh_grep/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'src/a.js:3: needle here\nsrc/b.js:9: needle too\n', cursor: 20, size: 20, truncated: false } })
   if (path === '/api/shell/sh_1') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'exited', exit: 0 } })
   if (path === '/api/shell/sh_1/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'hi\nexit 0\n', cursor: 9, size: 9, truncated: false } })
@@ -561,4 +574,79 @@ test('model label shows a non-default variant only', function () {
   assert.equal(modelLabel({ providerID: 'p', id: 'm' }), 'p/m')
   assert.equal(modelLabel({ providerID: 'p', modelID: 'm2' }), 'p/m2')
   assert.equal(modelLabel(undefined), undefined)
+})
+
+
+test('v2 detail: session rows carry model/agent/outcome/cost', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const rows = await collectSessionRows([server])
+    assert.match(rows.text, /p\/m1#high/)
+    assert.match(rows.text, /agent=build/)
+    assert.match(rows.text, /succeeded/)
+    assert.match(rows.text, /\$0\.50/)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 detail: message tool lines include input and output, and type filters server-side', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const messages = await readMessages(server, 'ses_1', 20)
+    const assistant = messages.find(function (message) { return message.role === 'assistant' })
+    assert.match(assistant.text, /\[tool\] read: completed · src\/a\.js → export const a = 1/)
+    const users = await readMessages(server, 'ses_1', 20, 'user')
+    assert.equal(users.length, 1)
+    assert.equal(users[0].role, 'user')
+    const request = lastRequest(fake, 'GET', '/api/session/ses_1/message')
+    assert.equal(new URL(request.url, 'http://localhost').searchParams.get('type'), 'user')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 detail: shell reports truncated output and an idle interrupt returns false', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const shell = await runShell(server, 'ses_1', 'big output')
+    assert.match(shell.text, /line 1/)
+    assert.match(shell.text, /\[output truncated at 1234 bytes; cursor=1234\]/)
+    assert.equal(await abortSession(server, 'ses_idle'), false)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 detail: session info exposes model/parent and models expose token limits', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const info = await collectSessionInfo(server, 'ses_1')
+    assert.equal(info.session.parentID, 'ses_root')
+    assert.deepEqual(info.session.model, { id: 'm1', providerID: 'p', variant: 'high' })
+    const models = await collectModels([server])
+    assert.match(models.text, /\[ctx 1M, out 32k\]/)
+  } finally {
+    await fake.close()
+  }
+})
+
+
+test('v2 detail: shell output follows the cursor across pages', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const shell = await runShell(server, 'ses_1', 'page output')
+    assert.equal(shell.text, 'aaaabbbb')
+    const pageTwo = fake.requests.filter(function (request) {
+      return request.url.indexOf('/api/shell/sh_page/output') >= 0 && request.url.indexOf('cursor=4') >= 0
+    })
+    assert.equal(pageTwo.length, 1)
+  } finally {
+    await fake.close()
+  }
 })

@@ -151,7 +151,8 @@ On v2 the plugin also absorbs these API differences for you:
   `session.idle`).
 - Permission approvals use `once|always|reject`; questions arrive as forms with typed fields
   (string / number / integer / boolean / multiselect).
-- `opencode_shell` runs asynchronously in the session workspace (submit, poll, read output).
+- `opencode_shell` runs asynchronously in the session workspace (submit, poll, read output); v2 output
+  pages are followed via cursor (up to 1 MiB) and truncation is reported explicitly with exit/signal.
 - `opencode_summarize` maps to `compact` (the session's own model is used, so `model` is optional
   on v2); `opencode_init` runs the built-in `init` command; `opencode_git_diff` maps `git` → v2's
   `working`; `opencode_find` retries a glob query as a plain substring on v2 (the v2 endpoint does
@@ -187,10 +188,12 @@ On v2 the plugin also absorbs these API differences for you:
   per-server default `agent` and `model`.
 - **Discovery** — `GET /api/opencode-client/list` (server health, projects, sessions grouped by
   directory; on v2 the directory comes from `location.directory`).
-- **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`.
+- **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`; rows include
+  the model (with `#variant`), agent, outcome and cost when the server reports them.
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages` (text, tool
-  and file parts; v2 `content[]` text/reasoning/tool parts are normalized); useful to decide
-  whether a session is the right one to continue.
+  and file parts; v2 `content[]` text/reasoning/tool parts are normalized). Tool lines include the
+  call input summary and the first output line; `type=` filters one message kind (server-side on v2).
+  Useful to decide whether a session is the right one to continue.
 - **Session info** — tool `opencode_session_info` (title/summary/todos/diff; on OpenCode 2 the todo
   list is derived from the last `todowrite` call and outcome/cost/tokens plus the changed-file diff
   are reported) and `opencode_share` (share/unshare link; v1 only — OpenCode 2 removed the endpoint

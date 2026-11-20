@@ -45,8 +45,8 @@
 
 | 工具 | 用途 | 关键参数 | 类型 | 远端 API（v1 / v2） | v2 差异 |
 |---|---|---|---|---|---|
-| `opencode_sessions` | 列出远端会话（server、工作区、标题、最后更新、会话 id），可按目录/标题过滤 | `server`、`directory`、`query`、`limit`（默认 50，上限 200） | 只读 | v1 `GET /global/health` + `GET /project` + `GET /session`；v2 `GET /info` + `GET /project` + `GET /session?limit=200` | 同 v1；v2 用 `canonical` 作工作区、列表为 `{data,cursor}`、目录在 `location.directory`，目录/标题过滤仍在客户端完成 |
-| `opencode_messages` | 读取某会话的最近消息（text / tool / file 展平） | `server`、`session`（必填）、`limit`（默认 20，上限 200） | 只读 | v1 `GET /session/{id}/message`；v2 `GET /session/{id}/message?order=desc&limit=N`（跟随 `cursor.next` 分页） | 同 v1；v2 消息体是 `content[]`（无 `parts`），按 `order=desc` 取回后反转为旧→新输出；请求超过一页（服务端默认 50）时自动翻页，最多 20 页/4000 条 |
+| `opencode_sessions` | 列出远端会话（server、工作区、标题、最后更新、会话 id；服务端提供时附 model#variant/agent/outcome/cost），可按目录/标题过滤 | `server`、`directory`、`query`、`limit`（默认 50，上限 200） | 只读 | v1 `GET /global/health` + `GET /project` + `GET /session`；v2 `GET /info` + `GET /project` + `GET /session?limit=200` | 同 v1；v2 用 `canonical` 作工作区、列表为 `{data,cursor}`、目录在 `location.directory`，目录/标题过滤仍在客户端完成 |
+| `opencode_messages` | 读取某会话的最近消息（text / tool / file 展平；tool 行带入参摘要与输出首行） | `server`、`session`（必填）、`limit`（默认 20，上限 200）、`type`（可选消息类型过滤） | 只读 | v1 `GET /session/{id}/message`；v2 `GET /session/{id}/message?order=desc&limit=N`（跟随 `cursor.next` 分页） | 同 v1；v2 消息体是 `content[]`（无 `parts`），按 `order=desc` 取回后反转为旧→新输出；请求超过一页（服务端默认 50）时自动翻页，最多 20 页/4000 条；`type=` 在 v2 服务端过滤、v1 本地过滤，默认隐藏 idle/system 等记账消息 |
 | `opencode_session_info` | 读取会话元数据、todo 列表与改动文件 diff，用于判断会话做过什么 | `server`、`session`（必填） | 只读 | v1 `GET /session/{id}` + `/todo` + `/diff`；v2 `GET /session/{id}` + `/diff` + 最近消息（推导 todo） | v1 用 `/todo`；v2 无 todo 端点，从最后一次 `todowrite` 工具调用（`state.input.todos`）推导并标注 `[derived from the last todowrite call]`；元数据/cost/tokens/outcome/diff 可用 |
 | `opencode_share` | 分享会话（生成公开链接）或取消分享 | `server`、`session`（必填）、`action`（`share` 默认 / `unshare`） | 可变（仅改分享状态） | v1 `POST` / `DELETE /session/{id}/share`；v2 无端点 | **仅 v1**：v2 调用返回明确错误（建议改用 OpenCode Web UI），不会静默成功 |
 | `opencode_search` | 按标题搜索会话 | `server`、`query`（必填）、`directory`、`limit`（默认 20，上限 100） | 只读 | v1 `GET /session?search=` + 客户端标题过滤；v2 `GET /session?search=&limit=&directory=` | 同 v1；v2 由服务端搜索并支持 `directory` 限定，v1 在本地按标题包含关系过滤 |
@@ -65,7 +65,7 @@
 | 工具 | 用途 | 关键参数 | 类型 | 远端 API（v1 / v2） | v2 差异 |
 |---|---|---|---|---|---|
 | `opencode_agents` | 列出 server 提供的 agent，委派前用来选 agent 名 | `server` | 只读 | v1 `GET /agent`；v2 `GET /agent?location[directory]=` | 同 v1；v2 agent 为 `id`/`name`/`mode`/`hidden`（无 `native` 标记）；用户传的 `name` 会在发送前解析为 `id` |
-| `opencode_models` | 列出 LLM provider 与 model id（凭据字段已剔除），用来选 `provider/model` | `server` | 只读 | v1 `GET /config/providers`；v2 `GET /provider` + `GET /model` + `GET /model/default` | 同 v1（凭据依旧不下发；v2 额外汇总每个 provider 的默认模型） |
+| `opencode_models` | 列出 LLM provider 与 model id（凭据字段已剔除），用来选 `provider/model#variant` | `server` | 只读 | v1 `GET /config/providers`；v2 `GET /provider` + `GET /model` + `GET /model/default` | 同 v1（凭据依旧不下发；v2 额外汇总默认模型、`variants` 推理档与 `limit` 上下文/输出上限，如 `[ctx 1M, out 384k]`） |
 | `opencode_commands` | 列出自定义命令 | `server` | 只读 | v1 `GET /command`；v2 `GET /command` | 同 v1；v2 只返回 `name`/`description`（不再有 agent/model/source/subtask） |
 | `opencode_skills` | 列出远端可见的 Agent Skills（名称、描述、位置，内容省略） | `server` | 只读 | v1 `GET /skill`；v2 `GET /skill` | 同 v1；v2 位置字段为 `path`，内容不展示 |
 | `opencode_tools` | 列出远端可用工具 id（内置 + MCP/自定义） | `server` | 只读 | v1 `GET /experimental/tool/ids`；v2 无端点 | **仅 v1**：v2 输出明确说明端点被移除（不是空列表） |
@@ -77,7 +77,7 @@
 
 | 工具 | 用途 | 关键参数 | 类型 | 远端 API（v1 / v2） | v2 差异 |
 |---|---|---|---|---|---|
-| `opencode_shell` | 在已有会话内跑一条 shell 命令（确定性执行，不跑完整 agent），用于验收/构建 | `server`、`session`（必填）、`command`（必填）、`directory` | 可变（命令可能改动工作区） | v1 `POST /session/{id}/shell`（同步返回）；v2 `POST /shell` → 轮询 `GET /shell/{id}` → `GET /shell/{id}/output` | 同 v1 语义但 v2 异步；显式 `directory` 作为 cwd，缺省用会话 `location.directory`；v2 不写入会话消息历史 |
+| `opencode_shell` | 在已有会话内跑一条 shell 命令（确定性执行，不跑完整 agent），用于验收/构建 | `server`、`session`（必填）、`command`（必填）、`directory` | 可变（命令可能改动工作区） | v1 `POST /session/{id}/shell`（同步返回）；v2 `POST /shell` → 轮询 `GET /shell/{id}` → `GET /shell/{id}/output` | 同 v1 语义但 v2 异步；显式 `directory` 作为 cwd，缺省用会话 `location.directory`；v2 输出按 cursor 翻页（上限 1 MiB），截断显式提示 `[output truncated at N bytes; cursor=M]`，并带 exit/signal；v2 不写入会话消息历史 |
 | `opencode_read_file` | 读取远端工作区中的一个文本文件（路径相对 `directory`） | `server`、`directory`、`path`（必填） | 只读 | v1 `GET /file/content?path=&directory=`；v2 `GET /fs/read/{path}`（原始字节） | 同 v1；v2 按 `content-type` / 空字节判断二进制，文本截断到 40k 字符 |
 | `opencode_find` | 搜索远端工作区：`kind=file`（默认）按路径/glob，`kind=text` 按文件内容 | `server`、`directory`、`query`（必填）、`kind`、`limit`（仅 file 搜索生效，默认 50，上限 200） | 只读 | v1 `GET /find/file`（file）或 `GET /find`（text）；v2 `GET /fs/find?query=&type=file&limit=`（file）、`POST /shell` 跑 `grep -rIn -F`（text） | v2 的 file `query` 是**子串匹配**（不认 glob），工具会先按原样查，0 结果时去掉 `*`/`?` 再试一次（`*.txt` → `.txt`）；`kind=text` 在 v2 通过工作区 `grep` 补回：字面子串、最多 100 条、跳过 `.git`，输出 `path:line: text` |
 | `opencode_git_status` | 读取工作树状态（改动文件 + 增删行数），用于核对远端 agent 改了什么 | `server`、`directory` | 只读 | v1 `GET /vcs/status?directory=`；v2 `GET /vcs/status?location[directory]=` | 同 v1（v2 解包 `{location,data}`） |
