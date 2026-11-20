@@ -314,6 +314,7 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) —— 中文工具总览：26 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) —— dsh / OpenCode 兼容性矩阵与版本策略
 - [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) —— OpenCode 2.3.0 实测兼容缺口，以及 0.2.0 已落地的分阶段迁移计划
+- [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) —— 2.3.0 未接入的 100 个端点的实测盘点与深度整合路线（inbox/steer、revert 检查点、worktree、stats、PTY、反向 MCP）
 - [docs/subagent-seam.md](docs/subagent-seam.md) —— dsh subagent provider 接缝
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) —— 插件页远端会话聊天提案
 - [scripts/e2e-live.mjs](scripts/e2e-live.mjs) —— 对真实 v1/v2 server 的实机验收脚本（离线检查仍为 `npm test` / `npm run check`）
