@@ -1,3 +1,40 @@
+## 0.5.0 (2026-11-20)
+
+Read-side detail improvements: see what a remote session actually did, and stop
+silently losing shell output.
+
+### Added
+
+- `opencode_messages`: tool lines now carry the call input summary and the first
+  output line (`[tool] bash: completed · npm test → all green`); new `type=` filter
+  (`user|assistant|shell|system|synthetic|idle|...`, server-side on OpenCode 2, local on v1).
+  Bookkeeping message kinds are hidden by default and rendered only when explicitly filtered.
+- `opencode_shell`: follows the v2 output cursor across pages (up to 1 MiB), and reports
+  truncation explicitly (`[output truncated at N bytes; cursor=M]`), plus exit code and
+  `signal` when the shell did not exit cleanly.
+- `opencode_sessions`: rows carry the model (with `#variant`), agent, outcome and non-zero
+  cost when the server reports them.
+- `opencode_session_info`: `model: (server default)` when the session has no model, plus
+  parent-session/fork source and created/updated timestamps.
+- `opencode_models`: OpenCode 2 token limits are listed (`[ctx 1M, out 384k]`).
+- `opencode_abort`: an idle session now reports `nothing to interrupt (interrupted=false)`
+  instead of a generic failure.
+
+### Changed
+
+- `npm test`: 67 cases (new detail tests for session rows, tool lines + type filter, shell
+  truncation/pagination, session/model metadata and idle abort).
+- `package.json`: version `0.5.0`.
+
+### Verified
+
+- Live on n100 (OpenCode 2.3.0): session rows show
+  `alibaba-token-plan-cn/deepseek-v4.1-flash#high · agent=build · succeeded`; message tool
+  lines show `bash: completed · cd … && git add … → M CHANGELOG.md …`; `type=user` filters
+  server-side; `seq 1 200000` returns 1 MiB with
+  `[output truncated at 1288895 bytes; cursor=1048576]`; model listing shows `[ctx 1M, …]`;
+  aborting an idle session returns false.
+
 ## 0.4.2 (2026-11-20)
 
 Session info shows the reasoning variant.

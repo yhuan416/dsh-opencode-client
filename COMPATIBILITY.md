@@ -54,7 +54,7 @@ with `apiVersion: 1|2`.
 | Status | `/session/status` | `/session/active` |
 | Permissions | `/permission` + `/permission/{id}/reply {reply}` | session-scoped `/session/{sid}/permission` + `/reply {decision: once\|always\|reject}` |
 | Questions | `/question` + `/reply|/reject` | forms: `/session/{sid}/form` + `/reply {answer:{key:value}}` / `DELETE` |
-| Shell | synchronous `/session/{id}/shell` | asynchronous `POST /api/shell` + `/api/shell/{id}/output` |
+| Shell | synchronous `/session/{id}/shell` | asynchronous `POST /api/shell` + `/api/shell/{id}/output` (output pages followed via `cursor`, truncation reported) |
 | VCS status/diff | `/vcs/status`, `/vcs/diff?mode=git|branch` | `{location,data}`, `mode=working|branch|committed` (`git`→`working`) |
 | File read / find | `/file/content`, `/find/file`, `/find` | raw `/api/fs/read/*`, `/api/fs/find` (file paths only); content search emulated with workspace `grep` via `/api/shell` |
 | Fork / summarize / init / children | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` |
