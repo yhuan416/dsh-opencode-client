@@ -46,8 +46,8 @@
 | 工具 | 用途 | 关键参数 | 类型 | 远端 API（v1 / v2） | v2 差异 |
 |---|---|---|---|---|---|
 | `opencode_sessions` | 列出远端会话（server、工作区、标题、最后更新、会话 id），可按目录/标题过滤 | `server`、`directory`、`query`、`limit`（默认 50，上限 200） | 只读 | v1 `GET /global/health` + `GET /project` + `GET /session`；v2 `GET /info` + `GET /project` + `GET /session?limit=200` | 同 v1；v2 用 `canonical` 作工作区、列表为 `{data,cursor}`、目录在 `location.directory`，目录/标题过滤仍在客户端完成 |
-| `opencode_messages` | 读取某会话的最近消息（text / tool / file 展平） | `server`、`session`（必填）、`limit`（默认 20，上限 200） | 只读 | v1 `GET /session/{id}/message`；v2 `GET /session/{id}/message?order=desc&limit=N` | 同 v1；v2 消息体是 `content[]`（无 `parts`），按 `order=desc` 取回后反转为旧→新输出 |
-| `opencode_session_info` | 读取会话元数据、todo 列表与改动文件 diff，用于判断会话做过什么 | `server`、`session`（必填） | 只读 | v1 `GET /session/{id}` + `/todo` + `/diff`；v2 `GET /session/{id}` + `/diff` | 无 todo（v2 移除 `/session/{id}/todo`，输出明确提示 `todos: not available on OpenCode 2`）；元数据/cost/tokens/outcome/diff 可用 |
+| `opencode_messages` | 读取某会话的最近消息（text / tool / file 展平） | `server`、`session`（必填）、`limit`（默认 20，上限 200） | 只读 | v1 `GET /session/{id}/message`；v2 `GET /session/{id}/message?order=desc&limit=N`（跟随 `cursor.next` 分页） | 同 v1；v2 消息体是 `content[]`（无 `parts`），按 `order=desc` 取回后反转为旧→新输出；请求超过一页（服务端默认 50）时自动翻页，最多 20 页/4000 条 |
+| `opencode_session_info` | 读取会话元数据、todo 列表与改动文件 diff，用于判断会话做过什么 | `server`、`session`（必填） | 只读 | v1 `GET /session/{id}` + `/todo` + `/diff`；v2 `GET /session/{id}` + `/diff` + 最近消息（推导 todo） | v1 用 `/todo`；v2 无 todo 端点，从最后一次 `todowrite` 工具调用（`state.input.todos`）推导并标注 `[derived from the last todowrite call]`；元数据/cost/tokens/outcome/diff 可用 |
 | `opencode_share` | 分享会话（生成公开链接）或取消分享 | `server`、`session`（必填）、`action`（`share` 默认 / `unshare`） | 可变（仅改分享状态） | v1 `POST` / `DELETE /session/{id}/share`；v2 无端点 | **仅 v1**：v2 调用返回明确错误（建议改用 OpenCode Web UI），不会静默成功 |
 | `opencode_search` | 按标题搜索会话 | `server`、`query`（必填）、`directory`、`limit`（默认 20，上限 100） | 只读 | v1 `GET /session?search=` + 客户端标题过滤；v2 `GET /session?search=&limit=&directory=` | 同 v1；v2 由服务端搜索并支持 `directory` 限定，v1 在本地按标题包含关系过滤 |
 
@@ -79,7 +79,7 @@
 |---|---|---|---|---|---|
 | `opencode_shell` | 在已有会话内跑一条 shell 命令（确定性执行，不跑完整 agent），用于验收/构建 | `server`、`session`（必填）、`command`（必填）、`directory` | 可变（命令可能改动工作区） | v1 `POST /session/{id}/shell`（同步返回）；v2 `POST /shell` → 轮询 `GET /shell/{id}` → `GET /shell/{id}/output` | 同 v1 语义但 v2 异步；显式 `directory` 作为 cwd，缺省用会话 `location.directory`；v2 不写入会话消息历史 |
 | `opencode_read_file` | 读取远端工作区中的一个文本文件（路径相对 `directory`） | `server`、`directory`、`path`（必填） | 只读 | v1 `GET /file/content?path=&directory=`；v2 `GET /fs/read/{path}`（原始字节） | 同 v1；v2 按 `content-type` / 空字节判断二进制，文本截断到 40k 字符 |
-| `opencode_find` | 搜索远端工作区：`kind=file`（默认）按路径/glob，`kind=text` 按文件内容 | `server`、`directory`、`query`（必填）、`kind`、`limit`（仅 file 搜索生效，默认 50，上限 200） | 只读 | v1 `GET /find/file`（file）或 `GET /find`（text）；v2 `GET /fs/find?query=&type=file&limit=` | 仅 `kind=file`；v2 的 `query` 是**子串匹配**（不认 glob），工具会先按原样查，0 结果时去掉 `*`/`?` 再试一次（`*.txt` → `.txt`）；`kind=text` 在 v2 返回明确错误（无内容搜索端点），建议改用 `opencode_shell` + `rg`/`grep` |
+| `opencode_find` | 搜索远端工作区：`kind=file`（默认）按路径/glob，`kind=text` 按文件内容 | `server`、`directory`、`query`（必填）、`kind`、`limit`（仅 file 搜索生效，默认 50，上限 200） | 只读 | v1 `GET /find/file`（file）或 `GET /find`（text）；v2 `GET /fs/find?query=&type=file&limit=`（file）、`POST /shell` 跑 `grep -rIn -F`（text） | v2 的 file `query` 是**子串匹配**（不认 glob），工具会先按原样查，0 结果时去掉 `*`/`?` 再试一次（`*.txt` → `.txt`）；`kind=text` 在 v2 通过工作区 `grep` 补回：字面子串、最多 100 条、跳过 `.git`，输出 `path:line: text` |
 | `opencode_git_status` | 读取工作树状态（改动文件 + 增删行数），用于核对远端 agent 改了什么 | `server`、`directory` | 只读 | v1 `GET /vcs/status?directory=`；v2 `GET /vcs/status?location[directory]=` | 同 v1（v2 解包 `{location,data}`） |
 | `opencode_git_diff` | 读取改动文件摘要；`mode=branch` 看分支对比，`patch=true` 附带每个文件的 patch（截断到约 20k 字符） | `server`、`directory`、`mode`（`git` 默认 / `branch` / `committed`）、`patch` | 只读 | v1 `GET /vcs/diff?mode=git` / `branch`；v2 `GET /vcs/diff?mode=working` / `branch` / `committed` | 同 v1；v2 上 `git`→`working`，`branch`/`committed` 同名（v1 不支持 `committed`） |
 
@@ -97,8 +97,8 @@
    `opencode_messages` 读取；也可以用 `opencode_fork` 从某个分叉点另开分支。
 
 以上流程的步骤在 v1/v2 上一致，端点与少数参数的差异见上表；v2 上 `opencode_share`、
-`opencode_tools`、`opencode_find(kind=text)` 不可用，`opencode_session_info` 没有 todo，
-调用时会得到明确提示。
+`opencode_tools` 不可用，调用时会得到明确提示；`opencode_find(kind=text)` 与
+`opencode_session_info` 的 todo 已通过 v2 原生能力补回（shell grep / `todowrite` 推导）。
 
 ## 注意
 
@@ -109,7 +109,8 @@
   仍内联进提示词的 `text`。
 - `opencode_summarize` / `opencode_init` 的 `model` 在 v1 必须来自 `opencode_models`；v2 可省略
   （compact 用会话自身模型、init 用内置命令）。`opencode_init` 两代都不传 `confirm=true` 会直接拒绝。
-- v2 不支持的能力（`opencode_share`、`opencode_tools`、`opencode_find(kind=text)`、
-  `opencode_session_info` 的 todo）一律显式报错/提示，不会退化成空结果；v1 行为保持不变。
+- v2 无替代的能力（`opencode_share`、`opencode_tools`）一律显式报错，不会退化成空结果；
+  `opencode_find(kind=text)`、`opencode_session_info` 的 todo、消息分页与模型 variants 已在
+  0.4.0 用 v2 原生能力补回；v1 行为保持不变。
 - 结构化输出、权限卡、多 server 聚合等行为限制见仓库根目录 README 的 Notes 与
   [COMPATIBILITY.md](../COMPATIBILITY.md)。

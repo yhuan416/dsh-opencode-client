@@ -137,9 +137,10 @@ await step('read messages / session info', async function () {
   const messages = await readMessages(server, sessionId, 10)
   if (messages.length === 0) throw new Error('no messages')
   const info = await collectSessionInfo(server, sessionId)
-  if (version === '2' && info.todosSupported !== false) throw new Error('v2 session info should not claim todos support')
-  if (version === '1' && info.todosSupported !== true) throw new Error('v1 session info should support todos')
-  return messages.length + ' messages, outcome=' + info.session.outcome
+  // v1 reads /session/{id}/todo; v2 derives todos from the last todowrite call.
+  if (info.todosSupported !== true) throw new Error('session info should support todos on 0.4.0')
+  if (version === '2' && info.todosDerived !== true) throw new Error('v2 todos should be marked derived')
+  return messages.length + ' messages, outcome=' + info.session.outcome + ', todos=' + info.todos.length
 })
 
 await step('follow-up prompt (blocking)', async function () {
@@ -159,15 +160,16 @@ await step('workspace read-only', async function () {
   const status = await gitStatus(server, directory)
   const diff = await gitDiff(server, directory, 'git', false)
   await findFiles(server, directory, '*.md', 5)
+  // v1 searches through /find; v2 emulates content search with a workspace grep
+  // through the async shell, so both generations must report "available".
   let textSearch
   try {
-    await findText(server, directory, 'x')
-    textSearch = 'available'
+    const found = await findText(server, directory, 'x')
+    textSearch = 'available(' + found.count + ')'
   } catch (error) {
-    textSearch = 'unavailable'
+    textSearch = 'unavailable: ' + String(error !== null && typeof error === 'object' && error.message !== undefined ? error.message : error)
   }
-  const expectedSearch = version === '2' ? 'unavailable' : 'available'
-  if (textSearch !== expectedSearch) throw new Error('text search ' + textSearch + ', expected ' + expectedSearch)
+  if (textSearch.indexOf('available(') !== 0) throw new Error('text search ' + textSearch)
   return status.files.length + ' changed, ' + diff.files.length + ' diff files, text search: ' + textSearch
 })
 

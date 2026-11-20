@@ -84,6 +84,34 @@ function handle(entry, response) {
   }
   if (path === '/api/session' && entry.method === 'POST') return json(response, 200, { data: { id: 'ses_new', location: { directory: '/work' } } })
   if (path === '/api/session/active') return json(response, 200, { data: { ses_9: { type: 'running' } } })
+  if (path === '/api/session/ses_long/message') {
+    const total = 120
+    const all = []
+    for (let index = 0; index < total; index += 1) {
+      all.push({ id: 'msg_l' + String(index).padStart(3, '0'), type: 'user', time: { created: 1000 + index }, text: 'message ' + String(index) })
+    }
+    const order = url.searchParams.get('order')
+    const limit = Number(url.searchParams.get('limit') === null ? '50' : url.searchParams.get('limit'))
+    const offset = Number(url.searchParams.get('cursor') === null ? '0' : url.searchParams.get('cursor'))
+    const ordered = order === 'asc' ? all : all.slice().reverse()
+    const page = ordered.slice(offset, offset + Math.min(limit, 50))
+    const next = offset + page.length < total ? String(offset + page.length) : null
+    return json(response, 200, { data: page, cursor: { previous: null, next: next } })
+  }
+  if (path === '/api/session/ses_todo') return json(response, 200, { data: { id: 'ses_todo', title: 'todo session', location: { directory: '/work' } } })
+  if (path === '/api/session/ses_todo/diff') return json(response, 200, { data: [] })
+  if (path === '/api/session/ses_todo/message') {
+    return json(response, 200, {
+      data: [{
+        id: 'msg_todo', type: 'assistant', time: { created: 5 },
+        content: [{
+          type: 'tool', id: 'call_todo', name: 'todowrite',
+          state: { status: 'completed', input: { todos: [{ content: 'write docs', status: 'completed', priority: 'high' }, { content: 'run tests', status: 'pending' }] }, content: [] },
+        }],
+      }],
+      cursor: {},
+    })
+  }
   if (path === '/api/session/ses_1/message') {
     const type = url.searchParams.get('type')
     if (type === 'idle') return json(response, 200, { data: [{ id: 'msg_idle', type: 'idle', outcome: 'succeeded', time: { created: 300 } }] })
@@ -134,7 +162,7 @@ function handle(entry, response) {
   if (path === '/api/model') return json(response, 200, {
     location: { directory: '/work' },
     data: [
-      { id: 'm1', modelID: 'm1', providerID: 'p', name: 'Model One', enabled: true, settings: { apiKey: 'secret' } },
+      { id: 'm1', modelID: 'm1', providerID: 'p', name: 'Model One', enabled: true, settings: { apiKey: 'secret' }, variants: [{ id: 'minimal' }, { id: 'high' }] },
       { id: 'm2', modelID: 'm2', providerID: 'p', name: 'Model Two', enabled: false },
     ],
   })
@@ -165,7 +193,14 @@ function handle(entry, response) {
     if (query.indexOf('*') >= 0 || query.indexOf('?') >= 0) return json(response, 200, { location: { directory: '/work' }, data: [] })
     return json(response, 200, { location: { directory: '/work' }, data: [{ path: 'src/a.js', type: 'file' }] })
   }
-  if (path === '/api/shell' && entry.method === 'POST') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'running', command: 'echo hi' } })
+  if (path === '/api/shell' && entry.method === 'POST') {
+    const body = entry.body === '' ? {} : JSON.parse(entry.body)
+    const command = typeof body.command === 'string' ? body.command : ''
+    if (command.indexOf('grep') >= 0) return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_grep', status: 'running', command: command } })
+    return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'running', command: command } })
+  }
+  if (path === '/api/shell/sh_grep') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_grep', status: 'exited', exit: 0 } })
+  if (path === '/api/shell/sh_grep/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'src/a.js:3: needle here\nsrc/b.js:9: needle too\n', cursor: 20, size: 20, truncated: false } })
   if (path === '/api/shell/sh_1') return json(response, 200, { location: { directory: '/work' }, data: { id: 'sh_1', status: 'exited', exit: 0 } })
   if (path === '/api/shell/sh_1/output') return json(response, 200, { location: { directory: '/work' }, data: { output: 'hi\nexit 0\n', cursor: 9, size: 9, truncated: false } })
   return json(response, 404, { message: 'not found: ' + path })
@@ -209,7 +244,10 @@ test('v2 sessions: list/info/messages/agents/status normalize to the v1 shapes',
     assert.match(listRequest.url, /order=desc/)
 
     const info = await collectSessionInfo(server, 'ses_1')
-    assert.equal(info.todosSupported, false)
+    // v2 has no /todo endpoint; todos are derived from todowrite and empty here.
+    assert.equal(info.todosSupported, true)
+    assert.equal(info.todosDerived, true)
+    assert.equal(info.todos.length, 0)
     assert.equal(info.session.outcome, 'succeeded')
     assert.equal(info.session.title, 'demo session')
 
@@ -293,7 +331,10 @@ test('v2 workspace: vcs envelope, mode rename, raw fs read, fs find and async sh
     const findUrls = fake.requests.filter(function (request) { return new URL(request.url, 'http://localhost').pathname === '/api/fs/find' }).map(function (request) { return request.url })
     assert.match(findUrls[findUrls.length - 2], /query=\*\.js/) // glob tried first
     assert.match(findUrls[findUrls.length - 1], /query=\.js/)    // then the stripped substring
-    await assert.rejects(findText(server, '/work', 'needle'), /no content-search endpoint/)
+    // v2 removed content search; findText emulates it with a workspace grep.
+    const textSearch = await findText(server, '/work', 'needle')
+    assert.equal(textSearch.mode, 'shell-grep')
+    assert.equal(textSearch.count, 2)
 
     const shell = await runShell(server, 'ses_1', 'echo hi')
     assert.match(shell.text, /hi/)
@@ -438,6 +479,64 @@ test('v2 interactions: reject policy dismisses the form with DELETE', async func
     const dismissed = fake.requests.filter(function (request) { return request.method === 'DELETE' }).pop()
     assert.ok(dismissed)
     assert.equal(dismissed.url, '/api/session/ses_1/form/frm_1')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 compat: content search falls back to workspace grep', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const found = await findText(server, '/work', 'needle')
+    assert.equal(found.mode, 'shell-grep')
+    assert.equal(found.count, 2)
+    assert.match(found.text, /src\/a\.js:3: needle here/)
+    const shell = lastRequest(fake, 'POST', '/api/shell')
+    assert.match(JSON.parse(shell.body).command, /grep -rIn .* -F -e 'needle' \./)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 compat: messages follow cursor pages up to the requested limit', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const messages = await readMessages(server, 'ses_long', 120)
+    assert.equal(messages.length, 120)
+    assert.equal(messages[0].text, 'message 0')
+    assert.equal(messages[119].text, 'message 119')
+    const pageRequests = fake.requests.filter(function (request) { return request.url.indexOf('/api/session/ses_long/message') >= 0 })
+    const cursorRequests = pageRequests.filter(function (request) { return request.url.indexOf('cursor=') >= 0 })
+    assert.ok(cursorRequests.length >= 2)
+    assert.equal(new URL(pageRequests[0].url, 'http://localhost').searchParams.get('order'), 'desc')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 compat: session info derives todos from the last todowrite call', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const info = await collectSessionInfo(server, 'ses_todo')
+    assert.equal(info.todosSupported, true)
+    assert.equal(info.todosDerived, true)
+    assert.equal(info.todos.length, 2)
+    assert.deepEqual(info.todos[0], { content: 'write docs', status: 'completed', priority: 'high' })
+    assert.deepEqual(info.todos[1], { content: 'run tests', status: 'pending' })
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 compat: model variants are surfaced', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const models = await collectModels([server])
+    assert.match(models.text, /m1\{minimal\|high\}/)
   } finally {
     await fake.close()
   }

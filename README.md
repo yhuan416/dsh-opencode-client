@@ -130,17 +130,17 @@ explicit v2 exceptions listed below.
 ### OpenCode 1.18.x vs 2.x
 
 One install speaks both API generations; the generation is detected per server and the 26
-`opencode_*` tool names are identical on both. Four capabilities have no OpenCode 2 endpoint —
-they return an explicit "not available on OpenCode 2" message instead of silently returning
-empty data:
+`opencode_*` tool names are identical on both. Two capabilities have no OpenCode 2 endpoint and
+return an explicit "not available on OpenCode 2" message instead of silently returning empty data;
+two more are restored through v2-native fallbacks:
 
 | Capability | OpenCode 1.18.x (v1) | OpenCode 2.x (v2) |
 |---|---|---|
 | `opencode_*` tools and modes not listed below | supported | supported |
 | `opencode_share` | share / unshare link | **not available** (no share endpoint) |
 | `opencode_tools` | tool-id catalog | **not available** (no tool-ids endpoint) |
-| `opencode_find` with `kind=text` | content search | **not available**; `kind=file` works — use `opencode_shell` with `rg`/`grep` for text |
-| todo list in `opencode_session_info` | todo items | **not available** (todo endpoint removed); metadata, outcome, cost/tokens and diff still work |
+| `opencode_find` with `kind=text` | content search | **restored via fallback**: v2 has no content-search endpoint, so the plugin runs workspace `grep` through the async shell (literal substring, first 100 matches) |
+| todo list in `opencode_session_info` | todo items | **restored via fallback**: v2 removed `/session/{id}/todo`, so todos are derived from the last `todowrite` tool call |
 
 On v2 the plugin also absorbs these API differences for you:
 
@@ -192,9 +192,9 @@ On v2 the plugin also absorbs these API differences for you:
   and file parts; v2 `content[]` text/reasoning/tool parts are normalized); useful to decide
   whether a session is the right one to continue.
 - **Session info** — tool `opencode_session_info` (title/summary/todos/diff; on OpenCode 2 the todo
-  list is unavailable but outcome/cost/tokens and the changed-file diff are reported) and
-  `opencode_share` (share/unshare link; v1 only — OpenCode 2 removed the endpoint and the tool
-  says so).
+  list is derived from the last `todowrite` call and outcome/cost/tokens plus the changed-file diff
+  are reported) and `opencode_share` (share/unshare link; v1 only — OpenCode 2 removed the endpoint
+  and the tool says so).
 - **Session management** — `opencode_fork`, `opencode_children`, `opencode_summarize` (mutating;
   v2 maps it to `compact`, where the session's own model is used and `model` is optional),
   `opencode_init` (writes AGENTS.md, requires `confirm=true`; on v2 it runs the built-in `init`
@@ -434,6 +434,7 @@ in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 - The plugin page shows `live` (SSE connected) and the number of currently running sessions.
 - **Both API generations are supported**: the version is probed or forced per server and requests
   are routed accordingly — v1 paths are untouched, v2 requests carry the `/api` prefix plus Basic
-  auth. The four v2 gaps (`opencode_share`, `opencode_tools`, `opencode_find kind=text`, session
-  todos) fail with an explicit "not available on OpenCode 2" message rather than empty data — see
-  [Features](#opencode-118x-vs-2x) and [COMPATIBILITY.md](COMPATIBILITY.md).
+  auth. The remaining v2 gaps (`opencode_share`, `opencode_tools`) fail with an explicit "not
+  available on OpenCode 2" message rather than empty data; content search and session todos are
+  restored by v2-native fallbacks (see [Features](#opencode-118x-vs-2x) and
+  [COMPATIBILITY.md](COMPATIBILITY.md)).

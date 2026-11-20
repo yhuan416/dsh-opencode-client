@@ -56,9 +56,11 @@ with `apiVersion: 1|2`.
 | Questions | `/question` + `/reply|/reject` | forms: `/session/{sid}/form` + `/reply {answer:{key:value}}` / `DELETE` |
 | Shell | synchronous `/session/{id}/shell` | asynchronous `POST /api/shell` + `/api/shell/{id}/output` |
 | VCS status/diff | `/vcs/status`, `/vcs/diff?mode=git|branch` | `{location,data}`, `mode=working|branch|committed` (`git`→`working`) |
-| File read / find | `/file/content`, `/find/file`, `/find` | raw `/api/fs/read/*`, `/api/fs/find` (file paths only) |
+| File read / find | `/file/content`, `/find/file`, `/find` | raw `/api/fs/read/*`, `/api/fs/find` (file paths only); content search emulated with workspace `grep` via `/api/shell` |
 | Fork / summarize / init / children | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` |
-| Share / tool ids / text search / todos | available | **not available** (explicit error, never silent empty data) |
+| Share / tool ids | available | **not available** (explicit error, never silent empty data) |
+| Session todos | `/session/{id}/todo` | no endpoint; derived from the last `todowrite` tool call (`state.input.todos`) |
+| Model variants | none | `/api/model` `variants[]` (reasoning-effort ids) surfaced by `opencode_models` |
 
 - **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`
   (Linux x64, live server; measured 2026-11-18, v2 surface completed 2026-11-20).
@@ -70,12 +72,14 @@ with `apiVersion: 1|2`.
 - v2 session listing pages the API (v1 returns everything): one request asks for the 500 newest
   sessions per server and the tool output says so when more exist; older sessions stay reachable
   through `opencode_search`.
-- v2 limitations (all explicit, never silent): `opencode_share`, `opencode_tools`,
-  `opencode_find(kind=text)` and the `opencode_session_info` todo list have no v2 endpoint;
-  `opencode_shell` runs asynchronously in the session workspace and does not append a message to
-  the session history; `opencode_summarize` maps to `compact` (session's own model, so `model` is
-  optional on v2); `opencode_init` runs the built-in `init` command; `find` only searches file
-  paths, so text search needs `opencode_shell` + `rg`/`grep`.
+- v2 limitations that stay explicit (never silent): `opencode_share` and `opencode_tools` have no
+  v2 endpoint. `opencode_shell` runs asynchronously in the session workspace and does not append a
+  message to the session history; `opencode_summarize` maps to `compact` (session's own model, so
+  `model` is optional on v2); `opencode_init` runs the built-in `init` command.
+- v2 capability restorations (fallbacks, 0.4.0): `opencode_find(kind=text)` runs a workspace
+  `grep -rIn -F` through the async shell (literal substring, first 100 matches, `.git` skipped);
+  `opencode_session_info` derives todos from the last `todowrite` tool call; `opencode_messages`
+  follows `cursor.next` so long sessions are not truncated at the server page size.
 - The live acceptance run for both generations is `npm run e2e` (`scripts/e2e-live.mjs`) with
   `OPC_LIVE_URL` / `OPC_LIVE_PASSWORD` / `OPC_LIVE_DIR` and optional `OPC_LIVE_INTERACTIONS=1`.
 

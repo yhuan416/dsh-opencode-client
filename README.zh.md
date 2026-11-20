@@ -127,15 +127,15 @@ v2 例外（见下）。
 
 同一份安装同时支持两代 API，版本按 server 探测，26 个 `opencode_*` 工具名在两代上完全一致；
 但有四个能力在 OpenCode 2 上没有对应端点 —— 它们会返回明确的「not available on OpenCode 2」提示，而不是静默返回
-空数据：
+空数据。另有两项在 v2 上**通过 v2 原生能力补回**：
 
 | 能力 | OpenCode 1.18.x（v1） | OpenCode 2.x（v2） |
 |---|---|---|
 | 下表之外的 `opencode_*` 工具与模式 | 支持 | 支持 |
 | `opencode_share` | share / unshare 链接 | **不可用**（v2 没有 share 端点） |
 | `opencode_tools` | 工具 id 目录 | **不可用**（v2 没有 tool-ids 端点） |
-| `opencode_find` 的 `kind=text` | 文本内容搜索 | **不可用**；`kind=file` 可用 —— 文本搜索请用 `opencode_shell` 配 `rg`/`grep` |
-| `opencode_session_info` 的 todo 列表 | todo 条目 | **不可用**（todo 端点已移除）；metadata、outcome、cost/tokens、diff 仍可用 |
+| `opencode_find` 的 `kind=text` | 文本内容搜索 | **已补回**：v2 无内容搜索端点，改用异步 shell 跑工作区 `grep`（字面子串，最多 100 条） |
+| `opencode_session_info` 的 todo 列表 | todo 条目 | **已补回**：v2 移除了 `/session/{id}/todo`，改为从最后一次 `todowrite` 工具调用推导 |
 
 v2 上插件还会替你吸收这些 API 差异：
 
@@ -397,6 +397,6 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 - 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
 - 插件页显示 `live`（SSE 已连接）与当前运行中的会话数。
 - **两代 API 都受支持**：版本按 server 探测或强制指定，请求据此路由 —— v1 路径保持不变，v2
-  请求带 `/api` 前缀与 Basic 认证。四处 v2 缺口（`opencode_share`、`opencode_tools`、
-  `opencode_find kind=text`、会话 todo）会返回明确的「not available on OpenCode 2」提示而不是
-  空数据 —— 见[功能](#opencode-118x-与-2x)与 [COMPATIBILITY.md](COMPATIBILITY.md)。
+  请求带 `/api` 前缀与 Basic 认证。剩余 v2 缺口（`opencode_share`、`opencode_tools`）返回明确的
+  「not available on OpenCode 2」提示而不是空数据；文本搜索与会话 todo 已通过 v2 原生能力补回
+  —— 见[功能](#opencode-118x-与-2x)与 [COMPATIBILITY.md](COMPATIBILITY.md)。
