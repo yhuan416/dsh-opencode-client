@@ -19,6 +19,12 @@
 - [ ] v2 share/todo/tool-ids/text-search 的替代方案（外部存储或 shell 近似）——**暂缓：当前明确报错**
 - [ ] v2 版本矩阵（2.3.0 之外）与 nightly e2e——**建议后续用 `/api/info` 版本 + 契约测试持续校验**
 - [ ] v2 深度整合（消息队列/steer、revert 检查点、worktree、stats/成本、export/import、调度桥、PTY、反向 MCP）——见 [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md)，建议按 0.3.0/0.4.0/0.5.0 分版推进
+- [ ] dsh subagent seam 升级（0.3.0/0.4.0）——见 [docs/subagent-seam.md](docs/subagent-seam.md)：
+      P1 `stopReason` 保真（max-tokens/refusal）；P2 `outputSchema: true` + `agentOptions: true`（配合 `subagentModelMap`），
+      以打通 workflow 的 `agent(...,{schema})` / `agent(...,{provider,model})` 与 per-provider 工具的模型选择；
+      P3 订阅 `subagent/start|end` 事件，在插件页展示远端子代理运行/结算
+- [ ] workflow 后端切到 opencode（配置级，无代码）：把 profile 里 agent 工具组内 `workflow-ptc.provider` 从 `spawn` 改为 `opencode-<id>`，
+      让 workflow 编排跑在远端 opencode；需先完成 P2 capability，并评估远端并发/成本/延迟与 cwd 映射
 
 ## 0. 已完成（基线）
 
