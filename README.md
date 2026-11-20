@@ -296,6 +296,11 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
     question: reject             # reject (default) interactive questions or "ignore" them
     pathMap:                     # only when local and remote path layouts differ
       - { from: /home/yhuan, to: /home/yhuan }
+    routing:                     # multi-server subagent dispatch (default: on when servers > 1)
+      providerName: opencode-auto
+      policy: [directory, sticky, least-busy, round-robin]
+      sticky: true               # keep one parent agent on the server that accepted its first child
+      failover: true             # try the next candidate when a start fails before publication
 ```
 
 `apiVersion: auto` (the default) asks `GET /api/info` once per server. If the probe is rejected
@@ -319,6 +324,37 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
         toolName: opencode_subagent_n100
 ```
 
+### Multiple servers: `opencode-auto`
+
+`opencode-<server>` providers are pinned to one server, so a tool row always dispatches to the
+same machine. When more than one server is configured the plugin also registers a routed provider
+`opencode-auto` (configurable through `routing`), which chooses per start:
+
+1. `directory` — a server whose `directory` covers the child cwd (only meaningful when servers
+   declare `directory`);
+2. `sticky` — the server that accepted this parent agent's first child (one parent → one machine);
+3. `least-busy` — fewest running sessions (`/session/active`), ties rotate;
+4. `round-robin` — rotate through the remaining candidates.
+
+A start that fails before the run is published (unreachable, 5xx, timeout) falls through to the
+next candidate when `failover: true`; the chosen server is appended to the session title
+(`dsh subagent: <label> @n100`) and logged. Expose it as a tool row:
+
+```yaml
+- insert:
+    - id: tool-opencode-auto
+      name: "@deepseek-ai/dsh-tool-subagent"
+      config:
+        provider: opencode-auto
+        maxDepth: provider-managed
+        toolName: opencode_subagent_auto
+```
+
+Set `directory` per server to enable directory routing (e.g. machines with different mount roots);
+without it, routing falls back to sticky / least-busy / round-robin. Continuation is not routed —
+a remote session id belongs to one server — so keep using the pinned tools or pass `server` to
+`opencode_subagent` when resuming.
+
 ## Subagent seam
 
 The native `opencode_subagent_<server>` tools plug into dsh's `ctx.subagents` provider seam.
@@ -328,7 +364,10 @@ idempotent dispose). Both `opencode_subagent` and the native provider share one
 session-run lifecycle (`lib/session-run.js`): same session creation, interaction
 tracking, async prompt + SSE completion wait and abort handling. Native subagent sessions are
 titled `dsh subagent: <label>` so they are identifiable in the plugin page (which now
-also shows session ids and the active tool of running servers).
+also shows session ids and the active tool of running servers). The provider reports
+`stopReason` faithfully — `finish=length` becomes `max-tokens` and `content-filter` becomes
+`refusal`, so dsh's settlement notice says "ran out of room" / "declined the task" instead of a
+generic completion. With multiple servers, `opencode-auto` routes each child (see above).
 
 ## Documentation
 

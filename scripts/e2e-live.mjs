@@ -9,6 +9,7 @@
  *   OPC_LIVE_PASSWORD='<OPENCODE_SERVER_PASSWORD, v2 only>' \
  *   OPC_LIVE_DIR=/tmp \
  *   [OPC_LIVE_INTERACTIONS=1] \
+ *   [OPC_LIVE_URL2=http://other:4096 OPC_LIVE_PASSWORD2=...] \
  *   node scripts/e2e-live.mjs
  *
  * OPC_LIVE_DIR must exist on the remote machine. Steps: probe, read surface,
@@ -30,6 +31,8 @@ import {
 import { runShell, gitStatus, gitDiff, findFiles, findText } from '../lib/workspace.js'
 import { forkSession, summarize, sessionChildren } from '../lib/manage.js'
 import { createDelegate } from '../lib/run.js'
+import { createRoutedProvider } from '../lib/provider.js'
+import { normalizeRouting } from '../lib/routing.js'
 import { createInteractions } from '../lib/interactions.js'
 import { buildPrompt } from '../lib/delegate.js'
 import { sendSessionMessage } from '../lib/session-run.js'
@@ -64,6 +67,11 @@ if (server === undefined) {
   console.error('invalid OPC_LIVE_URL')
   process.exit(2)
 }
+const secondUrl = process.env.OPC_LIVE_URL2
+const secondPassword = process.env.OPC_LIVE_PASSWORD2 || password
+const [secondServer] = secondUrl === undefined || secondUrl === ''
+  ? []
+  : normalizeServers([{ id: 'live2', url: secondUrl, password: secondPassword, directory }])
 
 const activeRuns = new Map()
 const approvals = []
@@ -190,6 +198,33 @@ await step('abort long turn', async function () {
   if (settled === 'still-running') throw new Error('waiter did not settle after abort')
   return settled
 })
+
+if (secondServer !== undefined) {
+  await step('routed provider alternates servers', async function () {
+    const routed = createRoutedProvider([server, secondServer], {
+      pathMap: [],
+      watchInteractions: interactions.watchInteractions,
+      activeRuns: new Map(),
+      routing: normalizeRouting({ policy: ['round-robin'], sticky: false, failover: false }, 2),
+      logger: { info: function () {}, warn: function () {} },
+    })
+    const sessions = []
+    for (const index of [0, 1]) {
+      const controller = new AbortController()
+      const run = await routed.start({
+        prompt: [{ type: 'text', text: 'Reply with exactly: ok' }],
+        parent: { id: 'e2e-route' },
+        signal: controller.signal,
+        label: 'e2e route ' + String(index),
+      })
+      sessions.push(run.id)
+      const result = await run.result
+      await run.dispose()
+      if (result.stopReason !== 'completed') throw new Error('routed run ' + String(index) + ' ended ' + result.stopReason)
+    }
+    return 'sessions ' + sessions.join(', ')
+  })
+}
 
 await step('version-specific unsupported paths', async function () {
   const share = await shareSession(server, sessionId, 'share')

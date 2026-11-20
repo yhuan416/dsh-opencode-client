@@ -79,6 +79,20 @@ with `apiVersion: 1|2`.
 - The live acceptance run for both generations is `npm run e2e` (`scripts/e2e-live.mjs`) with
   `OPC_LIVE_URL` / `OPC_LIVE_PASSWORD` / `OPC_LIVE_DIR` and optional `OPC_LIVE_INTERACTIONS=1`.
 
+Subagent dispatch:
+
+- A tool row is bound to one provider, and each `opencode-<server>` provider is bound to one
+  OpenCode server, so `opencode_subagent_<server>` is deterministic by construction.
+- `opencode-auto` (registered when more than one server is configured, tunable via `routing`) is
+  the routing layer: directory coverage → parent stickiness → least running sessions →
+  round-robin, with failover to the next candidate when a start fails before publication.
+- Routing never changes continuation: a remote session id belongs to one server, so resumed
+  sessions must go back to that server (pinned tool or `server` on `opencode_subagent`).
+- A failed start leaves no partial run: the provider cleans up before rejecting (seam contract),
+  which is what makes failover safe.
+- OpenCode creates a session even for a directory it cannot see and only rejects the prompt, so
+  the plugin maps `LocationNotFoundError` to an actionable `pathMap` hint.
+
 Known upstream issues that shape the integration:
 
 - `format: {type:"json_schema"}` (structured output) persists a `retryCount` field in the user

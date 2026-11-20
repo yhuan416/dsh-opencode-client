@@ -49,6 +49,7 @@
 | 插座 | 形态 | 当前是否可用 | 受 capability 门控 |
 |---|---|---|---|
 | **① per-provider 工具**：`opencode_subagent_n100` / `_m65` | `dsh-tool-subagent` 以本插件 provider 起一次性子代理；异步 + 结算通知 | ✅ 已启用并验证 | 模型选择需 `agentOptions` + 工具行 `modelSelection: true`；`maxDepth` 只能 `provider-managed` |
+| **①′ 路由工具**：`opencode_subagent_auto` | provider 换成 `opencode-auto`：每次 start 在 n100/m65 间自动选（directory → sticky → least-busy → round-robin，失败自动换台） | ✅ 0.3.0 已实现并真机验证 | 同 ①；`routing` 配置可调策略 |
 | **② workflow 引擎后端**：`workflow(script)` 里的 `agent(prompt, opts)` | `workflow-ptc` 的 `provider` 配置（默认 `spawn`）决定所有 `agent()` 子代理跑在哪个后端；可改成 `opencode-n100` | ⚙️ 配置级可用（未切换） | `opts.schema` 需 `outputSchema`；`opts.provider/model`（LLM 路由覆盖）需 `agentOptions`；并发上限 `maxConcurrentAgents`（默认 ≤16）、`maxTotalAgents`（默认 1000） |
 | **③ 本插件自有 delegate 工具** `opencode_subagent` | seam 之外：一次性/续聊、agent/model/schema/附件、`opencode_prompt` 续聊、`opencode_progress` 进度 | ✅ 已启用 | 无（插件自管） |
 
@@ -66,7 +67,7 @@
 | start | 复用 `lib/session-run.js`：`ensureSession`（v2 用 `location.directory` + agent/model）→ `prompt` → 等待 execution/idle 完成 |
 | id | 远端会话 id（`ses_...`） |
 | output | 最后一条 assistant 文本（v2 `content[]` 的 text parts） |
-| stopReason | `completed` / `aborted` / `error`（diagnostic ≤4096B） |
+| stopReason | `completed` / `aborted` / `error` / `max-tokens`（finish=length）/ `refusal`（content-filter），diagnostic ≤4096B |
 | dispose | 幂等：abort controller + 远端 `interrupt`，等待结算 |
 | 父 Agent 归属 | `activeRuns[agent]` 携带 `request.parent` → 审批卡/提问落到正确 dsh agent |
 | 工具行 | profile 里 `tool-opencode-n100/m65`，`maxDepth: provider-managed` |
@@ -90,7 +91,7 @@ seam 允许外部后端自行用"prompt 约束 + 本地校验"满足 schema：�
 - **workflow 的 `agent(prompt, {schema})` 需要它**：provider 广告 `outputSchema: true` 后，workflow 脚本就能要求远端子代理返回结构化 JSON（否则 start 前被 seam 拒绝）。
 代码点：`lib/provider.js`（start 前判定 + 结束解析校验）、`lib/run.js::parseStructured`（已有，可提升为 type/required 递归校验）。
 
-### 3.2 `stopReason` 保真：**可以做**（当前只有 3 值）
+### 3.2 `stopReason` 保真：**已实现（0.3.0）**
 
 opencode v2 的 assistant 消息带 `finish: stop|length|tool-calls|content-filter|error|unknown`，可映射：
 
@@ -103,7 +104,8 @@ opencode v2 的 assistant 消息带 `finish: stop|length|tool-calls|content-filt
 | 其它 | `completed` |
 
 收益：dsh 工具层可以把 `max-tokens/refusal` 映射成更准确的 `isError` 与结算摘要。
-代码点：`lib/delegate.js`（`extractAssistant` 保留 `finish`/`error`，`waitAssistant` 一并返回）、`lib/provider.js`（映射）。
+实现：`lib/delegate.js`（`extractAssistant` 保留 `finish`/`error`）、`lib/provider.js`（`stopReasonFor`），
+测试见 `test/provider.test.js`。
 
 ### 3.3 `agentOptions` / 模型选择：**有条件可做**
 
@@ -150,15 +152,27 @@ dsh 的 `interrupt(user|ancestor)` 最终走 `dispose`/`signal`；插件 `dispos
 
 | 优先级 | 内容 | 代码点 | 风险 |
 |---|---|---|---|
-| **P1（0.3.0）** | `stopReason` 保真映射（`finish=length→max-tokens`、`content-filter→refusal`、`error→error`） | `lib/delegate.js`、`lib/provider.js` | 低：纯本地映射 |
+| **P1（0.3.0，已完成）** | `stopReason` 保真映射（`finish=length→max-tokens`、`content-filter→refusal`、`error→error`） | `lib/delegate.js`、`lib/provider.js` | 低：纯本地映射 |
 | **P2（0.4.0）** | `outputSchema: true` + 结构化校验（打通 workflow 的 `agent(...,{schema})`）；`subagentModelMap` + `agentOptions: true` + 工具行 `modelSelection: true`（打通 workflow 的 `agent(...,{provider,model})` 与工具模型选择）；`maxTokens` 明确拒绝 | `lib/config.js`、`lib/provider.js`、`lib/run.js`（校验器）、profile 配置 | 中：需维护映射；schema 不满足按 seam 语义返回 error |
-| **P2.5（配置级，无代码）** | 把 `workflow-ptc.provider` 切到 `opencode-<id>`，让 workflow 编排跑在远端 opencode | profile patch（agent 工具组内嵌套条目） | 中高：远端并发/成本/延迟、cwd 映射需确认 |
+| **P3（0.3.0，已完成）** | `opencode-auto` 路由 provider：directory → sticky → least-busy → round-robin，start 失败换台；工具行 `opencode_subagent_auto` | `lib/routing.js`、`lib/provider.js`、`lib/index.js`、`test/routing.test.js` | 中：多 server 时默认开启；续聊不路由 |
+| **P2.5（配置级，无代码）** | 把 `workflow-ptc.provider` 切到 `opencode-<id>`（或 `opencode-auto`），让 workflow 编排跑在远端 opencode | profile patch（agent 工具组内嵌套条目） | 中高：远端并发/成本/延迟、cwd 映射需确认 |
 | **P3（0.5.0）** | 订阅 `subagent/start|end`，插件页展示远端子代理运行/结算 | `lib/index.js`、`lib/routes.js`、`lib/client.js` | 低 |
 | **不做** | `prepareContinuable`、`agentPreset`、`depthLimit`、team teammate、外部 `send_message` | — | seam 语义不支持 |
 
 验证方式：`test/provider.test.js`（假 server 驱动 prompt/完成/abort，断言 `result.output/structured/stopReason/dispose` 幂等）；真机用 `opencode_subagent_n100` + 一个"故意超 token/结构化 JSON"的任务做 e2e。
 
 ---
+
+## 4.1 0.3.0 真机验证（n100 + m65，OpenCode 2.3.0）
+
+```text
+1) cwd=/tmp          -> n100  completed "ok"   (directory policy: n100.directory=/tmp)
+2) cwd=/home/yhuan    -> m65   completed "ok"   (directory policy: m65.directory=/home/yhuan)
+3) round-robin(4)     -> n100 | m65 | n100 | m65
+4) failover           -> broken(127.0.0.1:1) failed, routed -> n100 completed
+5) missing dir        -> error: "opencode: m65 cannot see directory /home/yhuan/nope-dir
+                         (LocationNotFoundError); configure pathMap ..."
+```
 
 ## 5. 历史验证记录（0.2.1-rc.2 时期）
 

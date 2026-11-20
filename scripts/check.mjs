@@ -6,6 +6,7 @@ import { normalizeServers, normalizeApiVersion, parseModel, parsePathMap } from 
 import { apiPath, describeApiVersion, jsonResponse, OpenCodeError } from '../lib/http.js'
 import { completionKind, eventTarget, normalizeEvent } from '../lib/events.js'
 import { promptBody, extractAssistant } from '../lib/delegate.js'
+import { stopReasonFor } from '../lib/provider.js'
 import { parseStructured } from '../lib/run.js'
 import { collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand, collectSessionSearch, collectMcpStatus } from '../lib/catalog.js'
 import { runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText } from '../lib/workspace.js'
@@ -66,7 +67,10 @@ assert.equal(reply.status, 200)
 assert.equal(reply.headers.get('content-type'), 'application/json; charset=utf-8')
 assert.deepEqual(await reply.json(), { ok: true })
 
-assert.deepEqual(extractAssistant({ info: { role: 'assistant' }, parts: [{ type: 'text', text: 'ok' }] }), { text: 'ok', structured: undefined })
+assert.deepEqual(extractAssistant({ info: { role: 'assistant' }, parts: [{ type: 'text', text: 'ok' }] }), { text: 'ok', structured: undefined, finish: undefined, error: undefined })
+assert.equal(stopReasonFor({ finish: 'length' }, false), 'max-tokens')
+assert.equal(stopReasonFor({ finish: 'content-filter' }, false), 'refusal')
+assert.equal(stopReasonFor({ finish: 'stop' }, true), 'aborted')
 
 for (const fn of [collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand, collectSessionSearch, collectMcpStatus, runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText, forkSession, summarize, initSession, sessionChildren, abortSession]) {
   assert.equal(typeof fn, 'function')
