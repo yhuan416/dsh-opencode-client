@@ -9,7 +9,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
-import { normalizeServers, parseModel } from '../lib/config.js'
+import { normalizeServers, parseModel, modelLabel } from '../lib/config.js'
 import {
   collectServer, collectSessionRows, readMessages, collectSessionInfo, collectAgents,
   collectStatus, abortSession, shareSession, resolveAgentId,
@@ -552,4 +552,13 @@ test('v2 model refs: provider/model#variant parses and reaches Model.Ref only on
   const bodyModel = { providerID: 'p', modelID: 'm', variant: 'high' }
   assert.deepEqual(promptBody({ id: 'v1', model: bodyModel }, 'hi').model, { providerID: 'p', modelID: 'm' })
   assert.equal(v2PromptBody({ id: 'v2', model: bodyModel }, 'hi').model, undefined)
+})
+
+
+test('model label shows a non-default variant only', function () {
+  assert.equal(modelLabel({ providerID: 'p', id: 'm', variant: 'high' }), 'p/m#high')
+  assert.equal(modelLabel({ providerID: 'p', id: 'm', variant: 'default' }), 'p/m')
+  assert.equal(modelLabel({ providerID: 'p', id: 'm' }), 'p/m')
+  assert.equal(modelLabel({ providerID: 'p', modelID: 'm2' }), 'p/m2')
+  assert.equal(modelLabel(undefined), undefined)
 })
