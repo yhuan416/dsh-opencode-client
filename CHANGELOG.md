@@ -1,3 +1,34 @@
+## 0.7.0 (2026-11-26) — 界面可配置 + 注意力提示
+
+### Added
+
+- **在界面上加/删远端**：设置页新增「添加远端」表单（id / url / password / label / directory）
+  与每行的「移除」。保存与移除都走 dsh 官方的 `configEditor.edit()`——写回本插件在 profile 里的
+  那一行配置，由编辑器负责校验、原子写与 HMR 串行化；普通字段改动让插件自动重启，
+  **新 server 无需手动重启 dsh 即可出现**。插件不再自己读写 `cordis.patch.yml`。
+- **测试连接**：`POST /api/opencode-client/probe` 在保存前探测目标（`/api/info`），
+  返回 API 代次与 OpenCode 版本；密码不对会明确回落到 v1，避免“存进去才发现是 offline”。
+- **注意力提示**（此前完全静默）：
+  - 左栏 OpenCode 图标上的待办徽标（数字，0 时不显示）；
+  - 右下角 toast，只在**状态跨越**时提醒（`running→idle` 完成、`→waiting-permission/​question`
+    需要你、`running→error` 失败），首次加载不提醒；
+  - watcher 注册在 `shell.overlay`（应用框架级），不依赖看板页面是否打开；
+    页面可见 8s、隐藏 15s 轮询。
+- **设置入口**：看板顶栏「⚙ 插件设置」胶囊，调用 dsh 的
+  `pluginNavigation.openBundle('dsh-opencode-client')` 直达插件配置页；样式与 dsh-context
+  的同名按钮逐条对齐（同一套 token：`bg-layer-2` 底、`.5px border-l4`、`999px` 圆角）。
+
+### Fixed
+
+- 路由注册按 **path** 去重（不含 method）：`/servers` 的 POST 与 DELETE 撞名会让那条 effect
+  抛错，导致**整个插件路由表全部消失**（`/board` 也 404）。移除改用独立路径
+  `/servers/remove`；单条路由注册失败不再拖垮其余路由；新增“路由 path 唯一”回归测试。
+- 设置页不再渲染工作区与几百条会话（那是看板的职责），轮询改为 15s 且只读缓存。
+
+### Changed
+
+- `npm test`：86 项（新增服务器 CRUD、探测、路由唯一性、/board 字段等用例）。
+
 ## 0.6.1 (2026-11-26)
 
 ### Fixed

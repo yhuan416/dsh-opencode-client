@@ -1,6 +1,6 @@
 {
   "name": "dsh-opencode-client",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "DeepSeek Harness plugin that acts as an OpenCode client: list, read and continue remote OpenCode sessions, delegate work to them, and use OpenCode as a native subagent.",
