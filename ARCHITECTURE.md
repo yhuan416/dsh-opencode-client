@@ -29,8 +29,10 @@ dsh web host process
 │   ├── lib/interactions.js      remote permission/question → dsh approval / userQuestions
 │   │                            (v1 global / v2 session-scoped + forms)
 │   ├── lib/sse.js               per-server SSE (v1 /global/event, v2 /api/event); progress, idle listeners, events ring
+│   ├── lib/observation.js       (server, session) registry: running/pending/SSE merged into one status
+│   ├── lib/board.js             shared refresher behind /board, /list row status and opencode_board
 │   ├── lib/routes.js            /api/opencode-client/* host HTTP routes
-│   └── lib/tools.js             26 model-facing opencode_* tools
+│   └── lib/tools.js             27 model-facing opencode_* tools
 └── lib/client.js                browser bundle: "OpenCode Client" plugin-page section
 
 remote machines

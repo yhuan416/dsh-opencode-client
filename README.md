@@ -11,10 +11,15 @@
 
 > English | [中文](README.zh.md)
 
-**OpenCode as a native dsh subagent backend, plus a client for every remote `opencode serve`.**
-The plugin connects to one or more remote `opencode serve` instances, exposes their projects,
-sessions and messages to dsh as tools and HTTP routes, delegates tasks into them, and registers
-each server as a native dsh subagent provider (`opencode-<serverId>`).
+**An observation console for a fleet of OpenCode servers, plus a native dsh subagent backend.**
+The plugin connects to one or more remote `opencode serve` instances and answers three questions
+OpenCode's own clients cannot: which sessions are running across *all* servers, which are waiting
+for you, and what failed — then delegates work into them and registers each server as a native
+dsh subagent provider (`opencode-<serverId>`).
+
+> **Positioning (0.6.0)**: session access is a means, not the goal. Chatting inside a session
+> belongs to OpenCode's TUI/Web (we deep-link into it); this plugin owns the cross-server board,
+> the attention feed, and the agent-facing backend.
 
 **Compatibility**: one install serves **OpenCode 1.18.x (v1 HTTP API)** and **OpenCode 2.x
 (v2 `/api/*` API + HTTP Basic auth)**. The generation is detected per server
@@ -87,7 +92,7 @@ flowchart LR
         direction TB
         CLIENT["client bundle<br/>plugin page · sidebar tab"]
         ROUTES["routes<br/>/api/opencode-client/*"]
-        TOOLS["tools<br/>26 × opencode_*"]
+        TOOLS["tools<br/>27 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
         SSE["sse<br/>v1 /global/event · v2 /api/event"]
     end
@@ -123,7 +128,7 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
 
 ## Features
 
-26 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
+27 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
 same tool names and behaviour on OpenCode 1.18.x (v1 API) and OpenCode 2.x (v2 API), with four
 explicit v2 exceptions listed below.
 
@@ -242,6 +247,11 @@ On v2 the plugin also absorbs these API differences for you:
 
 ### UI
 
+- **Observation console (main panel, 0.6.0)** — the left-rail `OpenCode` entry opens a **card
+  board**, not an embedded page: "needs you / running / error" sit on top across every remote,
+  idle sessions are grouped per remote, a remote filter chip keeps its selection, and a card opens
+  that session in an overlay (Esc or the top bar closes; the overlay keeps a "new tab" escape).
+  Backed by `GET /api/opencode-client/board`, polled every 5 s and paused while the page is hidden.
 - **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, session ids, active
   tool, messages, create session.
 - **Embedded OpenCode UI** — register a right-sidebar tab (`kind: opencode`): server picker + iframe
@@ -376,7 +386,7 @@ generic completion. With multiple servers, `opencode-auto` routes each child (se
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — module map, data flows, design decisions
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) — 中文架构（与 ARCHITECTURE.md 对应）
-- [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：26 个 `opencode_*` 工具、参数、只读/可变
+- [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：27 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) — dsh / OpenCode compatibility matrix and versioning policy
 - [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) — measured OpenCode 2.3.0 gaps and the phased migration plan now implemented in 0.2.0
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) — measured survey of the 100 unused OpenCode 2.3.0 endpoints and the candidate deeper-integration roadmap (inbox/steer, revert checkpoints, worktrees, stats, PTY, reverse MCP)
