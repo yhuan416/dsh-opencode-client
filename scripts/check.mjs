@@ -59,6 +59,7 @@ assert.equal(observationSmoke.board().running.length, 0)
 // returns to idle instead of lingering in `unseen`.
 const unreadSmoke = createObservation({ now: function () { return 3000 } })
 unreadSmoke.observeIdentity('e5', { id: 'ses_u', busyAt: 1000, idleAt: 2000, viewedAt: 500 })
+unreadSmoke.observeRunning('e5', new Set(['ses_u']), true)
 unreadSmoke.observeRunning('e5', new Set(), true)
 assert.equal(unreadSmoke.board().unseen.length, 1)
 assert.equal(unreadSmoke.board().idle.length, 0)

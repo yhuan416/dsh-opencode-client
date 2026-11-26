@@ -68,8 +68,17 @@ observation 条目增：
 派生（不改 `statusOf` 的五档优先级）：
 
 ```js
-unread = status === 'idle' && idleAt !== undefined && viewedAt !== undefined && idleAt > viewedAt
+unread = status === 'idle' && sawFinish && idleAt !== undefined && !(viewedAt >= idleAt)
 ```
+
+**修正（实施中实测推翻初稿）**：初稿写的是“未读 = `idleAt > viewedAt`”，要求两个字段都在。
+真机量下来 e5 180 个会话里有 10 个、n100 339 个里有 1 个**根本没有 `time.viewed`**——就是那些
+从没在 OpenCode UI 里打开过、由 dsh 委派创建的会话；同时两台机器上 `idle > viewed` 的会话是
+**0 个**。照初稿的规则，“刚跑完且确实没人看过”恰好被判成已读，功能等于永远不触发。
+
+于是拆成两半：**候选**由我们亲眼看到的 running→idle 边沿产生（`sawFinish`，本地、天然只覆盖
+“刚完成”），**清除**看 OpenCode 的 `viewed`（`viewed >= idle` 即远端已读）或 dsh 自己的 `/seen`。
+这样既不会把几百条历史会话刷成未读，也不会漏掉没被人打开过的完成。
 
 `board()` 增 `unseen`：顶层 + `unread` 的行，按 `idleAt` 倒序，上限 20，**从 `idle` 与
 `idleCount` 中排除**，避免重复计数；行内带 `idleAt`、`runMs`（`idleAt - busyAt`）、`lastRun`、
@@ -104,7 +113,9 @@ unread = status === 'idle' && idleAt !== undefined && viewedAt !== undefined && 
 - 子会话仍折进父行；父行未读才显示。
 - 会话删除 → `observation.forget()` 自然清。
 - 远端 `/view` 失败（404/网络）→ 只记日志，不影响打开；下一轮刷新未读会回来。
-- v1：`viewedAt` 缺失 → `unread` 恒 false，分区整体不出现，行为回到现状。
+- v1：没有 `idle`/`viewed` 这对字段 → `unread` 恒 false，分区整体不出现，行为回到现状。
+- dsh 重启后 `sawFinish` 清零：重启前完成的会话不再提醒（远端 `viewed` 仍在，只是“刚完成”这件事
+  我们没亲眼看到）。新的 run 一结束就会重新武装。
 - `step.ended` 缺失（dsh 重启后、SSE 断线）→ 用量回退会话累计并标注「累计」，不假装是本轮。
 
 ## 7. 测试
@@ -131,6 +142,8 @@ unread = status === 'idle' && idleAt !== undefined && viewedAt !== undefined && 
 
 > 注：`writing-plans` skill 在本机未安装，故实施计划直接落在本文档 §8。
 ## 9. 实施记录（2026-11-26）
+
+（含 §3 那处修正：未读候选改为本地 `sawFinish` + 远端 `viewed` 清除。）
 
 按 §8 落地，实测到的两处与设计不完全一致：
 

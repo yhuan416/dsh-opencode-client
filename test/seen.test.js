@@ -56,6 +56,8 @@ test('POST /seen marks the session viewed on the remote with the row idle', asyn
     const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
     const observation = createObservation()
     observation.observeIdentity('e5', { id: 'ses_1', busyAt: IDLE - 5000, idleAt: IDLE, viewedAt: IDLE - 90000 })
+    // Watch it run, then stop: that edge is what arms the reminder.
+    observation.observeRunning('e5', new Set(['ses_1']), true)
     observation.observeRunning('e5', new Set(), true)
     const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
     const seen = routes.find(function (route) { return route.path === '/api/opencode-client/seen' })

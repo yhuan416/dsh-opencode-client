@@ -150,7 +150,10 @@ test('finished-but-unread stays out of idle until viewed', function () {
   const c = clock()
   const observation = createObservation({ now: c.now })
   // OpenCode records the run boundaries and the read marker on the session.
-  observation.observeIdentity('e5', { id: 'ses_done', title: 'done', busyAt: 1000, idleAt: 2000, viewedAt: 500, outcome: 'succeeded' })
+  observation.observeIdentity('e5', { id: 'ses_done', title: 'done', busyAt: 1000, idleAt: 2000, outcome: 'succeeded' })
+  // The reminder is armed by the finish we actually watched, not by the marker:
+  // a never-viewed session has no `viewed` at all (measured on 2.3.0).
+  observation.observeRunning('e5', new Set(['ses_done']), true)
   observation.observeRunning('e5', new Set(), true)
   const before = observation.board()
   assert.equal(before.unseen.length, 1)
@@ -204,4 +207,32 @@ test('step.ended accumulates per run and freezes into lastRun', function () {
     outcome: 'succeeded',
     endedAt: 1300,
   })
+})
+
+test('v1 never enters the unseen partition (no idle marker at all)', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  // v1 sessions only carry time.created/updated, so there is no idle/viewed pair
+  // to reason about; the reminder must stay off rather than guess.
+  observation.observeIdentity('old', { id: 'ses_v1', busyAt: undefined, idleAt: undefined, viewedAt: undefined })
+  observation.observeRunning('old', new Set(['ses_v1']), true)
+  observation.observeRunning('old', new Set(), true)
+  const board = observation.board()
+  assert.equal(board.unseen.length, 0)
+  assert.equal(board.idle.length, 1)
+})
+
+test('a never-viewed session still warns (no `viewed` marker exists yet)', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  // Measured on OpenCode 2.3.0: sessions that were never opened have no
+  // `time.viewed` at all — deriving unread from the marker alone would drop them.
+  observation.observeIdentity('e5', { id: 'ses_new', busyAt: 1000, idleAt: 2000 })
+  observation.observeRunning('e5', new Set(['ses_new']), true)
+  observation.observeRunning('e5', new Set(), true)
+  assert.equal(observation.board().unseen.length, 1)
+  // Looking at it in dsh clears it locally even before the remote marker lands.
+  assert.equal(observation.markSeen('e5', 'ses_new'), true)
+  assert.equal(observation.board().unseen.length, 0)
+  assert.equal(observation.board().idle.length, 1)
 })
