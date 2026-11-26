@@ -1,4 +1,4 @@
-## 0.7.1 (unreleased) — 用量与成本
+## 0.7.1 (unreleased) — 用量与成本 + 完成未查看
 
 ### Added
 
@@ -17,10 +17,28 @@
   - 设置页显示「今日用量」（会话 / 步 / token / 成本），60 秒刷新。
   - `observation` 的会话条目开始携带 `tokens` / `cost` / `model`，看板行带着暴露出去。
 
+- **刚完成 · 未查看**（跑完的会话在被人看过之前不沉进空闲）：
+  - **复用 OpenCode 自己的读标**，不另建一套：未读 = 会话 `time.idle > time.viewed`；标记已读就是
+    它自己 UI 用的 `POST /session/{id}/view {idle}`。状态存在 OpenCode 里，所以 dsh 重启不丢，
+    在 OpenCode Web UI 里看过，看板刷新后也自动消失。
+  - 看板新增分区「刚完成 · 未查看」（在「需要你」与「运行中」之间），卡片显示
+    `完成于 X 前 · 用时 3m12s · in/out · $0.12`；左栏图标徽标 = 待处理 + 未查看；面板头部多一格
+    「N 未查看」。行**从空闲区与其计数里排除**，不会两处重复。
+  - 完成 toast 的正文从「server · 目录」升级为「server · 用时 · in/out · 成本」（数据来自
+    `step.ended` 在 run 内累加，缺失时回退会话累计并标注）。watcher 现在也轮询 `unseen` ——
+    否则刚完成的行会在同一拍离开轮询集合，toast 永不触发。
+  - 新路由 `POST /api/opencode-client/seen {server, session, idle?}`：`idle` 必须来自看板行，
+    取不到就拒绝（400）而不是拿时钟去猜，避免把还在跑的 run 标成已读。
+  - 点开卡片（或被设置页/标签页打开）即上报已读；dsh 委派（`opencode_subagent`、
+    `opencode_prompt wait=true`）拿到结果也算已读——一轮委派不再留下未读点。
+  - 用时复用 `time.busy → time.idle`，成败复用会话 `outcome`，都不新增状态。
+  - v1 没有 `viewed`：未读恒为 false、分区不出现、`/seen` 返回 `supported: false`，行为回到现状。
+
 ### Changed
 
 - `/api/opencode-client/board` 的 `servers[]` 增 `sessions`（该台会话数），概览卡不必为了计数
-  再拉一次会话列表。
+  再拉一次会话列表；顶层增 `unseen` / `unseenCount`，`idleCount` 不再包含未查看的会话。
+- `opencode_board` 工具输出多一块「finished, not looked at (N)」，模型也能看到刚跑完还没人看的会话。
 
 ### Fixed
 
@@ -35,6 +53,13 @@
   `from: 0`（全部历史）单独用一个键避免与近窗口撞车，缓存 Map 上限 32 条。
 - 新增 `test/usage.test.js`（4 项）：归一化真实 payload 形状、分桶缓存命中/全部历史单独键、
   v1 报 unsupported、字段缺失兜底。
+- **`lib/routes.js` 里 16 个处理器调用了一个从未定义的 `findServer`**（`/fork`、`/abort`、
+  `/prompt`、`/session`、`/shell`、`/git/*`、`/file`、`/find` …），每次调用都是
+  `ReferenceError`。`lib/board.js` 里早就有一个同名实现，但既没被使用也没被导出——典型的接线
+  漏了一根线。现在在 `createRoutes` 内定义一次（未知 id 回落默认 server，与原有注释语义一致），
+  删掉 `board.js` 的孤儿副本，并加回归测试（修复前该测试抛 ReferenceError）。
+- 新增 `test/seen.test.js`（4 项）：`/seen` 用行的 `idle` 打远端 `POST /view`、缺 `idle` 时拒绝
+  且不发请求、v1 报 unsupported、`summarizeSession` 的 `busy/idle/viewed/outcome` 与 v1 缺省。
 
 ## 0.7.0 (2026-11-26) — 界面可配置 + 注意力提示
 

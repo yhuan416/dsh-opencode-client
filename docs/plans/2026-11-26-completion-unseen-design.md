@@ -130,3 +130,19 @@ unread = status === 'idle' && idleAt !== undefined && viewedAt !== undefined && 
 7. `npm run check`（含 90+ 项）后提交为一个 `feat(board)` commit。
 
 > 注：`writing-plans` skill 在本机未安装，故实施计划直接落在本文档 §8。
+## 9. 实施记录（2026-11-26）
+
+按 §8 落地，实测到的两处与设计不完全一致：
+
+- **顺带修掉一个既有 bug**：`lib/routes.js` 里 16 个处理器调用了一个从未定义的 `findServer`
+  （`/fork`、`/abort`、`/prompt`、`/shell`、`/git/*` … 全部 `ReferenceError`）。`lib/board.js`
+  早有一个同名实现，但既没被调用也没被导出——接线漏了一根。现改为在 `createRoutes` 内定义一次
+  并删除孤儿副本，回归测试在 `test/board.test.js`（修复前会抛 ReferenceError）。
+- **`/board` 与 `opencode_board` 工具都要暴露 `unseen`**：设计只写了看板 UI，实际上下游还有两处
+  消费 `observation.board()` 的投影（宿主路由 `/board`、给模型看的 `opencode_board`）。只改 UI
+  会让刚完成的会话从模型视野里消失，所以两边都加了「finished, not looked at」一块。
+
+新增/改动测试：`test/seen.test.js`（4 项，含“缺 idle 时拒绝且不发请求”）、
+`test/observation.test.js` 加 3 项（未读派生、running 排除、step 累加与冻结）、
+`test/board.test.js` 加 1 项（findServer 回归）、`scripts/check.mjs` 加 4 条客户端静态断言 +
+未读派生 smoke。全量 `npm run check` 98 项通过。

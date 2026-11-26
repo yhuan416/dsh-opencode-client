@@ -146,3 +146,62 @@ test('describePending keeps permission and form readable', function () {
   assert.equal(describePending('permission', {}), 'permission')
   assert.equal(describePending('form', { form: { questions: [{ text: 'which branch?' }] } }), 'form: which branch?')
 })
+test('finished-but-unread stays out of idle until viewed', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  // OpenCode records the run boundaries and the read marker on the session.
+  observation.observeIdentity('e5', { id: 'ses_done', title: 'done', busyAt: 1000, idleAt: 2000, viewedAt: 500, outcome: 'succeeded' })
+  observation.observeRunning('e5', new Set(), true)
+  const before = observation.board()
+  assert.equal(before.unseen.length, 1)
+  assert.equal(before.unseen[0].sessionId, 'ses_done')
+  assert.equal(before.unseen[0].unread, true)
+  assert.equal(before.unseen[0].runMs, 1000, 'duration comes from busy→idle')
+  assert.equal(before.idle.length, 0, 'never in both partitions')
+  assert.equal(before.idleCount, 0)
+
+  // Viewing it on the remote pushes `viewed` up to `idle`: it becomes plain idle.
+  observation.observeIdentity('e5', { id: 'ses_done', viewedAt: 2000 })
+  const after = observation.board()
+  assert.equal(after.unseen.length, 0)
+  assert.equal(after.unseenCount, 0)
+  assert.equal(after.idle.length, 1)
+  assert.equal(after.idle[0].unread, false)
+})
+
+test('a running session is never "unseen" even with idle > viewed', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  observation.observeIdentity('e5', { id: 'ses_run', busyAt: 1000, idleAt: 2000, viewedAt: 500 })
+  observation.observeRunning('e5', new Set(['ses_run']), true)
+  const board = observation.board()
+  assert.equal(board.unseen.length, 0)
+  assert.equal(board.running.length, 1)
+})
+
+test('step.ended accumulates per run and freezes into lastRun', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  observation.observeIdentity('e5', { id: 'ses_r', title: 'r' })
+  observation.observeEvent('e5', { kind: 'run.started', sessionId: 'ses_r', at: 1000, data: {} })
+  observation.observeEvent('e5', {
+    kind: 'step.ended', sessionId: 'ses_r', at: 1100, data: { finish: 'tool-calls', tokens: { input: 100, output: 10, cache: { read: 5 } }, cost: 0.25 },
+  })
+  observation.observeEvent('e5', {
+    kind: 'step.ended', sessionId: 'ses_r', at: 1200, data: { finish: 'stop', tokens: { input: 50, output: 20, cache: { read: 5 } }, cost: 0.5 },
+  })
+  const live = observation.rows('e5')[0]
+  assert.equal(live.lastRun, null, 'still running: nothing frozen yet')
+  observation.observeEvent('e5', { kind: 'run.finished', sessionId: 'ses_r', at: 1300, data: { outcome: 'succeeded' } })
+  const row = observation.rows('e5')[0]
+  assert.equal(row.status, 'idle')
+  assert.deepEqual(row.lastRun, {
+    startedAt: 1000,
+    steps: 2,
+    tokens: { input: 150, output: 30, cacheRead: 10 },
+    cost: 0.75,
+    finish: 'stop',
+    outcome: 'succeeded',
+    endedAt: 1300,
+  })
+})

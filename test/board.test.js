@@ -197,3 +197,25 @@ test('route paths are unique (registration is keyed by path, not method)', async
   const paths = routes.map(function (route) { return route.path })
   assert.equal(new Set(paths).size, paths.length, 'duplicate route path: ' + paths.join(', '))
 })
+
+test('server-scoped routes resolve a server instead of throwing ReferenceError', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const observation = createObservation()
+  const routes = createRoutes({
+    servers: [{ id: 'n100', url: 'http://127.0.0.1:4096' }],
+    delegate: {},
+    observation: observation,
+    board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function (options) { return observation.board(options) }, serverInfo: function () { return undefined } },
+  })
+  // 16 handlers used to call an unbound `findServer`, so every one of them threw
+  // ReferenceError. Validation errors (400) prove the lookup now resolves.
+  const fork = routes.find(function (route) { return route.path === '/api/opencode-client/fork' })
+  const response = await fork.fetch({ url: '/api/opencode-client/fork', json: function () { return Promise.resolve({ server: 'n100' }) } })
+  assert.equal(response.status, 400)
+  assert.match((await response.json()).error, /server and session required/)
+  // An unknown id falls back to the default server rather than being rejected.
+  const other = await fork.fetch({ url: '/api/opencode-client/fork', json: function () { return Promise.resolve({ server: 'nope' }) } })
+  assert.equal(other.status, 400)
+  assert.match((await other.json()).error, /server and session required/)
+})
