@@ -303,6 +303,46 @@ test('collectCostByDirectory refuses to approximate on v1 (no per-message cost)'
   }
 })
 
+test('collectCostByDirectory keeps totals un-truncated while the display list is top-10', async function () {
+  const now = Date.now()
+  const sessions = []
+  const routes = {
+    '/api/info': function () { return { version: '2.3.0' } },
+    '/api/project': function () { return { data: [] } },
+    '/api/experimental/session/stats': function () {
+      return { data: { sessions: 12, steps: 12, cost: 12, tokens: { input: 1 }, tools: { totals: {} }, models: [] } }
+    },
+  }
+  for (let index = 0; index < 12; index += 1) {
+    const id = 's' + String(index)
+    sessions.push({ id: id, location: { directory: '/work/d' + String(index) }, cost: 1, time: { created: now - 3600000, updated: now, busy: now - 1000 } })
+    routes['/api/session/' + id + '/message'] = function () {
+      return { data: [{ type: 'assistant', cost: 1, time: { created: now - 1000 } }] }
+    }
+  }
+  routes['/api/session'] = function () { return { data: sessions } }
+  const fake = await startServer(routes)
+  try {
+    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const server = servers[0]
+    const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
+    assert.equal(report.directories.length, 10, 'display list stays capped')
+    assert.equal(report.total.directoryCount, 12, 'the count must see all priced directories')
+    assert.equal(report.total.cost, 12, 'the total must not be cut with the display list')
+
+    const observation = createObservation()
+    const usage = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
+      .find(function (route) { return route.path === '/api/opencode-client/usage' })
+    const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?from=' + (now - 7 * 86400000) + '&group=directory' })).json()
+    assert.equal(grouped.total.byDirectory.length, 10)
+    assert.equal(grouped.total.byDirectoryCount, 12)
+    assert.equal(grouped.total.byDirectoryDelta, 0, 'reconciliation must use the un-truncated total')
+    assert.equal(grouped.total.reconciled, true)
+  } finally {
+    await fake.close()
+  }
+})
+
 test('GET /usage exposes byModel and, on request, a reconciled byDirectory', async function () {
   const now = Date.now()
   const fixture = attributionFixture(now)

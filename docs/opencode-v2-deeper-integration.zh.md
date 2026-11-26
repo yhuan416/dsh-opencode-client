@@ -99,7 +99,8 @@
 
 - 新工具 `opencode_usage`（0.7.1 已落地；参数收敛为 `server` / `days`，默认 7 天、`0` = 全部历史）：会话数、prompt/step、token、成本、工具成功率、活跃度；
 - `opencode_session_info` 增加 context 规模（message 数 / token 估算）；
-- 预算护栏：delegate 完成时按 `session.cost` 累计，超阈值告警（`usage/limits` 本机为空，需自建预算表）。
+- 预算护栏：按 `stats` 的**日窗口成本**设阈值并告警（与目录归因同源；`usage/limits` 本机为空，需自建预算表）。
+  **不要用 `session.cost`**——实测它是终生累计，跨窗口会重复计入。
 
 ### E. 会话运维（中价值 / 低成本 / 中风险）→ 建议 0.4.0
 

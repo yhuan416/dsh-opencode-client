@@ -68,7 +68,7 @@
 - [x] 共享运行生命周期 `lib/session-run.js`（delegate 与原生 provider 复用）
 - [x] `opencode_prompt` 回合制续聊（远端会话跨 dsh 回合存活）
 - [x] 工具进度 / SSE idle 完成等待 / abort
-- [x] 26 个 `opencode_*` 模型工具（会话 58 工具）
+- [x] 28 个 `opencode_*` 模型工具（会话 58 工具）
 
 ## 1. P0 — 上游阻塞（等 opencode 修复）
 
@@ -170,7 +170,7 @@
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。
-- **产品定位（一核两轨，2026-11-27）**：**核心**（传输与版本探测、错误可见性、会话模型、事件流）被两个面共用，永不回归；**轨道 A · 观测台**（消费者＝**人**：看板、注意力、成本治理）——**当前优先，先把观测做完善**；**轨道 B · 委派面**（消费者＝**agent**：23 个工具 + 原生 subagent provider）——后续版本逐步推进。会话内交互交给 OpenCode 自己的 TUI/Web（插件只做深链与嵌入）。准入判据：核心/观测/委派三选一，答不出来的进「不排期」（§10.6）。
+- **产品定位（一核两轨，2026-11-27）**：**核心**（传输与版本探测、错误可见性、会话模型、事件流）被两个面共用，永不回归；**轨道 A · 观测台**（消费者＝**人**：看板、注意力、成本治理）——**当前优先，先把观测做完善**；**轨道 B · 委派面**（消费者＝**agent**：28 个工具（含观测用的 `opencode_board`/`opencode_usage`）+ 原生 subagent provider）——后续版本逐步推进。会话内交互交给 OpenCode 自己的 TUI/Web（插件只做深链与嵌入）。准入判据：核心/观测/委派三选一，答不出来的进「不排期」（§10.6）。
 - **原生 subagent 一次性、远端会话可续**：外部 provider 无法实现 `prepareContinuable`；续用通过 `opencode_subagent(session=)`（任务级）或 `opencode_prompt`（消息级）。
 - **直接操作 vs 委派**：确定性操作走 shell/read/git 等直连工具；开放式任务才走远端 agent。
 
@@ -192,7 +192,7 @@
 - [x] **机群健康**：`/board` 的 `servers[]` 增 `probe`（版本/原因/时间/详情）与 `sse`（state/attempts/connects/openedAt）；设置页与看板卡展示
 - [ ] **空闲会话过滤/分组**（v0.6.0 遗留）：按 directory 分组 + 机器过滤
 - [ ] **SSE 补 progress**（v0.6.0 遗留）：连上前就在跑的会话，上线后补一次当前 tool
-- [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`；`opencode_sessions` 增 `archived` 并去掉 500 条截断；`opencode_read_file` 截断提示
+- [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`（v2 要映射成 `type=directory`，传 `dir` 会 400）；`opencode_sessions` 增 `archived` 并去掉 500 条截断（改 cursor 翻页）；~~`opencode_read_file` 截断提示~~（已实现：40k 处追加 `… (truncated)`）
 - 验收：每台 server 的版本/探测/重连与成本归因可见；超预算收到提醒；`npm run check` 全绿
 
 ### 10.2 v0.9.0 —— [observe] 注意力与趋势（约 2–3 天）
@@ -258,10 +258,10 @@
 
 ### 10.8 待裁：HTTP API 面（第三面）
 
-`lib/routes.js` 共 **35 条**宿主路由，其中：
+`lib/routes.js` 共 **36 条**宿主路由，其中：
 
 - 观测台在用 **7 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/servers`、`/servers/remove`
-- 其余 **28 条**在仓库内**没有调用方**（工具面直连 `lib/*`，e2e 直连 OpenCode）：`/abort`、`/agents`、`/children`、`/command`、`/commands`、`/delegate`、`/events`、`/file`、`/find`、`/fork`、`/git/*`、`/init`、`/mcp`、`/messages`、`/models`、`/progress`、`/prompt`、`/references`、`/search`、`/session`、`/sessions`、`/share`、`/shell`、`/skills`、`/status`、`/summarize`、`/tools`
+- 其余 **29 条**在仓库内**没有调用方**（工具面直连 `lib/*`，e2e 直连 OpenCode）：`/abort`、`/agents`、`/children`、`/command`、`/commands`、`/delegate`、`/events`、`/file`、`/find`、`/fork`、`/git/*`、`/init`、`/mcp`、`/messages`、`/models`、`/progress`、`/prompt`、`/references`、`/search`、`/session`、`/session-info`、`/sessions`、`/share`、`/shell`、`/skills`、`/status`、`/summarize`、`/tools`
 
 它们等于「把工具能力再用 HTTP 说一遍」，是第二份实现与第二份测试负担。选项：
 

@@ -145,7 +145,7 @@ provider —— OpenCode 1.18.x（v1 API）与 OpenCode 2.x（v2 API）下工具
 | `opencode_tools` | 工具 id 目录 | **不可用**（v2 没有 tool-ids 端点） |
 | `opencode_find` 的 `kind=text` | 文本内容搜索 | **已补回**：v2 无内容搜索端点，改用异步 shell 跑工作区 `grep`（字面子串，最多 100 条） |
 | `opencode_session_info` 的 todo 列表 | todo 条目 | **已补回**：v2 移除了 `/session/{id}/todo`，改为从最后一次 `todowrite` 工具调用推导 |
-| `opencode_usage` | **不可用**（v1 没有 stats 端点） | **仅 v2**：`GET /experimental/session/stats` 聚合会话数/步数/token/成本/工具成功率 |
+| `opencode_usage` | **不可用**（v1 没有 stats 端点） | **仅 v2**：`GET /experimental/session/stats` 聚合会话数/步数/token/成本/工具成功率，并含按模型归因与（宿主路由 `?group=directory`）按目录成本 |
 
 v2 上插件还会替你吸收这些 API 差异：
 
@@ -246,6 +246,9 @@ v2 上插件还会替你吸收这些 API 差异：
   的 iframe，直接在当前会话页面右侧打开。入口：服务器行「侧边栏打开」或右侧栏「+」里选
   OpenCode；「全屏」浮层和「新标签」作为兜底。嵌入的是完整客户端（流式、工具卡片、diff、
   权限），无需重实现。
+- **用量与归因（0.7.1 / 0.8.0）** — per-server 卡显示今日 token/成本，看板有「刚完成 · 未查看」分区，
+  设置页显示近 7 天按模型/按目录归因（`reconciled` 会标出与 stats 总额不一致）。
+- **机群健康（0.8.0）** — 看板与设置页显示 API 版本漂移、探测失败原因、SSE 重连次数。
 - **入口** — 同一内嵌 UI 也可从左侧栏面板列与会话头的「OpenCode」按钮打开。
 
 ## 安装

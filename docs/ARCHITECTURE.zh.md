@@ -15,7 +15,8 @@ dsh web 宿主进程
 │   │                            Basic、OpenCodeError；v2 包络解包（unwrap / unwrapList / opencodeValue /
 │   │                            opencodeRaw / directoryQuery / withLocation）
 │   ├── lib/events.js            统一 v1/v2 事件模型：线上格式 → canonical event，completionKind 版本分流
-│   ├── lib/sessions.js          归一化读面：discovery、messages、status、agents、session-info、share、abort
+│   ├── lib/sessions.js          归一化读面：discovery、messages、status、agents、session-info、share、abort、
+│   │                            usage/stats 与按目录成本归因
 │   ├── lib/catalog.js           models/commands/skills/tools/references/search/MCP；v2 的 provider+model、
 │   │                            异步 command 与“仅 v1”能力
 │   ├── lib/workspace.js         shell（v1 同步 / v2 异步轮询）、git status/diff、read file、find

@@ -18,14 +18,18 @@
     不再用会被「查看/改名」刷新的 `time.updated`。目录取会话自身的，空或 `/` 时回退项目
     worktree（`global` 的 worktree 就是 `/`，把总账挂在 `/` 比标「未归属」更糟）。
     候选会话 = 活跃且有价成本；只为它们翻消息（每会话通常 1 页），并发 4、单次上限 50 个会话 /
-    单会话 20 页，触顶时返回 `partial: true` 而不是静默少算。缓存 300 秒（与 stats 同级）。
+    单会话 20 页 / **200 请求总预算**（`from: 0` 全量历史时兜底），触顶时返回 `partial: true` 而不是静默少算。
+    目录缓存 600 秒（设置页 240 秒轮询；stats 仍 300 秒）。
   - `/api/opencode-client/usage` 增 `total.byModel`（跨 server 聚合）；`?group=directory` 时再返回
-    `total.byDirectory`、`total.byDirectoryKind`、`total.byDirectoryPartial`、`total.byDirectoryDelta`
-    与 `total.reconciled`（目录总和与 stats 总成本差 >max($0.01, 1%) 即为 false），以及每台的
-    `directories`。v1 没有 stats/per-message cost，直接跳过目录拉取，不发无用的请求。
-  - 设置页新增「近 7 天归因」：模型与目录各取前三；看板 server 卡显示 `top: <模型> $x.xx`。
-- **测试**：`test/usage.test.js` 加 3 项（窗口内消息成本与目录回退、上限 `partial`、v1 拒绝近似），
-  并把 `/usage` 用例改为断言 `kind`/`reconciled`；`test/board.test.js` 加 1 项（`probe`/`sse` 健康字段）。
+    `total.byDirectory`（展示用，top 10）、`total.byDirectoryCount`、`total.byDirectoryKind`、
+    `total.byDirectoryPartial`、`total.byDirectoryDelta` 与 `total.reconciled`（目录总和与 stats 总成本差
+    >max($0.01, 1%) 即为 false），以及每台的 `directories`。**对账用未截断的目录总额**，展示列表的
+    top-10 截断不会让机群误报“不一致”。v1 没有 stats/per-message cost，直接跳过目录拉取，不发无用请求。
+  - 设置页新增「近 7 天归因」：模型与目录各取前三，`byDirectoryPartial` / `reconciled=false` 时追加
+    「（部分）」「（与总成本不一致）」提示；看板 server 卡显示 `top: <模型> $x.xx`。
+- **测试**：`test/usage.test.js` 加 6 项（窗口内消息成本与目录回退、上限 `partial`、compaction 排除、
+  请求预算、v1 拒绝近似、未截断对账），并把 `/usage` 用例改为断言 `kind`/`reconciled`；
+  `test/board.test.js` 加 1 项（`probe`/`sse` 健康字段）；合计 104 → 110。
 
 ### Fixed
 
