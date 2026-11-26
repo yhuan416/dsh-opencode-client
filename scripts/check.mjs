@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 /** Offline smoke checks for the plugin modules (no network, no dsh runtime). */
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { readFileSync, readdirSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import * as entry from '../lib/index.js'
 import { normalizeServers, normalizeApiVersion, parseModel, parsePathMap } from '../lib/config.js'
 import { apiPath, describeApiVersion, jsonResponse, OpenCodeError } from '../lib/http.js'
@@ -17,6 +20,21 @@ import { createObservation, observationKey, OBSERVATION_STATUSES } from '../lib/
 
 // Client bundle smoke: the helpers the card click depends on must exist (a
 // refactor once deleted boardSessionUrl and clicks died silently).
+// Syntax gate: `client.js` is a browser bundle that no unit test imports, and
+// the string assertions below only see text — a stray brace would ship green.
+for (const dir of ['../lib', '../scripts', '../test']) {
+  const absolute = fileURLToPath(new URL(dir + '/', import.meta.url))
+  for (const name of readdirSync(absolute).sort()) {
+    if (!/\.(js|mjs)$/.test(name)) continue
+    const file = resolve(absolute, name)
+    try {
+      execFileSync(process.execPath, ['--check', file], { stdio: ['ignore', 'ignore', 'pipe'] })
+    } catch (error) {
+      assert.fail('syntax error in ' + relative(process.cwd(), file) + '\n' + String(error.stderr ?? ''))
+    }
+  }
+}
+
 const clientSource = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
 assert.match(clientSource, /function boardSessionUrl\(/)
 assert.match(clientSource, /function openOverlay\(/)
