@@ -274,3 +274,35 @@ test('v2: permission and form events reach the interaction bridge', async functi
     await fake.close()
   }
 })
+
+test('v1: onEvent feeds the observation registry before the state switch', async function () {
+  const { createObservation } = await import('../lib/observation.js')
+  const observation = createObservation()
+  const fake = await startServer(function (request, response) {
+    if (request.url === '/global/event') {
+      openSse(response)
+      writeEvent(response, { type: 'permission.asked', properties: { id: 'perm_9', sessionID: 'ses_x', permission: 'bash', patterns: ['git push'] } })
+      return
+    }
+    replyJson(response, 404, {})
+  })
+  try {
+    const stream = createEventStream({
+      activeRuns: new Map(),
+      handlePermission: function () {},
+      handleQuestion: function () {},
+      onEvent: function (server, event) { observation.observeEvent(server.id, event) },
+    })
+    const dispose = stream.subscribeEvents(makeServer({ id: 'v1', url: fake.url }))
+    const waiting = await waitFor(function () {
+      const board = observation.board()
+      return board.needsMe.length > 0 ? board.needsMe[0] : undefined
+    })
+    assert.equal(waiting.status, 'waiting-permission')
+    assert.equal(waiting.sessionId, 'ses_x')
+    assert.match(waiting.pending.detail, /push/)
+    dispose()
+  } finally {
+    await fake.close()
+  }
+})

@@ -1,3 +1,44 @@
+## 0.5.2 (unreleased) — observation layer
+
+Collect session state first, render it later: one in-memory registry answers
+"who is running / who is waiting for me / what broke", without a second source of truth.
+
+### Added
+
+- `lib/observation.js`: `(server, session)` registry merging running snapshots
+  (`/session/active` v2, `/session/status` v1), SSE increments, and pending
+  snapshots. Status precedence `waiting-permission > waiting-question > error >
+  running > idle > unknown`; child sessions fold into their parent; `stale` is a
+  flag (a running row whose snapshots and events both stop never becomes `idle`).
+- `collectPending()` (lib/sessions.js): normalized pending permission/form list —
+  global `/permission` + `/question` on v1; on v2 the location-scoped
+  `/api/permission/request` + `/api/form` (measured on 2.x: one query instead of
+  one per session), falling back to per-session `/permission` + `/form` only on
+  builds that lack them.
+- `GET /api/opencode-client/board`: needs-me / running / idle / unknown projection
+  plus per-server liveness; `/api/opencode-client/list` rows now carry `status`.
+- `scripts/probe-observation.mjs`: standalone probe that prints the board from one
+  real server without dsh (`OPC_PROBE_URL=... node scripts/probe-observation.mjs`).
+- Panel: a plain-text status strip at the top of the OpenCode page (placeholder;
+  cards come later).
+
+### Changed
+
+- A permission request from a session **no dsh run owns** (e.g. you drive it from
+  the OpenCode TUI) is no longer auto-answered: with `permission: ask` (default)
+  it is recorded as pending and left waiting. `permission: auto` restores the old
+  auto-answer behaviour.
+- Forms/questions with `question: ignore` are recorded as pending as well;
+  `question: reject` keeps dismissing them (unchanged).
+- `npm test`: 82 cases (adds the registry unit tests, the fake-server collection
+  test, and the SSE → registry wiring test).
+
+### Known limitations
+
+- The strip and `/board` report `unknown` until the first snapshot answers; a
+  failed pending snapshot keeps the last known pending set instead of clearing it.
+- No persistence: rows are rebuilt from snapshots after a restart.
+
 ## 0.5.1 (2026-11-20)
 
 Report non-zero exit codes from a cleanly-exited shell.

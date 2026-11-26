@@ -11,7 +11,20 @@ import { parseStructured } from '../lib/run.js'
 import { collectModels, collectCommands, collectSkills, collectToolIds, collectReferences, runCommand, collectSessionSearch, collectMcpStatus } from '../lib/catalog.js'
 import { runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText } from '../lib/workspace.js'
 import { forkSession, summarize, initSession, sessionChildren } from '../lib/manage.js'
-import { abortSession } from '../lib/sessions.js'
+import { abortSession, collectPending } from '../lib/sessions.js'
+import { createObservation, observationKey, OBSERVATION_STATUSES } from '../lib/observation.js'
+
+// Observation registry: key shape, precedence, and the board projection.
+assert.equal(observationKey('n100', 'ses_1'), 'n100\u0000ses_1')
+assert.deepEqual(OBSERVATION_STATUSES.slice(0, 2), ['waiting-permission', 'waiting-question'])
+assert.equal(typeof collectPending, 'function')
+const observationSmoke = createObservation({ now: function () { return 1000 } })
+observationSmoke.observeIdentity('s1', { id: 'ses_1', title: 't' })
+observationSmoke.observeRunning('s1', new Set(['ses_1']), true)
+assert.equal(observationSmoke.rows('s1')[0].status, 'running')
+observationSmoke.markPending('s1', 'ses_1', { kind: 'permission', requestId: 'r1', detail: 'bash' })
+assert.equal(observationSmoke.board().needsMe.length, 1)
+assert.equal(observationSmoke.board().running.length, 0)
 
 assert.equal(entry.name, 'opencode-client')
 assert.deepEqual(entry.inject, ['connection'])
