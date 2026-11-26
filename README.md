@@ -92,7 +92,7 @@ flowchart LR
         direction TB
         CLIENT["client bundle<br/>plugin page · sidebar tab"]
         ROUTES["routes<br/>/api/opencode-client/*"]
-        TOOLS["tools<br/>27 × opencode_*"]
+        TOOLS["tools<br/>28 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
         SSE["sse<br/>v1 /global/event · v2 /api/event"]
     end
@@ -128,16 +128,16 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
 
 ## Features
 
-27 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
-same tool names and behaviour on OpenCode 1.18.x (v1 API) and OpenCode 2.x (v2 API), with four
-explicit v2 exceptions listed below.
+28 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
+same tool names and behaviour on OpenCode 1.18.x (v1 API) and OpenCode 2.x (v2 API), with five
+explicit version exceptions listed below.
 
 ### OpenCode 1.18.x vs 2.x
 
-One install speaks both API generations; the generation is detected per server and the 26
+One install speaks both API generations; the generation is detected per server and the 28
 `opencode_*` tool names are identical on both. Two capabilities have no OpenCode 2 endpoint and
 return an explicit "not available on OpenCode 2" message instead of silently returning empty data;
-two more are restored through v2-native fallbacks:
+two more are restored through v2-native fallbacks, and one is v2-only:
 
 | Capability | OpenCode 1.18.x (v1) | OpenCode 2.x (v2) |
 |---|---|---|
@@ -146,6 +146,7 @@ two more are restored through v2-native fallbacks:
 | `opencode_tools` | tool-id catalog | **not available** (no tool-ids endpoint) |
 | `opencode_find` with `kind=text` | content search | **restored via fallback**: v2 has no content-search endpoint, so the plugin runs workspace `grep` through the async shell (literal substring, first 100 matches) |
 | todo list in `opencode_session_info` | todo items | **restored via fallback**: v2 removed `/session/{id}/todo`, so todos are derived from the last `todowrite` tool call |
+| `opencode_usage` | **not available** (v1 has no stats endpoint) | **v2 only**: `GET /experimental/session/stats` aggregates sessions/steps/tokens/cost/tool success rate |
 
 On v2 the plugin also absorbs these API differences for you:
 
@@ -389,7 +390,7 @@ generic completion. With multiple servers, `opencode-auto` routes each child (se
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — module map, data flows, design decisions
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) — 中文架构（与 ARCHITECTURE.md 对应）
-- [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：27 个 `opencode_*` 工具、参数、只读/可变
+- [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：28 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) — dsh / OpenCode compatibility matrix and versioning policy
 - [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) — measured OpenCode 2.3.0 gaps and the phased migration plan now implemented in 0.2.0
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) — measured survey of the 100 unused OpenCode 2.3.0 endpoints and the candidate deeper-integration roadmap (inbox/steer, revert checkpoints, worktrees, stats, PTY, reverse MCP)
@@ -414,12 +415,12 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 |---|---|---|
 | dsh | `>=0.2.1-rc.2` (verified against `0.2.1-rc.2`) | supported |
 | OpenCode 1.18.x (v1 API) | `1.18.10` / `1.18.31` / `1.18.33` | supported (baseline) |
-| OpenCode 2.x (v2 API) | v2 `/api/*` + HTTP Basic auth (verified against `2.3.0`) | supported end to end; four documented tool gaps |
+| OpenCode 2.x (v2 API) | v2 `/api/*` + HTTP Basic auth (verified against `2.3.0`) | supported end to end; five documented version exceptions |
 
 The plugin follows independent semantic versioning and is **not published to npm** for now
 (install from git or a local path). **`0.2.0` is the "OpenCode v2 support" release**: one install
 serves both API generations, with `apiVersion: auto|1|2` per server; `0.1.x` is the v1-only line.
-The v2 probe and the four v2 limitations are described in
+The v2 probe and the five version exceptions are described in
 [Features](#opencode-118x-vs-2x); the measured gaps and the phased plan that 0.2.0 completes live
 in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 

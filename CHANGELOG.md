@@ -1,3 +1,37 @@
+## 0.7.1 (unreleased) — 用量与成本
+
+### Added
+
+- **用量 / 成本**（此前只有会话级的 `cost`，没有任何聚合视图）：数据源是 v2 的
+  `GET /api/experimental/session/stats`（实测 2.3.0 返回
+  `{sessions, subagents, prompts, steps, tokens{input,output,reasoning,cache{read,write}},
+  cost, tools{mode,totals{calls,succeeded,failed,unfinished}}, activeDays, streak, activity[], models}`）。
+  - 新工具 `opencode_usage`（`server`、`days`，默认 7 天，`0` = 全部历史）：逐台报会话数、步数、
+    in/out/reasoning/cache token、成本、工具成功率，并跨 server 汇总；**v1 明确报
+    “v1 server or stats unavailable” 而不是返回一堆 0**。
+  - 新路由 `GET /api/opencode-client/usage?from=&server=`：返回每台明细 + 跨 server 的 `total`，
+    给 Web 面板用。
+  - 看板新增 **per-server 概览卡**：状态点、版本、会话/运行/待办数、token 行、成本，点卡片即
+    按该台过滤（与 chip 同一路径，所以会记住选择）；会话卡副标题补 `in / out · cache` 一行，
+    卡片说明改为最多两行（`-webkit-line-clamp`）。
+  - 设置页显示「今日用量」（会话 / 步 / token / 成本），60 秒刷新。
+  - `observation` 的会话条目开始携带 `tokens` / `cost` / `model`，看板行带着暴露出去。
+
+### Changed
+
+- `/api/opencode-client/board` 的 `servers[]` 增 `sessions`（该台会话数），概览卡不必为了计数
+  再拉一次会话列表。
+
+### Fixed
+
+- 用量缓存原本等于没有：键取自 `from` 精确值，而调用方（看板的 7 天窗口）每次都按
+  `Date.now()` 现算 `from`，加上 TTL 恰好等于看板 120 秒轮询间隔，于是**每次轮询都落空**、重新
+  触发一次服务端历史扫描（实测 7 天窗口 0.2–0.6 秒，全部历史在繁忙 server 上约 15 秒）。
+  现在键按 range 起点**分桶**（300 秒）且不含随请求漂移的 `to`，TTL 提到 300 秒（大于轮询间隔），
+  `from: 0`（全部历史）单独用一个键避免与近窗口撞车，缓存 Map 上限 32 条。
+- 新增 `test/usage.test.js`（4 项）：归一化真实 payload 形状、分桶缓存命中/全部历史单独键、
+  v1 报 unsupported、字段缺失兜底。
+
 ## 0.7.0 (2026-11-26) — 界面可配置 + 注意力提示
 
 ### Added

@@ -31,7 +31,7 @@ dsh web 宿主进程
 │   ├── lib/observation.js       (server, session) 登记表：running/待办/SSE 合并成一份状态
 │   ├── lib/board.js             /board、/list 行内状态与 opencode_board 共用的刷新器
 │   ├── lib/routes.js            /api/opencode-client/* 宿主 HTTP 路由
-│   └── lib/tools.js             27 个面向模型的 opencode_* 工具
+│   └── lib/tools.js             28 个面向模型的 opencode_* 工具
 └── lib/client.js                浏览器 bundle：「OpenCode Client」插件页区块
 
 远端机器
@@ -132,7 +132,7 @@ v2 表单字段带类型（`string` / `number` / `integer` / `boolean` / `multis
 | 决策 | 理由 |
 |---|---|
 | 每台 server 独立探测版本，请求按版本自动路由 | 一份安装同时服务 v1/v2，tools/routes 不必判断版本；同一 profile 内可混用两代 server |
-| 读面在 `sessions` / `catalog` / `workspace` 归一化 | 27 个工具只消费统一形状，版本差异集中、可测试，不会泄漏到工具定义 |
+| 读面在 `sessions` / `catalog` / `workspace` 归一化 | 28 个工具只消费统一形状，版本差异集中、可测试，不会泄漏到工具定义 |
 | 探测失败、缺密码或 401 时按 v1 处理并记录原因 | 现有 v1 安装在 1.18.10/31/33 上验证过；回退可诊断（启动日志 + `server.versionProbe`）而非静默 |
 | 传输失败一律抛 `OpenCodeError`，不降级为空数据 | 401、HTML/SPA、非 JSON、非 2xx、超时都是显式错误，避免“0 条结果”掩盖真实故障 |
 | v2 无对应端点的能力：能补则补，不能补才显式失败 | 文本 find / session todo 用 v2 原生能力补回；share、tool ids 没有替代端点，返回明确错误/提示 |
