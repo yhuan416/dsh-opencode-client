@@ -20,6 +20,11 @@ dsh subagent provider (`opencode-<serverId>`).
 > **Positioning (0.6.0)**: session access is a means, not the goal. Chatting inside a session
 > belongs to OpenCode's TUI/Web (we deep-link into it); this plugin owns the cross-server board,
 > the attention feed, and the agent-facing backend.
+>
+> **Two tracks, one core (2026-11-27)**: `[observe]` — the human-facing console (board, attention,
+> cost governance) — is the current priority and is being finished first; `[delegate]` — the
+> agent-facing tools and native subagent provider — follows in later releases. Both share one
+> transport and version-probing core. See `TODO.md` §10 for the per-track roadmap.
 
 **Compatibility**: one install serves **OpenCode 1.18.x (v1 HTTP API)** and **OpenCode 2.x
 (v2 `/api/*` API + HTTP Basic auth)**. The generation is detected per server

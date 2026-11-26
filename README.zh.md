@@ -18,6 +18,10 @@ dsh 原生 subagent provider（`opencode-<serverId>`）。
 
 > **定位（0.6.0）**：会话访问是手段，不是目的。会话内的对话交给 OpenCode 自己的 TUI/Web
 > （我们只做深链跳转）；这个插件负责跨 server 的看板、注意力聚合、以及面向 agent 的后端。
+>
+> **一核两轨（2026-11-27）**：`[observe]` 观测台（消费者＝**人**：看板、注意力、成本治理）
+> **当前优先，先把观测做完善**；`[delegate]` 委派面（消费者＝**agent**：工具 + 原生子代理）
+> 在后续版本逐步推进。两者共用同一套传输与版本探测核心。分轨路线图见 `TODO.md` §10。
 
 **兼容性**：同一份安装同时服务 **OpenCode 1.18.x（v1 HTTP API）** 与 **OpenCode 2.x
 （v2 `/api/*` API + HTTP Basic 认证）**。版本按 server 探测（`apiVersion: auto|1|2`）；

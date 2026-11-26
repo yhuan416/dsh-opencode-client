@@ -170,62 +170,69 @@
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。
-- **产品定位（准入判据）**：**OpenCode 机群的观测台 + dsh 的原生子代理后端**。优先级：观测 > 委派 > 入口；会话内交互交给 OpenCode 自己的 TUI/Web（插件只做深链与嵌入）。每条特性必须能回答「让看板更可信」或「让委派更可靠」，答不出来的进「不排期」；明确非目标见 §10.5（PTY、远端能力管理、反向调用、聊天页/LLM 桥接）。
+- **产品定位（一核两轨，2026-11-27）**：**核心**（传输与版本探测、错误可见性、会话模型、事件流）被两个面共用，永不回归；**轨道 A · 观测台**（消费者＝**人**：看板、注意力、成本治理）——**当前优先，先把观测做完善**；**轨道 B · 委派面**（消费者＝**agent**：23 个工具 + 原生 subagent provider）——后续版本逐步推进。会话内交互交给 OpenCode 自己的 TUI/Web（插件只做深链与嵌入）。准入判据：核心/观测/委派三选一，答不出来的进「不排期」（§10.6）。
 - **原生 subagent 一次性、远端会话可续**：外部 provider 无法实现 `prepareContinuable`；续用通过 `opencode_subagent(session=)`（任务级）或 `opencode_prompt`（消息级）。
 - **直接操作 vs 委派**：确定性操作走 shell/read/git 等直连工具；开放式任务才走远端 agent。
 
-## 10. 后续迭代计划（2026-11-27 按定位重排）
+## 10. 后续迭代计划（2026-11-27：一核两轨，观测优先）
 
-> **为什么重排**：上一版写于 2026-11-21，早于 0.6.0 的定位收敛（「会话访问是手段，观测台 + 原生
-> subagent 后端才是目的」），因此混进了「把插件做成更全 OpenCode 客户端」的条目（PTY 终端、远端能力
-> 管理、反向调用）。现在按定位重写，并给每条加准入判据。
->
-> **准入判据**：能回答「让看板更可信」或「让委派更可靠」；答不出来的进 §10.5。
+> **结构**：`core` 永不回归（四道门禁守着）｜`[observe]` 人看的观测台｜`[delegate]` agent 用的委派面。
+> **优先级**：先把 `[observe]` 做完善（0.8.0 / 0.9.0），`[delegate]` 从 0.10.0 起逐步推进。
+> **准入判据**：这条特性属于 `core` / `observe` / `delegate` 哪一轨，服务于「让看板更可信」还是
+> 「让委派更可靠」；两问都答不出 → §10.6 不排期。
 > **分支策略**：走 PR（规则集不再要求人工批准，但要求 PR + 线性历史）+ annotated tag；每版 =
 > 代码 + `npm run check`（语法/客户端/清单/测试四道）+ 文档 + 真机验证（仅 v2）。
 
-### 10.1 v0.8.0 —— P1 观测与治理（约 3–4 天）
+### 10.1 v0.8.0 —— [observe] 可信度（约 3–4 天）
 
-目标：能回答「机群现在什么状态、钱花在哪、哪里在坏」。
+目标：看板说的事必须是**对**的、**全**的、**能追到钱**的。
 
-- [ ] **预算/成本护栏**：复用 `opencode_usage`（stats）、`step.ended`（本轮 tokens/cost）、`time.busy/idle`；按 server 与全局设日预算，超阈值 → 左栏徽标 + toast（复用现有注意力通道）。**只提醒不阻断**（避免误杀长任务）
+- [ ] **预算/成本护栏**：复用 `opencode_usage`（stats）、`step.ended`（本轮 tokens/cost）、`time.busy/idle`；按 server 与全局设日预算，超阈值 → 徽标 + toast（复用现有注意力通道）。**只提醒不阻断**
 - [ ] **成本归因**：`/api/opencode-client/usage` 增 `byModel` / `byDirectory`（stats 已返回 `models[]`；session 自带 `directory`/`cost`）
 - [ ] **机群健康**：`/board` 的 `servers[]` 增 `versionDrift`（v1 实例标记）、`probeFailure`（探测失败原因）、`sseReconnects`；设置页展示
 - [ ] **空闲会话过滤/分组**（v0.6.0 遗留）：按 directory 分组 + 机器过滤
 - [ ] **SSE 补 progress**（v0.6.0 遗留）：连上前就在跑的会话，上线后补一次当前 tool
-- [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`；`opencode_sessions` 增 `archived` 过滤并去掉 500 条截断；`opencode_read_file` 截断提示
-- 验收：看板能显示每台 server 的版本/探测/重连与成本归因；超预算收到提醒；`npm run check` 全绿
+- [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`；`opencode_sessions` 增 `archived` 并去掉 500 条截断；`opencode_read_file` 截断提示
+- 验收：每台 server 的版本/探测/重连与成本归因可见；超预算收到提醒；`npm run check` 全绿
 
-### 10.2 v0.9.0 —— P2 委派后端（约 4–6 天）
+### 10.2 v0.9.0 —— [observe] 注意力与趋势（约 2–3 天）
 
-目标：让远端 agent 作为 dsh 子代理**可编排、可纠偏、可归因**。
+目标：观测台**不吵、不丢、看得出趋势**。
+
+- [ ] **提醒策略**：静默时段、每类事件去重窗口、按 server 静音（现在 toast 固定 8s 消失、无开关）
+- [ ] **未读批量处理**：一键把当前未查看全部标记已读（逐条点开之外的第二条路）
+- [ ] **趋势**：用 stats 的 `from`/`to` 区间画 7 日成本/token 走势（**服务端聚合，不落盘**，符合观测层不持久化的约定）
+- [ ] **徽标口径**：可切换「只看待处理」/「待处理+未查看」（现在固定相加）
+- [ ] **看板信息密度**：空态/加载态、超长标题折行、按 server/项目折叠记忆
+- 验收：能配置提醒噪音、能一眼看出今天比昨天贵在哪台；不新增磁盘状态
+
+### 10.3 v0.10.0 —— [delegate] 可编排（约 4–6 天）
+
+目标：远端 agent 作为 dsh 子代理**可编排、可归因**。
 
 - [ ] provider 广告 `outputSchema: true`（prompt 约束 + 本地校验）→ workflow `agent(...,{schema})`
-- [ ] provider 广告 `agentOptions: true` + `subagentModelMap`（dsh 路由 → opencode `Model.Ref+variant`）→ workflow `agent(...,{provider,model})` 与原生工具模型选择；`maxTokens` 明确拒绝
+- [ ] provider 广告 `agentOptions: true` + `subagentModelMap` → workflow `agent(...,{provider,model})`；`maxTokens` 明确拒绝
 - [ ] `workflow-ptc.provider` 切 `opencode-auto`（配置级）+ 并发/成本护栏
 - [ ] 订阅 `subagent/start|end` → **委派台账**：谁委派了什么、花了多少、成功/失败原因，插件页可回看
-- [ ] `opencode_prompt` 支持 `delivery: steer|queue`（运行中插话/排队）；新工具 `opencode_inbox`（列出/改投递/取消）
-- [ ] `opencode_session_context`（或 `session_info` 扩展）：读模型实际上下文
 - [ ] 错误可见性：`execution.failed` 透出 `error.name/data`；结构化输出校验补 `enum`/`items`/`properties`
-- 验收：workflow 扇出跑在远端 opencode 且结构化出参可靠；跑偏能 steer、能撤回；台账能回答「这次花了多少、为什么失败」
+- 验收：workflow 扇出跑在远端 opencode 且结构化出参可靠；台账能回答「这次花了多少、为什么失败」
 
-### 10.3 v0.10.0 —— P2 委派安全（约 3–5 天）
+### 10.4 v0.11.0 —— [delegate] 可纠偏与安全（约 4–6 天）
 
-目标：委派改坏东西时**能回滚、不污染主工作区**。
-
+- [ ] `opencode_prompt` 支持 `delivery: steer|queue`；新工具 `opencode_inbox`（列出/改投递/取消）
+- [ ] `opencode_session_context`（或 `session_info` 扩展）：读模型实际上下文
 - [ ] `opencode_revert` 检查点：`stage` 预览 → dsh 审批 → `commit`/`discard`
 - [ ] `opencode_worktree`：create/list/remove；委派会话建在独立 worktree，完成后 `git_diff` 验收
-- [ ] 委派路径默认带「改动预览」进审批卡（`git status` / `git diff` 摘要）
-- 验收：误操作可回滚；主工作区不被直改；两个工具各有 e2e
+- [ ] 委派路径默认带「改动预览」进审批卡
+- 验收：跑偏能 steer、能撤回；误操作可回滚；主工作区不被直改
 
-### 10.4 v1.0.0 —— 承诺（条件驱动，不排期）
+### 10.5 v1.0.0 —— 承诺（条件驱动，不排期）
 
-- [ ] v1 去留定案（长期冻结 or 删除；删除作为 breaking 版本，清单见 §10.6）
+- [ ] v1 去留定案（长期冻结 or 删除；删除作为 breaking 版本，清单见 §10.7）
 - [ ] `COMPATIBILITY.md` 写明 SemVer 覆盖范围：**工具名 / HTTP 路由 / config 结构**；dsh 宿主契约不在承诺内
 - [ ] 发布方式定稿（当前 git-only，不发布 npm）
-- 准入：上面两条都有结论，且没有待做的 breaking 变更
 
-### 10.5 不排期 / 已否决（要做先改定位）
+### 10.6 不排期 / 已否决（要做先改定位）
 
 | 项 | 为什么不做 |
 |---|---|
@@ -236,18 +243,33 @@
 | 调度桥（远端 `experimental.schedules`） | 无人值守委派，收益/风险未论证；若要做，先给出「可见、可暂停」的设计 |
 | 聊天页 / 聚合工作台 / LLM 桥接 | 0.6.0 定位已明确排除 |
 
-### 10.6 历史残项台账
+### 10.7 历史残项台账
 
 | 项 | 状态 |
 |---|---|
 | `opencode_children` 补 `outcome`/`model` | ✅ 已随 `summarizeSession` 带出（`mode` 仍缺） |
 | `opencode_messages` 的 `include` | ✅ 已由 `type=` 覆盖 |
-| `read_file` 截断提示（静默 40k） | ⬜ 归入 §10.1 回收项 |
+| `read_file` 截断提示（静默 40k） | ⬜ 归入 §10.1 |
 | 重启验证 0.5.1 | ⬜ 并入下次真机验证 |
-| 同源代理（iframe 免登录） | ⬜ 入口体验，P3 低优先（不做也能用，需手动登录） |
+| 同源代理（iframe 免登录） | ⬜ 入口体验，低优先（不做也能用，需手动登录） |
 | routing per-server `directory` 是否进模板默认 | 待决策 |
 | workflow backend 是否默认开 | 待决策（会显著放大远端调用与成本） |
 | v1 删除 | 待决策；清单：12 个 lib 文件的 92 处分派点、2 个 v1-only 工具、3 个测试夹具、8 份文档 |
+
+### 10.8 待裁：HTTP API 面（第三面）
+
+`lib/routes.js` 共 **35 条**宿主路由，其中：
+
+- 观测台在用 **7 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/servers`、`/servers/remove`
+- 其余 **28 条**在仓库内**没有调用方**（工具面直连 `lib/*`，e2e 直连 OpenCode）：`/abort`、`/agents`、`/children`、`/command`、`/commands`、`/delegate`、`/events`、`/file`、`/find`、`/fork`、`/git/*`、`/init`、`/mcp`、`/messages`、`/models`、`/progress`、`/prompt`、`/references`、`/search`、`/session`、`/sessions`、`/share`、`/shell`、`/skills`、`/status`、`/summarize`、`/tools`
+
+它们等于「把工具能力再用 HTTP 说一遍」，是第二份实现与第二份测试负担。选项：
+
+| 选项 | 后果 |
+|---|---|
+| 保留为**公开 HTTP API** | 需要补消费者文档 + 鉴权说明 + 契约测试；合并逻辑去重 |
+| **合并/裁剪**：只留有独立价值的（如 `/events` 调试、`/status` 健康快照） | 代码与测试各减一份；外部若有人依赖会断（目前无证据） |
+| 暂不动 | 记账即可，但新增特性不要再往这里加 |
 
 ### 固定动作与边界
 
