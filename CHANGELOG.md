@@ -1,3 +1,23 @@
+## 0.6.1 (unreleased)
+
+### Fixed
+
+- `/api/opencode-client/board` 的 `servers[]` 新增 `version` / `state` / `groups`。修复过程中
+  发现并修正一处变量遮蔽：处理函数里的 `const board = observation.board(...)` 盖掉了外层的
+  刷新器服务，导致 `serverInfo()` 恒为 undefined、所有 server 都显示 offline 且没有版本号。
+  已改名 `snapshot` 并补回归测试（修复前该测试会失败）。
+- 桌面端（`html[data-platform]` 存在时）点卡片改为打开**右侧栏标签页**而不是全屏浮层：
+  跨域 iframe 会吞掉 Esc 和父页面控件，全屏浮层在桌面端可能“回不去”。标签页可携带会话深链
+  （`openSidebar(serverId, sessionUrl)`），用 dsh 自己的关闭控件退出。
+
+### Changed
+
+- 设置页（设置 → 插件 → OpenCode Client）精简为**只放配置与状态**：每台 server 一行
+  （状态点 / 版本 / live / 目录数 / 运行数 / 待办数）+「打开」「新标签」，不再渲染工作区与
+  会话列表——那是观测台（左栏）的职责。轮询 15 秒且只读缓存（`?refresh=0`），不给远端加流量。
+- 全屏浮层加固：iframe 四周留 8px 父页面边距、点击边距即关闭、iframe load 后把焦点交回
+  「关闭」按钮，让 Esc 重新可用。
+
 ## 0.6.0 (2026-11-26) — 观测台（observation console）
 
 **定位调整**：从「另一个 OpenCode 客户端」转为 **OpenCode 机群的观测台**——会话访问是手段，
