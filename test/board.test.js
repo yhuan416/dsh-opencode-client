@@ -122,3 +122,78 @@ test('GET /board exposes per-server version/state/groups', async function () {
   assert.equal(payload.servers[0].state, 'online')
   assert.equal(payload.servers[0].groups, 3)
 })
+
+test('POST /servers and /probe drive the config editor and a real probe', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const { normalizeServers } = await import('../lib/config.js')
+  const calls = []
+  const configApi = {
+    available: function () { return true },
+    add: function (server) { calls.push(['add', server]); return Promise.resolve({ ok: true }) },
+    remove: function (id) { calls.push(['remove', id]); return Promise.resolve({ ok: true }) },
+  }
+  const routes = createRoutes({
+    servers: [],
+    delegate: {},
+    observation: createObservation(),
+    board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function () { return { needsMe: [], running: [], idle: [], idleCount: 0, unknown: [] } }, serverInfo: function () { return undefined } },
+    config: configApi,
+    normalizeServers: normalizeServers,
+  })
+  const serversRoute = routes.filter(function (route) { return route.path === '/api/opencode-client/servers' })
+  const post = serversRoute.find(function (route) { return route.methods.includes('POST') })
+  const del = routes.find(function (route) { return route.path === '/api/opencode-client/servers/remove' })
+
+  const body = JSON.stringify({ server: { id: 'e5', url: 'http://192.168.4.65:4096/', password: 'pw', label: 'e5 opencode' } })
+  const created = await post.fetch({ url: '/api/opencode-client/servers', json: function () { return Promise.resolve(JSON.parse(body)) } })
+  const createdPayload = await created.json()
+  assert.equal(createdPayload.ok, true)
+  assert.deepEqual(calls[0], ['add', { id: 'e5', url: 'http://192.168.4.65:4096', label: 'e5 opencode', password: 'pw' }])
+
+  const removed = await del.fetch({ url: '/api/opencode-client/servers/remove', json: function () { return Promise.resolve({ id: 'e5' }) } })
+  assert.equal((await removed.json()).ok, true)
+  assert.deepEqual(calls[1], ['remove', 'e5'])
+})
+
+test('POST /probe reports the API generation of a live server', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const { normalizeServers } = await import('../lib/config.js')
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.3.0', urls: [] } },
+  })
+  try {
+    const routes = createRoutes({
+      servers: [],
+      delegate: {},
+      observation: createObservation(),
+      board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function () { return { needsMe: [], running: [], idle: [], idleCount: 0, unknown: [] } }, serverInfo: function () { return undefined } },
+      config: undefined,
+      normalizeServers: normalizeServers,
+    })
+    const probe = routes.find(function (route) { return route.path === '/api/opencode-client/probe' })
+    // v2 probing needs a password: without one the transport treats the server as v1.
+    const response = await probe.fetch({ url: '/api/opencode-client/probe', json: function () { return Promise.resolve({ url: fake.url, password: 'pw' }) } })
+    const payload = await response.json()
+    assert.equal(payload.ok, true)
+    assert.equal(payload.apiVersion, '2')
+    assert.equal(payload.version, '2.3.0')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('route paths are unique (registration is keyed by path, not method)', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const routes = createRoutes({
+    servers: [],
+    delegate: {},
+    observation: createObservation(),
+    board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function () { return { needsMe: [], running: [], idle: [], idleCount: 0, unknown: [] } }, serverInfo: function () { return undefined } },
+    config: undefined,
+  })
+  const paths = routes.map(function (route) { return route.path })
+  assert.equal(new Set(paths).size, paths.length, 'duplicate route path: ' + paths.join(', '))
+})
