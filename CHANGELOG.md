@@ -11,14 +11,27 @@
 - **成本归因**：
   - `summarizeStats` 透出服务端权威的 per-model 归因（`models[]`：`model`/`steps`/`tokens`/`cost`，
     按成本降序、上限 10）；`opencode_usage` 工具每台 server 追加 `models:` 前三条。
-  - 新 `collectCostByDirectory()`：按**会话当前目录**汇总累计成本（OpenCode 无按目录聚合，
-    这是近似口径：目录搬过的会话算当前目录、成本是累计值，`from` 只能按「窗口内活跃」过滤）。
-    缓存 300 秒（与 stats 同级）。
+  - 新 `collectCostByDirectory()`：按目录汇总**窗口内**成本。OpenCode 没有按目录聚合的端点，
+    而 `session.cost` 是**终生累计**，所以改为累加窗口内消息的 `cost`（assistant 步骤与 compaction 消息都会带成本，不做类型过滤，与
+    `/experimental/session/stats` 同一数据源）；活跃判定用 `time.busy`（只有真跑过的会话才有），
+    不再用会被「查看/改名」刷新的 `time.updated`。目录取会话自身的，空或 `/` 时回退项目
+    worktree（`global` 的 worktree 就是 `/`，把总账挂在 `/` 比标「未归属」更糟）。
+    候选会话 = 活跃且有价成本；只为它们翻消息（每会话通常 1 页），并发 4、单次上限 50 个会话 /
+    单会话 20 页，触顶时返回 `partial: true` 而不是静默少算。缓存 300 秒（与 stats 同级）。
   - `/api/opencode-client/usage` 增 `total.byModel`（跨 server 聚合）；`?group=directory` 时再返回
-    `total.byDirectory` 与每台的 `directories`（`opencode_value` 之外多一次会话拉取，故按需开启）。
+    `total.byDirectory`、`total.byDirectoryKind`、`total.byDirectoryPartial`、`total.byDirectoryDelta`
+    与 `total.reconciled`（目录总和与 stats 总成本差 >max($0.01, 1%) 即为 false），以及每台的
+    `directories`。v1 没有 stats/per-message cost，直接跳过目录拉取，不发无用的请求。
   - 设置页新增「近 7 天归因」：模型与目录各取前三；看板 server 卡显示 `top: <模型> $x.xx`。
-- **测试**：`test/usage.test.js` 加 3 项（per-model 归一化/排序、目录聚合与 `from` 语义、
-  `/usage` 的 byModel/byDirectory）；`test/board.test.js` 加 1 项（`probe`/`sse` 健康字段）。
+- **测试**：`test/usage.test.js` 加 3 项（窗口内消息成本与目录回退、上限 `partial`、v1 拒绝近似），
+  并把 `/usage` 用例改为断言 `kind`/`reconciled`；`test/board.test.js` 加 1 项（`probe`/`sse` 健康字段）。
+
+### Fixed
+
+- **目录归因口径错误（初稿）**：第一版用「`time.updated` 在窗内的会话 + 终生 `session.cost`」，
+  实测 OpenCode 2.3.0 七天窗口 **$72.52 / 90 会话**，而权威 stats 是 **$14.08 / 59 会话**（虚高 5.1 倍）；
+  `/` 桶还吃掉了 $58（那是一笔创建于窗口之前、本周没跑过的会话，只被查看过）。改为窗口内消息成本 +
+  `time.busy` 后，同机实测目录合计 **$14.08414**，与 stats 分毫不差，`/` 桶消失。
 
 ### Still to do in this version
 

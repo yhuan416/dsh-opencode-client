@@ -188,8 +188,8 @@
 目标：看板说的事必须是**对**的、**全**的、**能追到钱**的。
 
 - [ ] **预算/成本护栏**：复用 `opencode_usage`（stats）、`step.ended`（本轮 tokens/cost）、`time.busy/idle`；按 server 与全局设日预算，超阈值 → 徽标 + toast（复用现有注意力通道）。**只提醒不阻断**
-- [ ] **成本归因**：`/api/opencode-client/usage` 增 `byModel` / `byDirectory`（stats 已返回 `models[]`；session 自带 `directory`/`cost`）
-- [ ] **机群健康**：`/board` 的 `servers[]` 增 `versionDrift`（v1 实例标记）、`probeFailure`（探测失败原因）、`sseReconnects`；设置页展示
+- [x] **成本归因**：`/api/opencode-client/usage` 增 `byModel` / `byDirectory`（窗口内 assistant 消息成本，与 stats 同口径；`reconciled` 守门）。初稿用会话累计成本 + `time.updated` 判活，实测虚高 5.1 倍，已改
+- [x] **机群健康**：`/board` 的 `servers[]` 增 `probe`（版本/原因/时间/详情）与 `sse`（state/attempts/connects/openedAt）；设置页与看板卡展示
 - [ ] **空闲会话过滤/分组**（v0.6.0 遗留）：按 directory 分组 + 机器过滤
 - [ ] **SSE 补 progress**（v0.6.0 遗留）：连上前就在跑的会话，上线后补一次当前 tool
 - [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`；`opencode_sessions` 增 `archived` 并去掉 500 条截断；`opencode_read_file` 截断提示

@@ -11,7 +11,8 @@ import { collectStats, collectCostByDirectory, summarizeStats, STATS_BUCKET_MS }
 import { createObservation } from '../lib/observation.js'
 import { createRoutes } from '../lib/routes.js'
 
-// Verbatim shape returned by OpenCode 2.3.0 (`/api/experimental/session/stats`).
+// Shape returned by OpenCode 2.3.0 (`/api/experimental/session/stats`), with the
+// `models` array trimmed: the stats assertions below do not cover attribution.
 const STATS = {
   range: { from: 0, to: 1_760_000_000_000 },
   sessions: 167,
@@ -24,7 +25,7 @@ const STATS = {
   activeDays: 60,
   streak: 12,
   activity: [],
-  models: {},
+  models: [],
 }
 
 function boardStub(observation) {
@@ -157,67 +158,167 @@ test('summarizeStats carries per-model attribution, cost-sorted and normalized',
   assert.deepEqual(empty.models, [])
 })
 
-test('collectCostByDirectory aggregates session cost by current directory', async function () {
-  const now = Date.now()
-  const fake = await startServer({
+// One fake v2 server with two priced sessions (one paginated) and a priced
+// session that has not run inside the window. Message cost is the only
+// window-scoped source, so the walk must sum messages, not lifetime session cost.
+function attributionFixture(now) {
+  return {
     '/api/info': function () { return { version: '2.3.0' } },
-    '/api/project': function () { return { data: [] } },
+    '/api/project': function () {
+      return { data: [{ id: 'p1', canonical: '/work/alpha' }, { id: 'p2', canonical: '/work/beta' }] }
+    },
     '/api/session': function () {
       return {
         data: [
-          { id: 's1', title: 'a1', location: { directory: '/work/alpha' }, cost: 1.5, time: { updated: now } },
-          { id: 's2', title: 'a2', location: { directory: '/work/alpha' }, cost: 0.5, time: { updated: now } },
-          { id: 's3', title: 'b1', location: { directory: '/work/beta' }, cost: 3, time: { updated: now } },
-          { id: 's4', title: 'old', location: { directory: '/work/beta' }, cost: 9, time: { updated: 1000 } },
+          { id: 's1', projectID: 'p1', title: 'a1', location: { directory: '/work/alpha' }, cost: 5, time: { created: now - 86400000, updated: now, busy: now - 1000 } },
+          { id: 's2', projectID: 'p1', title: 'free', location: { directory: '/work/alpha' }, cost: 0, time: { created: now - 86400000, updated: now, busy: now - 2000 } },
+          { id: 's3', projectID: 'p2', title: 'b1', location: { directory: '/work/beta' }, cost: 9, time: { created: now - 86400000, updated: now, busy: now - 3000 } },
+          { id: 's4', projectID: 'p2', title: 'stale', location: { directory: '/work/beta' }, cost: 9, time: { created: now - 900000000, updated: now - 864000000, busy: now - 864000000 } },
+          // `global` project sessions answer directory `/`, which must not become
+          // the bucket that holds the fleet total.
+          { id: 's5', projectID: 'p1', title: 'slash', location: { directory: '/' }, cost: 2, time: { created: now - 86400000, updated: now, busy: now - 4000 } },
         ],
       }
     },
-  })
+    '/api/session/s1/message': function () {
+      return { data: [
+        { type: 'assistant', cost: 3, time: { created: now - 3600000 } },
+        { type: 'assistant', cost: 2, time: { created: now - 7200000 } },
+      ] }
+    },
+    '/api/session/s3/message': function (request) {
+      if (request.url.indexOf('cursor=') !== -1) {
+        return {
+          data: [
+            { type: 'assistant', cost: 0.5, time: { created: now - 10800000 } },
+            { type: 'assistant', cost: 4, time: { created: now - 864000000 } },
+          ],
+          cursor: { next: null },
+        }
+      }
+      return {
+        data: [{ type: 'assistant', cost: 1.5, time: { created: now - 1800000 } }],
+        cursor: { next: 's3-page-2' },
+      }
+    },
+    '/api/session/s5/message': function () {
+      return { data: [{ type: 'assistant', cost: 7, time: { created: now - 600000 } }] }
+    },
+  }
+}
+
+test('collectCostByDirectory sums in-window message cost, not lifetime session cost', async function () {
+  const now = Date.now()
+  const fake = await startServer(attributionFixture(now))
   try {
     const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
-    const all = await collectCostByDirectory(server, {})
-    assert.deepEqual(all.directories.map(function (entry) { return [entry.directory, entry.cost, entry.sessions] }), [
-      ['/work/beta', 12, 2],
-      ['/work/alpha', 2, 2],
-    ])
-    assert.equal(all.total.cost, 14)
-    assert.equal(all.total.sessions, 4)
-
-    // `from` only filters by "touched in this window" — cost is cumulative.
-    const recent = await collectCostByDirectory(normalizeServers([{ id: 'e6', url: fake.url, password: 'pw' }])[0], { from: now - 60000 })
-    assert.deepEqual(recent.directories.map(function (entry) { return [entry.directory, entry.cost] }), [
-      ['/work/beta', 3],
-      ['/work/alpha', 2],
-    ])
+    const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
+    assert.equal(report.kind, 'windowed')
+    // s1: 5 (two messages), s3: 2 (1.5 + 0.5, stops before the 10-day-old one),
+    // s5: 7 (directory `/` falls back to the project worktree).
+    assert.equal(report.total.cost, 14)
+    assert.equal(report.total.sessions, 4, 'every session active in the window counts, priced or not')
+    assert.equal(report.total.priced, 3, 'messages are only read for sessions with a priced lifetime cost')
+    assert.equal(report.total.partial, false)
+    assert.deepEqual(report.directories, [
+      { directory: '/work/alpha', cost: 12, sessions: 3 },
+      { directory: '/work/beta', cost: 2, sessions: 1 },
+    ], 'the stale session (s4) and the `/` bucket are gone')
+    const messageCalls = function (id) {
+      return fake.requests.filter(function (url) { return url.indexOf('/api/session/' + id + '/message') === 0 }).length
+    }
+    assert.equal(messageCalls('s4'), 0, 'a session that did not run in the window is never read')
+    assert.equal(messageCalls('s2'), 0, 'a session without priced cost is never read')
+    assert.equal(messageCalls('s3'), 2, 'pagination stops as soon as a message predates the window')
   } finally {
     await fake.close()
   }
 })
 
-test('GET /usage exposes byModel and, on request, byDirectory', async function () {
+test('collectCostByDirectory marks a capped report partial instead of under-counting silently', async function () {
+  const now = Date.now()
+  const fake = await startServer(attributionFixture(now))
+  try {
+    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const report = await collectCostByDirectory(server, { from: now - 7 * 86400000, maxSessions: 2 })
+    assert.equal(report.total.priced, 2)
+    assert.equal(report.total.skipped, 1)
+    assert.equal(report.total.partial, true)
+    assert.ok(report.total.cost < 14)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('collectCostByDirectory counts every priced message type, compaction included', async function () {
   const now = Date.now()
   const fake = await startServer({
     '/api/info': function () { return { version: '2.3.0' } },
+    '/api/project': function () { return { data: [] } },
+    '/api/session': function () {
+      return { data: [{ id: 's1', location: { directory: '/work/alpha' }, cost: 2, time: { created: now - 3600000, updated: now, busy: now - 1000 } }] }
+    },
+    '/api/session/s1/message': function () {
+      return { data: [
+        { type: 'assistant', cost: 1.5, time: { created: now - 1000 } },
+        { type: 'compaction', cost: 0.5, time: { created: now - 2000 } },
+      ] }
+    },
+  })
+  try {
+    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
+    assert.equal(report.total.cost, 2, 'a compaction message carries cost and must not be filtered out')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('collectCostByDirectory stops at the request budget and flags the report partial', async function () {
+  const now = Date.now()
+  const fake = await startServer(attributionFixture(now))
+  try {
+    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const report = await collectCostByDirectory(server, { from: now - 7 * 86400000, maxRequests: 1 })
+    assert.equal(report.total.partial, true)
+    assert.ok(report.total.cost < 14, 'a budget stop must not be reported as a complete total')
+    assert.ok(fake.requests.filter(function (url) { return url.indexOf('/message') !== -1 }).length <= 1)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('collectCostByDirectory refuses to approximate on v1 (no per-message cost)', async function () {
+  const fake = await startServer({ '/api/info': function () { return { version: '2.3.0' } } })
+  try {
+    // No password: the probe resolves v1 without any HTTP call.
+    const server = normalizeServers([{ id: 'old', url: fake.url }])[0]
+    const report = await collectCostByDirectory(server, { from: Date.now() - 86400000 })
+    assert.equal(report.kind, 'unsupported')
+    assert.equal(report.directories.length, 0)
+    assert.equal(report.total.partial, false)
+    assert.equal(fake.requests.length, 0)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('GET /usage exposes byModel and, on request, a reconciled byDirectory', async function () {
+  const now = Date.now()
+  const fixture = attributionFixture(now)
+  const fake = await startServer({
+    ...fixture,
     '/api/experimental/session/stats': function () {
       return {
         data: {
-          sessions: 2, steps: 10, cost: 7,
+          sessions: 2, steps: 10, cost: 14,
           tokens: { input: 100, output: 20, reasoning: 5, cache: { read: 40 } },
           tools: { totals: { calls: 3, succeeded: 3, failed: 0 } },
           models: [
-            { model: { providerID: 'x', id: 'm1' }, steps: 6, tokens: { input: 60 }, cost: 5 },
-            { model: { providerID: 'y', id: 'm2' }, steps: 4, tokens: { input: 40 }, cost: 2 },
+            { model: { providerID: 'x', id: 'm1' }, steps: 6, tokens: { input: 60 }, cost: 9 },
+            { model: { providerID: 'y', id: 'm2' }, steps: 4, tokens: { input: 40 }, cost: 5 },
           ],
         },
-      }
-    },
-    '/api/project': function () { return { data: [] } },
-    '/api/session': function () {
-      return {
-        data: [
-          { id: 's1', location: { directory: '/work/alpha' }, cost: 4, time: { updated: now } },
-          { id: 's2', location: { directory: '/work/beta' }, cost: 3, time: { updated: now } },
-        ],
       }
     },
   })
@@ -227,13 +328,34 @@ test('GET /usage exposes byModel and, on request, byDirectory', async function (
     const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
     const usage = routes.find(function (route) { return route.path === '/api/opencode-client/usage' })
 
-    const plain = await (await usage.fetch({ url: '/api/opencode-client/usage?from=0' })).json()
-    assert.deepEqual(plain.total.byModel.map(function (entry) { return [entry.model, entry.cost] }), [['x/m1', 5], ['y/m2', 2]])
-    assert.equal(plain.total.byDirectory, undefined, 'directory split costs an extra pull, so it is opt-in')
+    const window = 'from=' + (now - 7 * 86400000)
+    const plain = await (await usage.fetch({ url: '/api/opencode-client/usage?' + window })).json()
+    assert.deepEqual(plain.total.byModel.map(function (entry) { return [entry.model, entry.cost] }), [['x/m1', 9], ['y/m2', 5]])
+    assert.equal(plain.total.byDirectory, undefined, 'directory split is opt-in')
 
-    const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?from=0&group=directory' })).json()
-    assert.deepEqual(grouped.total.byDirectory.map(function (entry) { return [entry.directory, entry.cost] }), [['/work/alpha', 4], ['/work/beta', 3]])
+    const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?' + window + '&group=directory' })).json()
+    assert.deepEqual(grouped.total.byDirectory.map(function (entry) { return [entry.directory, entry.cost] }), [['/work/alpha', 12], ['/work/beta', 2]])
+    assert.equal(grouped.total.byDirectoryKind, 'windowed')
+    assert.equal(grouped.total.byDirectoryPartial, false)
+    assert.equal(grouped.total.byDirectoryDelta, 0)
+    assert.equal(grouped.total.reconciled, true, 'directory cost must reconcile with the stats total')
     assert.deepEqual(grouped.servers[0].directories.map(function (entry) { return entry.directory }), ['/work/alpha', '/work/beta'])
+  } finally {
+    await fake.close()
+  }
+})
+
+test('GET /usage does not pay for a directory pull on an unsupported (v1) server', async function () {
+  const fake = await startServer({ '/api/info': function () { return { version: '2.3.0' } } })
+  try {
+    const observation = createObservation()
+    const servers = normalizeServers([{ id: 'old', url: fake.url }])
+    const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
+    const usage = routes.find(function (route) { return route.path === '/api/opencode-client/usage' })
+    const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?from=' + (Date.now() - 86400000) + '&group=directory' })).json()
+    assert.deepEqual(grouped.total.byDirectory, [])
+    assert.equal(grouped.total.byDirectoryKind, undefined)
+    assert.equal(fake.requests.length, 0, 'v1 is known without a probe, so nothing is fetched')
   } finally {
     await fake.close()
   }
