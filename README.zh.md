@@ -243,6 +243,9 @@ v2 上插件还会替你吸收这些 API 差异：
 
 ## 安装
 
+> 装到**另一台机器**（含 Windows / DSH Desktop、多 server 配置、排障）见
+> **[docs/INSTALL.zh.md](docs/INSTALL.zh.md)**。
+
 ```sh
 # 方式一：dsh 插件管理
 dsh plugin --profile web add /path/to/dsh-opencode-client
