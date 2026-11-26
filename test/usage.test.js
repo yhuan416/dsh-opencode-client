@@ -7,7 +7,9 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import http from 'node:http'
 import { normalizeServers } from '../lib/config.js'
-import { collectStats, summarizeStats, STATS_BUCKET_MS } from '../lib/sessions.js'
+import { collectStats, collectCostByDirectory, summarizeStats, STATS_BUCKET_MS } from '../lib/sessions.js'
+import { createObservation } from '../lib/observation.js'
+import { createRoutes } from '../lib/routes.js'
 
 // Verbatim shape returned by OpenCode 2.3.0 (`/api/experimental/session/stats`).
 const STATS = {
@@ -23,6 +25,15 @@ const STATS = {
   streak: 12,
   activity: [],
   models: {},
+}
+
+function boardStub(observation) {
+  return {
+    observedById: function () { return new Map() },
+    refreshAll: function () { return Promise.resolve() },
+    snapshot: function (options) { return observation.board(options) },
+    serverInfo: function () { return undefined },
+  }
 }
 
 function startServer(routes) {
@@ -127,4 +138,103 @@ test('summarizeStats survives missing or malformed fields', function () {
   assert.equal(partial.tokens.input, 5)
   assert.equal(partial.tokens.output, 0)
   assert.equal(partial.tools.calls, 0)
+})
+test('summarizeStats carries per-model attribution, cost-sorted and normalized', function () {
+  const stats = summarizeStats({
+    sessions: 1,
+    models: [
+      { model: { providerID: 'x', id: 'm2', variant: 'high' }, steps: 3, tokens: { input: 10 }, cost: 2 },
+      { model: { providerID: 'y', id: 'm1' }, steps: 1, tokens: { input: 5, cache: { read: 7 } }, cost: 5 },
+      { model: { id: '' }, steps: 0, cost: 0 },
+    ],
+  })
+  assert.equal(stats.models.length, 2, 'entries without a usable model label are dropped')
+  assert.equal(stats.models[0].model, 'y/m1', 'sorted by cost descending')
+  assert.equal(stats.models[1].model, 'x/m2#high', 'variant is part of the label')
+  assert.deepEqual(stats.models[0].tokens, { input: 5, cacheRead: 7 })
+  assert.equal(stats.models[0].cost, 5)
+  const empty = summarizeStats({})
+  assert.deepEqual(empty.models, [])
+})
+
+test('collectCostByDirectory aggregates session cost by current directory', async function () {
+  const now = Date.now()
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.3.0' } },
+    '/api/project': function () { return { data: [] } },
+    '/api/session': function () {
+      return {
+        data: [
+          { id: 's1', title: 'a1', location: { directory: '/work/alpha' }, cost: 1.5, time: { updated: now } },
+          { id: 's2', title: 'a2', location: { directory: '/work/alpha' }, cost: 0.5, time: { updated: now } },
+          { id: 's3', title: 'b1', location: { directory: '/work/beta' }, cost: 3, time: { updated: now } },
+          { id: 's4', title: 'old', location: { directory: '/work/beta' }, cost: 9, time: { updated: 1000 } },
+        ],
+      }
+    },
+  })
+  try {
+    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const all = await collectCostByDirectory(server, {})
+    assert.deepEqual(all.directories.map(function (entry) { return [entry.directory, entry.cost, entry.sessions] }), [
+      ['/work/beta', 12, 2],
+      ['/work/alpha', 2, 2],
+    ])
+    assert.equal(all.total.cost, 14)
+    assert.equal(all.total.sessions, 4)
+
+    // `from` only filters by "touched in this window" — cost is cumulative.
+    const recent = await collectCostByDirectory(normalizeServers([{ id: 'e6', url: fake.url, password: 'pw' }])[0], { from: now - 60000 })
+    assert.deepEqual(recent.directories.map(function (entry) { return [entry.directory, entry.cost] }), [
+      ['/work/beta', 3],
+      ['/work/alpha', 2],
+    ])
+  } finally {
+    await fake.close()
+  }
+})
+
+test('GET /usage exposes byModel and, on request, byDirectory', async function () {
+  const now = Date.now()
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.3.0' } },
+    '/api/experimental/session/stats': function () {
+      return {
+        data: {
+          sessions: 2, steps: 10, cost: 7,
+          tokens: { input: 100, output: 20, reasoning: 5, cache: { read: 40 } },
+          tools: { totals: { calls: 3, succeeded: 3, failed: 0 } },
+          models: [
+            { model: { providerID: 'x', id: 'm1' }, steps: 6, tokens: { input: 60 }, cost: 5 },
+            { model: { providerID: 'y', id: 'm2' }, steps: 4, tokens: { input: 40 }, cost: 2 },
+          ],
+        },
+      }
+    },
+    '/api/project': function () { return { data: [] } },
+    '/api/session': function () {
+      return {
+        data: [
+          { id: 's1', location: { directory: '/work/alpha' }, cost: 4, time: { updated: now } },
+          { id: 's2', location: { directory: '/work/beta' }, cost: 3, time: { updated: now } },
+        ],
+      }
+    },
+  })
+  try {
+    const observation = createObservation()
+    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
+    const usage = routes.find(function (route) { return route.path === '/api/opencode-client/usage' })
+
+    const plain = await (await usage.fetch({ url: '/api/opencode-client/usage?from=0' })).json()
+    assert.deepEqual(plain.total.byModel.map(function (entry) { return [entry.model, entry.cost] }), [['x/m1', 5], ['y/m2', 2]])
+    assert.equal(plain.total.byDirectory, undefined, 'directory split costs an extra pull, so it is opt-in')
+
+    const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?from=0&group=directory' })).json()
+    assert.deepEqual(grouped.total.byDirectory.map(function (entry) { return [entry.directory, entry.cost] }), [['/work/alpha', 4], ['/work/beta', 3]])
+    assert.deepEqual(grouped.servers[0].directories.map(function (entry) { return entry.directory }), ['/work/alpha', '/work/beta'])
+  } finally {
+    await fake.close()
+  }
 })
