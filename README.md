@@ -154,7 +154,7 @@ two more are restored through v2-native fallbacks, and one is v2-only:
 | `opencode_tools` | tool-id catalog | **not available** (no tool-ids endpoint) |
 | `opencode_find` with `kind=text` | content search | **restored via fallback**: v2 has no content-search endpoint, so the plugin runs workspace `grep` through the async shell (literal substring, first 100 matches) |
 | todo list in `opencode_session_info` | todo items | **restored via fallback**: v2 removed `/session/{id}/todo`, so todos are derived from the last `todowrite` tool call |
-| `opencode_usage` | **not available** (v1 has no stats endpoint) | **v2 only**: `GET /experimental/session/stats` aggregates sessions/steps/tokens/cost/tool success rate |
+| `opencode_usage` | **not available** (v1 has no stats endpoint) | **v2 only**: `GET /experimental/session/stats` aggregates sessions/steps/tokens/cost/tool success rate, plus per-model attribution and (host route `?group=directory`) per-directory cost |
 
 On v2 the plugin also absorbs these API differences for you:
 
@@ -268,6 +268,11 @@ On v2 the plugin also absorbs these API differences for you:
   "侧边栏打开" button or the right-sidebar add-tab guide; "全屏" overlay and "新标签" remain as
   fallbacks. No reimplementation — the embedded page keeps streaming, tool cards, diffs and
   permissions.
+- **Usage & attribution (0.7.1 / 0.8.0)** — per-server cards show today's tokens/cost, the board has a
+  "finished, not looked at" zone, and the settings page shows a 7-day per-model / per-directory split
+  (`reconciled` marks a mismatch with the stats total).
+- **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
+  and SSE reconnect counts.
 - **Entry points** — the same embedded UI is reachable from the left sidebar panel column and from
   the session-header "OpenCode" button.
 

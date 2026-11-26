@@ -16,7 +16,8 @@ dsh web host process
 │   │                            Basic auth, OpenCodeError; v2 envelope unwrapping (unwrap / unwrapList /
 │   │                            opencodeValue / opencodeRaw / directoryQuery / withLocation)
 │   ├── lib/events.js            unified v1/v2 event model: wire format → canonical event, completionKind split
-│   ├── lib/sessions.js          normalized read surface: discovery, messages, status, agents, session-info, share, abort
+│   ├── lib/sessions.js          normalized read surface: discovery, messages, status, agents, session-info, share, abort,
+│   │                            usage/stats and per-directory cost attribution
 │   ├── lib/catalog.js           models/commands/skills/tools/references/search/MCP; v2 provider+model,
 │   │                            async command, v1-only capabilities
 │   ├── lib/workspace.js         shell (v1 sync / v2 async polling), git status/diff, read file, find
@@ -32,7 +33,7 @@ dsh web host process
 │   ├── lib/observation.js       (server, session) registry: running/pending/SSE merged into one status
 │   ├── lib/board.js             shared refresher behind /board, /list row status and opencode_board
 │   ├── lib/routes.js            /api/opencode-client/* host HTTP routes
-│   └── lib/tools.js             27 model-facing opencode_* tools
+│   └── lib/tools.js             28 model-facing opencode_* tools
 └── lib/client.js                browser bundle: "OpenCode Client" plugin-page section
 
 remote machines
