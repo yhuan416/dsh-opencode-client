@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /** Offline smoke checks for the plugin modules (no network, no dsh runtime). */
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import * as entry from '../lib/index.js'
 import { normalizeServers, normalizeApiVersion, parseModel, parsePathMap } from '../lib/config.js'
 import { apiPath, describeApiVersion, jsonResponse, OpenCodeError } from '../lib/http.js'
@@ -13,6 +14,13 @@ import { runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText } fro
 import { forkSession, summarize, initSession, sessionChildren } from '../lib/manage.js'
 import { abortSession, collectPending } from '../lib/sessions.js'
 import { createObservation, observationKey, OBSERVATION_STATUSES } from '../lib/observation.js'
+
+// Client bundle smoke: the helpers the card click depends on must exist (a
+// refactor once deleted boardSessionUrl and clicks died silently).
+const clientSource = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
+assert.match(clientSource, /function boardSessionUrl\(/)
+assert.match(clientSource, /function openOverlay\(/)
+assert.match(clientSource, /function BoardPage\(/)
 
 // Observation registry: key shape, precedence, and the board projection.
 assert.equal(observationKey('n100', 'ses_1'), 'n100\u0000ses_1')
