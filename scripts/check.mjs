@@ -27,6 +27,21 @@ assert.match(clientSource, /function setFilter\(next\)/)
 assert.match(clientSource, /function setFilter\(next\)[\s\S]{0,200}localStorage\.setItem\("dsh-opencode-board-server"/)
 assert.doesNotMatch(clientSource, /boardChip\("全部"[^\n]*setSelected\("all"\)/)
 assert.match(clientSource, /boardChip\("全部"[^\n]*setFilter\("all"\)/)
+// Unread completions: the "刚完成 · 未查看" section, the seen report and the run
+// line must survive refactors — the section is the whole point of the feature.
+assert.match(clientSource, /boardSection\("刚完成 · 未查看"/)
+assert.match(clientSource, /function markSeen\(serverId, sessionId, idle\)/)
+assert.match(clientSource, /\/api\/opencode-client\/seen/)
+assert.match(clientSource, /function boardRunLine\(row\)/)
+// The watcher polls `unseen`; without it a just-finished row leaves the polled
+// set on the same tick it enters unseen, so the completion toast never fires.
+assert.match(clientSource, /payload\.needsMe \|\| \[\]\)\.concat\(payload\.unseen/)
+
+// The model-facing board must surface the same partition, or finished-but-unread
+// sessions vanish from the agent's view entirely.
+const toolsSource = readFileSync(new URL('../lib/tools.js', import.meta.url), 'utf8')
+assert.match(toolsSource, /finished, not looked at/)
+assert.match(toolsSource, /snapshot\.unseen/)
 
 // Observation registry: key shape, precedence, and the board projection.
 assert.equal(observationKey('n100', 'ses_1'), 'n100\u0000ses_1')
@@ -39,6 +54,17 @@ assert.equal(observationSmoke.rows('s1')[0].status, 'running')
 observationSmoke.markPending('s1', 'ses_1', { kind: 'permission', requestId: 'r1', detail: 'bash' })
 assert.equal(observationSmoke.board().needsMe.length, 1)
 assert.equal(observationSmoke.board().running.length, 0)
+
+// Unread comes from OpenCode's own markers: idle > viewed, and a viewed session
+// returns to idle instead of lingering in `unseen`.
+const unreadSmoke = createObservation({ now: function () { return 3000 } })
+unreadSmoke.observeIdentity('e5', { id: 'ses_u', busyAt: 1000, idleAt: 2000, viewedAt: 500 })
+unreadSmoke.observeRunning('e5', new Set(), true)
+assert.equal(unreadSmoke.board().unseen.length, 1)
+assert.equal(unreadSmoke.board().idle.length, 0)
+unreadSmoke.observeIdentity('e5', { id: 'ses_u', viewedAt: 2000 })
+assert.equal(unreadSmoke.board().unseen.length, 0)
+assert.equal(unreadSmoke.board().idle.length, 1)
 
 assert.equal(entry.name, 'opencode-client')
 assert.deepEqual(entry.inject, ['connection'])
