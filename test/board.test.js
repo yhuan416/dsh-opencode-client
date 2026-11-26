@@ -100,3 +100,25 @@ test('an unreachable server yields no pending and no throw', async function () {
   assert.deepEqual(pending, [])
   assert.equal(observation.rows().length, 0)
 })
+test('GET /board exposes per-server version/state/groups', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const observation = createObservation()
+  const fakeServer = { id: 'n100', label: 'n100 opencode', url: 'http://127.0.0.1:4096', sse: { state: 'open' } }
+  const boardService = {
+    observedById: function () { return new Map() },
+    refreshAll: function () { return Promise.resolve() },
+    snapshot: function (options) { return observation.board(options) },
+    serverInfo: function () { return { version: '2.3.0', state: 'online', groups: 3 } },
+  }
+  const routes = createRoutes({ servers: [fakeServer], delegate: {}, observation: observation, board: boardService })
+  const route = routes.find(function (candidate) { return candidate.path === '/api/opencode-client/board' })
+  assert.ok(route, 'board route is registered')
+  const response = await route.fetch({ url: '/api/opencode-client/board' })
+  const payload = await response.json()
+  assert.equal(payload.ok, true)
+  assert.equal(payload.servers.length, 1)
+  assert.equal(payload.servers[0].version, '2.3.0')
+  assert.equal(payload.servers[0].state, 'online')
+  assert.equal(payload.servers[0].groups, 3)
+})
