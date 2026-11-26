@@ -1,3 +1,34 @@
+## 0.7.2 (unreleased) — 清单与门禁
+
+### Fixed
+
+- **`exports` 缺 `./locale/*.json` 与 `./icon`**：插件管理页读不到 `meta.title` / `meta.description`，
+  双语标题描述等于白写（实测 `import.meta.resolve("dsh-opencode-client/locale/en.json")` 报
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`）。已补齐导出。
+- **客户端注册只包了一个 try**：`ctx.sidebarRightTabs.register` 与后面的 `main` 看板、
+  `sidebar.panellist` 图标、`shell.overlay` 提醒、会话头按钮共用同一个 try，该服务一旦缺席就整块
+  注册失败、面板消失，catch 只打一行警告。改为逐条 `guard()`，并补 `dsh.client.inject`
+  声明 5 个 client 包（`ui-chat` / `ui-conversation` / `ui-sidebar` / `ui-sidebar-right` /
+  `ui-plugin-manager`）让激活顺序有据可依。
+
+### Added
+
+- **`scripts/check-manifest.mjs`**：清单门禁——identity/`engines`、bundle 与 `inject` 声明、
+  `exports` 子路径**经 Node 自引用解析**（locale 静默失效就是在这里被抓的）、多语言 `meta` 键一致、
+  图标格式/大小（≤256 KiB、SVG 可渲染）、`files` 覆盖、以及
+  `package.json` / CHANGELOG 最新已发布节 / 精确匹配 git tag 三方版本一致（支持 `(unreleased)` 过渡）。
+- **`scripts/check.mjs` 增加语法门禁**：对 `lib/`、`scripts/`、`test/` 全量 `node --check`。
+  此前 `lib/client.js` 只做正则断言、从没被解析过，一个多余的花括号也能让 CI 全绿通过。
+- 四个门禁都做了负向验证（删导出 / 改版本 / 撑大图标 / 注入语法错误）——全部按预期变红。
+- `npm run check` 现在是：语法门禁 → 客户端/观测断言 → 清单门禁 → 100 项测试；CI 跑同一条命令。
+
+### Changed
+
+- `COMPATIBILITY.md`：验证版本更新到实测的 dsh `0.2.2-rc.5`；seam 表补齐
+  `dsh.client.inject`、`sidebarRightTabs` / `sidebarRight.openTab`、`pluginNavigation.openBundle`、
+  `configEditor.edit` 与六个槽位；新增 Gates 一节说明三道门禁各自拦什么，并写明
+  `engines.dsh` 由 `plugin_manager` 在安装/激活时强制、基础 loader 只作声明。
+
 ## 0.7.1 (2026-11-26) — 用量与成本 + 完成未查看
 
 ### Added

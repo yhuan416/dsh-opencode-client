@@ -56,7 +56,8 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node scripts/check.mjs && node --test",
-    "e2e": "node scripts/e2e-live.mjs"
+    "check": "node scripts/check.mjs && node scripts/check-manifest.mjs && node --test",
+    "e2e": "node scripts/e2e-live.mjs",
+    "manifest": "node scripts/check-manifest.mjs"
   }
 }
