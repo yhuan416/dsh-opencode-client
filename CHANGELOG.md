@@ -1,3 +1,30 @@
+## 0.8.0 (unreleased) — [observe] 可信度
+
+按「一核两轨」的第一轨推进：先让看板说的事**对、全、能追到钱**。本切片只读、复用现有数据。
+
+### Added
+
+- **机群健康**：`/board` 的 `servers[]` 增 `probe`（版本探测结论与原因：`reason`/`at`/`detail`）与
+  `sse`（`state`/`attempts`/`connects`/`openedAt`；`connects > 1` 即重连过）。设置页每行显示
+  「API v1 · 已冻结」、探测失败原因、重连次数；看板 server 卡对 v1 实例与重连显示提示。
+  `opencode_board` 工具输出多一行 `health:`，模型也能看到哪台在漂移/重连。
+- **成本归因**：
+  - `summarizeStats` 透出服务端权威的 per-model 归因（`models[]`：`model`/`steps`/`tokens`/`cost`，
+    按成本降序、上限 10）；`opencode_usage` 工具每台 server 追加 `models:` 前三条。
+  - 新 `collectCostByDirectory()`：按**会话当前目录**汇总累计成本（OpenCode 无按目录聚合，
+    这是近似口径：目录搬过的会话算当前目录、成本是累计值，`from` 只能按「窗口内活跃」过滤）。
+    缓存 300 秒（与 stats 同级）。
+  - `/api/opencode-client/usage` 增 `total.byModel`（跨 server 聚合）；`?group=directory` 时再返回
+    `total.byDirectory` 与每台的 `directories`（`opencode_value` 之外多一次会话拉取，故按需开启）。
+  - 设置页新增「近 7 天归因」：模型与目录各取前三；看板 server 卡显示 `top: <模型> $x.xx`。
+- **测试**：`test/usage.test.js` 加 3 项（per-model 归一化/排序、目录聚合与 `from` 语义、
+  `/usage` 的 byModel/byDirectory）；`test/board.test.js` 加 1 项（`probe`/`sse` 健康字段）。
+
+### Still to do in this version
+
+预算/成本护栏（阈值提醒，只提醒不阻断）、空闲会话过滤/分组、SSE 补 progress、以及回收小项
+（`git_diff` untracked/base、`find kind=dir`、`sessions` archived、`read_file` 截断提示）。
+
 ## 0.7.2 (2026-11-26) — 清单与门禁
 
 ### Fixed

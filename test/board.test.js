@@ -219,3 +219,29 @@ test('server-scoped routes resolve a server instead of throwing ReferenceError',
   assert.equal(other.status, 400)
   assert.match((await other.json()).error, /server and session required/)
 })
+
+test('GET /board reports probe reason and SSE reconnect health', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const observation = createObservation()
+  const server = {
+    id: 'old', label: 'old opencode', url: 'http://127.0.0.1:4096', detectedVersion: '1',
+    versionProbe: { version: '1', reason: 'missing-password', at: 1700000000000, detail: undefined },
+    sse: { state: 'open', attempts: 0, connects: 4, openedAt: 1700000001000 },
+  }
+  const routes = createRoutes({
+    servers: [server],
+    delegate: {},
+    observation: observation,
+    board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function (options) { return observation.board(options) }, serverInfo: function () { return { version: null, state: 'online', groups: 0 } } },
+  })
+  const route = routes.find(function (candidate) { return candidate.path === '/api/opencode-client/board' })
+  const payload = await (await route.fetch({ url: '/api/opencode-client/board' })).json()
+  const row = payload.servers[0]
+  assert.equal(row.apiVersion, '1', 'v1 instances stay visible so the board can flag them as frozen')
+  assert.equal(row.probe.reason, 'missing-password')
+  assert.equal(row.probe.at, 1700000000000)
+  assert.equal(row.sse.state, 'open')
+  assert.equal(row.sse.attempts, 0)
+  assert.equal(row.sse.connects, 4, 'connects > 1 means the stream had to reconnect')
+})
