@@ -57,9 +57,23 @@ pull requests and on pushes to `master`:
 Each gate has been exercised against a deliberately broken tree (missing export, version mismatch,
 oversized icon, injected syntax error) and fails on all four.
 
+## v1 policy (frozen)
+
+- **OpenCode 2 is the supported target.** The v1 path (`OpenCode 1.18.x`) stays in the code for
+  existing installs, but it is **frozen**: no new capability is added to it, and the v1 column in
+  the tables below records current behaviour rather than a support commitment.
+- **Field verification is gone.** There is no v1 server in this project any more; v1 behaviour is
+  exercised only by offline fixtures (`test/board.test.js`, `test/http.test.js`). Treat field
+  behaviour on 1.18.x as unverified.
+- **New features land on v2 only** — `opencode_usage`, the board's "finished, not looked at"
+  partition and `POST /api/opencode-client/seen` all depend on v2-only data (`time.viewed`,
+  `POST /session/{id}/view`, `step.ended`).
+- **Removal would be a breaking release**, announced in the CHANGELOG — not a silent drop. Nothing
+  is scheduled; the frozen path costs nothing to keep but is not maintained either.
+
 ## OpenCode compatibility
 
-Both API generations are supported from one install. The server API version is detected per
+Both API generations are read from one install (**v1 is frozen**, see the policy below). The server API version is detected per
 server (`apiVersion: auto | 1 | 2`): `auto` probes `GET /api/info` with HTTP Basic auth
 (username `opencode`, password from the serve process' `OPENCODE_SERVER_PASSWORD`); a server
 reporting OpenCode >= 2 gets every request prefixed with `/api` plus the Basic header, while v1

@@ -123,12 +123,14 @@ OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模�
 ## 功能
 
 28 个面向模型的 `opencode_*` 工具、宿主 HTTP 路由，以及每台 server 一个原生 subagent
-provider —— OpenCode 1.18.x（v1 API）与 OpenCode 2.x（v2 API）下工具名与行为一致，仅有五处
-版本例外（见下）。
+provider —— OpenCode 1.18.x（v1 API）与 OpenCode 2.x（v2 API）下工具名一致，仅有五处版本例外
+（见下）。**支持目标是 OpenCode 2；v1 已冻结**：代码保留、离线用例仍覆盖，但不再新增能力，也不再
+对 1.18.x 做实机验证（[政策](COMPATIBILITY.md#v1-policy-frozen)）。
 
 ### OpenCode 1.18.x 与 2.x
 
-同一份安装同时支持两代 API，版本按 server 探测，28 个 `opencode_*` 工具名在两代上完全一致；
+同一份安装同时支持两代 API，版本按 server 探测，28 个 `opencode_*` 工具名在两代上完全一致
+（下面 v1 列记录的是冻结路径的现有行为，不是支持承诺）；
 但有四个能力在 OpenCode 2 上没有对应端点 —— 它们会返回明确的「not available on OpenCode 2」提示，而不是静默返回
 空数据。另有两项在 v2 上**通过 v2 原生能力补回**，一项**仅 v2 可用**：
 

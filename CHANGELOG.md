@@ -24,6 +24,9 @@
 
 ### Changed
 
+- **v1（OpenCode 1.18.x）冻结**：代码保留、离线用例仍覆盖，但不再新增 v1 能力、不再对 1.18.x 做实机
+  验证（项目里已没有 v1 服务器）；v2 是支持目标。README 双语、`COMPATIBILITY.md`（新增 v1 policy
+  一节）、`docs/TOOLS.zh.md` 的承诺口径统一；删除 v1 若发生，会作为 breaking 版本另行公告。
 - `COMPATIBILITY.md`：验证版本更新到实测的 dsh `0.2.2-rc.5`；seam 表补齐
   `dsh.client.inject`、`sidebarRightTabs` / `sidebarRight.openTab`、`pluginNavigation.openBundle`、
   `configEditor.edit` 与六个槽位；新增 Gates 一节说明三道门禁各自拦什么，并写明
