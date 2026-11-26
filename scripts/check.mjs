@@ -21,6 +21,12 @@ const clientSource = readFileSync(new URL('../lib/client.js', import.meta.url), 
 assert.match(clientSource, /function boardSessionUrl\(/)
 assert.match(clientSource, /function openOverlay\(/)
 assert.match(clientSource, /function BoardPage\(/)
+// Server filter persistence: the "全部" chip must go through setFilter, or the
+// remembered per-server pick survives a remount and the board sticks to it.
+assert.match(clientSource, /function setFilter\(next\)/)
+assert.match(clientSource, /function setFilter\(next\)[\s\S]{0,200}localStorage\.setItem\("dsh-opencode-board-server"/)
+assert.doesNotMatch(clientSource, /boardChip\("全部"[^\n]*setSelected\("all"\)/)
+assert.match(clientSource, /boardChip\("全部"[^\n]*setFilter\("all"\)/)
 
 // Observation registry: key shape, precedence, and the board projection.
 assert.equal(observationKey('n100', 'ses_1'), 'n100\u0000ses_1')
