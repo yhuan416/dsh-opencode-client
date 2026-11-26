@@ -27,6 +27,21 @@
 - [ ] workflow 后端切到 opencode（配置级，无代码）：把 profile 里 agent 工具组内 `workflow-ptc.provider` 从 `spawn` 改为 `opencode-<id>`，
       让 workflow 编排跑在远端 opencode；需先完成 P2 capability，并评估远端并发/成本/延迟与 cwd 映射
 
+### v0.6.0 —— 观测台 v0（2026-11-26 完成）
+
+- [x] `lib/observation.js`：`(server, session)` 登记表，三层来源（running 快照 / SSE 增量 / 待办快照），
+      优先级 `waiting-permission > waiting-question > error > running > idle > unknown`；子会话折叠进父行；stale 只标记不改状态
+- [x] `lib/board.js`：`/board`、`/list` 行内状态、`opencode_board` 工具共用的刷新器
+- [x] `collectPending()`：v1 全局 `/permission`+`/question`；v2 location 级 `/api/permission/request`+`/api/form`（实测 2.3.0，一次查询替代逐会话）
+- [x] 无 dsh run 归属的权限请求不再自动答复（`permission: ask`），登记为待办；`permission: auto` 回退旧行为
+- [x] `GET /api/opencode-client/board`；`/list` 每行带 `status`
+- [x] 面板改卡片看板：紧急组置顶、空闲按远端分组、远端筛选、点卡片浮层打开会话
+- [x] `opencode_board` 工具（跨 server 汇报，手机远程客户端也能用）
+- [x] `scripts/probe-observation.mjs` 独立探针（无需 dsh，直连 `opencode serve`）
+- [ ] **未完成**：同源代理（消除 iframe 跨域的登录 + Esc 限制）
+- [ ] **未完成**：空闲会话的机器会话过滤 / 按项目分组（等真实密度反馈）
+- [ ] **未完成**：SSE 连上之前就在跑的会话，`progress` 为空（可考虑快照补一次当前 tool）
+
 ## 0. 已完成（基线）
 
 - [x] server 配置（url / password / directory / agent / model），多 server 数组聚合
@@ -91,13 +106,14 @@
 - [ ] v2 `delivery: steer|queue`、`resume`——**暂缓：一发式委派，无并发插话需求**
 - [x] `opencode_abort`：`POST /session/{id}/abort`，取消远端长任务；等待中的委派会以 abort 错误返回（不再干等超时）。
 
-## 5.5 P6 — 插件页远端会话聊天（提案，暂缓）
+## 5.5 P6 — 插件页远端会话聊天（**已废弃**，2026-11-26）
 
-> **暂缓原因（2026-11-06）**：定位收敛为"subagent 核心 + 原生 OpenCode UI 嵌入入口"。
-> 聚合工作台 / 自研聊天页 / LLM 桥接都暂不做；完整交互使用嵌入的 OpenCode 原生 Web UI。
+> **废弃原因**：v0.6.0 把定位收敛为「观测台」——会话内的对话体验交给 OpenCode 自己的
+> TUI/Web，插件只做观测、授权、调度。自研聊天页是在别人的主场竞争，且会持续制造
+> 「这插件到底是干嘛的」的歧义。完整交互使用嵌入的 OpenCode 原生 Web UI 或新标签。
 
 
-见 [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md)。
+见 [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md)（保留作为决策记录）。
 
 - [ ] Phase 1（MVP，仅 client）：会话级「聊天」按钮 + 消息渲染 + 输入框（`prompt`，`wait` 可选）+ 1.5–2s 轮询 + 中止 + OpenCode 深链
 - [ ] Phase 2：宿主 SSE 代理（`/stream`）+ 页面 EventSource，渲染 delta/工具状态

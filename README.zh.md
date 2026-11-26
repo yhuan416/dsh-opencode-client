@@ -11,10 +11,13 @@
 
 > 中文 | [English](README.md)
 
-**把 OpenCode 注册为 dsh 的原生子代理后端，同时充当每台远端 `opencode serve` 的客户端。**
-插件连接一台或多台远端 `opencode serve`，把它们的 projects / sessions / messages 通过工具与
-HTTP 路由暴露给 dsh，把任务委派进去，并把每台 server 注册为 dsh 原生 subagent provider
-（`opencode-<serverId>`）。
+**OpenCode 机群的观测台，同时是 dsh 的原生子代理后端。**
+插件连接一台或多台远端 `opencode serve`，回答 OpenCode 自己的客户端回答不了的三件事：
+**所有 server 上谁在跑、谁在等我、谁挂了**；再把任务委派进去，并把每台 server 注册为
+dsh 原生 subagent provider（`opencode-<serverId>`）。
+
+> **定位（0.6.0）**：会话访问是手段，不是目的。会话内的对话交给 OpenCode 自己的 TUI/Web
+> （我们只做深链跳转）；这个插件负责跨 server 的看板、注意力聚合、以及面向 agent 的后端。
 
 **兼容性**：同一份安装同时服务 **OpenCode 1.18.x（v1 HTTP API）** 与 **OpenCode 2.x
 （v2 `/api/*` API + HTTP Basic 认证）**。版本按 server 探测（`apiVersion: auto|1|2`）；
@@ -85,7 +88,7 @@ flowchart LR
         direction TB
         CLIENT["client bundle<br/>plugin page · sidebar tab"]
         ROUTES["routes<br/>/api/opencode-client/*"]
-        TOOLS["tools<br/>26 × opencode_*"]
+        TOOLS["tools<br/>27 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
         SSE["sse<br/>v1 /global/event · v2 /api/event"]
     end
@@ -119,13 +122,13 @@ OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模�
 
 ## 功能
 
-26 个面向模型的 `opencode_*` 工具、宿主 HTTP 路由，以及每台 server 一个原生 subagent
+27 个面向模型的 `opencode_*` 工具、宿主 HTTP 路由，以及每台 server 一个原生 subagent
 provider —— OpenCode 1.18.x（v1 API）与 OpenCode 2.x（v2 API）下工具名与行为一致，仅有四处
 v2 例外（见下）。
 
 ### OpenCode 1.18.x 与 2.x
 
-同一份安装同时支持两代 API，版本按 server 探测，26 个 `opencode_*` 工具名在两代上完全一致；
+同一份安装同时支持两代 API，版本按 server 探测，27 个 `opencode_*` 工具名在两代上完全一致；
 但有四个能力在 OpenCode 2 上没有对应端点 —— 它们会返回明确的「not available on OpenCode 2」提示，而不是静默返回
 空数据。另有两项在 v2 上**通过 v2 原生能力补回**：
 
@@ -226,6 +229,10 @@ v2 上插件还会替你吸收这些 API 差异：
 
 ### UI
 
+- **观测台（主面板，0.6.0）** — 左侧栏 `OpenCode` 打开的是**卡片看板**，不是内嵌页面：
+  「需要你 / 运行中 / 异常」跨远端平铺置顶，「空闲」按远端分组；顶部远端筛选胶囊记住选择；
+  点卡片在浮层里打开该会话（Esc 或顶栏关闭，浮层自带「新标签打开」）。数据来自
+  `GET /api/opencode-client/board`，5 秒轮询、页面不可见即停。
 - **插件页** — 「OpenCode Client」分区：服务器/工作区/会话、会话 id、当前工具、查看消息、
   新建会话。
 - **内嵌 OpenCode UI** — 注册右侧栏标签页（`kind: opencode`）：服务器选择 + 真实 OpenCode Web UI
@@ -349,7 +356,7 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) —— 模块地图、数据流、设计决策
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) —— 中文架构（与 ARCHITECTURE.md 对应）
-- [docs/TOOLS.zh.md](docs/TOOLS.zh.md) —— 中文工具总览：26 个 `opencode_*` 工具、参数、只读/可变
+- [docs/TOOLS.zh.md](docs/TOOLS.zh.md) —— 中文工具总览：27 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) —— dsh / OpenCode 兼容性矩阵与版本策略
 - [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) —— OpenCode 2.3.0 实测兼容缺口，以及 0.2.0 已落地的分阶段迁移计划
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) —— 2.3.0 未接入的 100 个端点的实测盘点与深度整合路线（inbox/steer、revert 检查点、worktree、stats、PTY、反向 MCP）

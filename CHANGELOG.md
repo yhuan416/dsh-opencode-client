@@ -1,10 +1,19 @@
-## 0.5.2 (unreleased) — observation layer
+## 0.6.0 (2026-11-26) — 观测台（observation console）
 
-Collect session state first, render it later: one in-memory registry answers
-"who is running / who is waiting for me / what broke", without a second source of truth.
+**定位调整**：从「另一个 OpenCode 客户端」转为 **OpenCode 机群的观测台**——会话访问是手段，
+不是目的。与 OpenCode 自己的 TUI/Web 正面竞争的部分（会话内聊天）明确不做，只做它做不到的
+三件事：多 server 一张表、跨会话的注意力聚合、把 opencode 暴露成 dsh 的 agent 后端。
+
+先把会话状态采集上来，再谈展示：一个进程内登记表回答「谁在跑 / 谁在等我 / 谁挂了」，
+且不引入第二套真相。
 
 ### Added
 
+- 观测台页面：`main` 插槽改为**卡片看板**（不再是「状态条 + 内嵌 OpenCode」）。紧急组
+  （需要你 / 运行中 / 异常）跨远端平铺置顶，空闲会话按远端分组；远端筛选胶囊记住选择；
+  点卡片在浮层内打开该会话（`/server/<base64url(origin)>/session/<id>`），Esc 或顶栏关闭。
+- `lib/board.js`：`/board`、`/list` 行内状态与 `opencode_board` 工具共用的刷新器，
+  避免页面与模型对「谁在跑」给出不同答案。
 - `lib/observation.js`: `(server, session)` registry merging running snapshots
   (`/session/active` v2, `/session/status` v1), SSE increments, and pending
   snapshots. Status precedence `waiting-permission > waiting-question > error >
@@ -19,8 +28,10 @@ Collect session state first, render it later: one in-memory registry answers
   plus per-server liveness; `/api/opencode-client/list` rows now carry `status`.
 - `scripts/probe-observation.mjs`: standalone probe that prints the board from one
   real server without dsh (`OPC_PROBE_URL=... node scripts/probe-observation.mjs`).
-- Panel: a plain-text status strip at the top of the OpenCode page (placeholder;
-  cards come later).
+- 新增工具 `opencode_board`：跨 server 汇报 needs-you / running / idle，先于面板即可用
+  （手机端的远程客户端也能通过它拿到同一份状态）。
+- `lib/client.js` 增加静态冒烟：`boardSessionUrl` / `openOverlay` / `BoardPage` 必须存在
+  （一次布局重构误删了深链函数，导致点击静默失效）。
 
 ### Changed
 
@@ -35,9 +46,12 @@ Collect session state first, render it later: one in-memory registry answers
 
 ### Known limitations
 
-- The strip and `/board` report `unknown` until the first snapshot answers; a
-  failed pending snapshot keeps the last known pending set instead of clearing it.
-- No persistence: rows are rebuilt from snapshots after a restart.
+- `/board` 在第一次快照回来前一律 `unknown`；待办快照失败时保留上次已知集合而不是清空。
+- 不持久化：重启后从快照重建。
+- iframe 里的会话页跨域：焦点进入后 Esc 归 OpenCode（父页面收不到键盘事件），
+  只能用顶栏「关闭」；首次嵌入需在 OpenCode 里登录一次。彻底解决要同源代理。
+- 空闲会话数量大（n100+e5 约 480，含大量 `dsh delegate` / `dsh subagent:` 机器会话），
+  目前每台最多取 60 条；是否需要默认过滤机器会话待定。
 
 ## 0.5.1 (2026-11-20)
 

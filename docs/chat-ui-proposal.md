@@ -1,6 +1,11 @@
 # Proposal: remote-session chat in the plugin page
 
-Status: proposal (not implemented). This note describes what an in-page chat against a remote
+**Status: ABANDONED (2026-11-26).** The plugin's role is now the *observation console*
+(see CHANGELOG 0.6.0): conversation with a remote session belongs to OpenCode's own
+TUI/Web, which the plugin only deep-links into. This document is kept as a decision
+record — do not implement it without revisiting that positioning first.
+
+Original status: proposal (not implemented). This note describes what an in-page chat against a remote
 OpenCode session could look like, which existing pieces it reuses, and how much work each phase is.
 
 ## Goal
