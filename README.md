@@ -264,6 +264,9 @@ On v2 the plugin also absorbs these API differences for you:
 
 ## Install (profile)
 
+> Installing on **another machine** (Windows / DSH Desktop, multiple servers, troubleshooting):
+> see **[docs/INSTALL.zh.md](docs/INSTALL.zh.md)** (Chinese).
+
 ```sh
 # A. dsh plugin manager
 dsh plugin --profile web add /path/to/dsh-opencode-client
