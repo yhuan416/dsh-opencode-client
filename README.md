@@ -129,13 +129,16 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
 ## Features
 
 28 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
-same tool names and behaviour on OpenCode 1.18.x (v1 API) and OpenCode 2.x (v2 API), with five
-explicit version exceptions listed below.
+same tool names on OpenCode 1.18.x (v1 API) and OpenCode 2.x (v2 API), with five explicit version
+exceptions listed below. **OpenCode 2 is the supported target; v1 is frozen**: its code stays and
+the offline suite still covers it, but it is no longer extended and is not verified against a live
+v1 server ([policy](COMPATIBILITY.md#v1-policy-frozen)).
 
 ### OpenCode 1.18.x vs 2.x
 
 One install speaks both API generations; the generation is detected per server and the 28
-`opencode_*` tool names are identical on both. Two capabilities have no OpenCode 2 endpoint and
+`opencode_*` tool names are identical on both — the v1 column below records the frozen path's
+current behaviour, not a support commitment. Two capabilities have no OpenCode 2 endpoint and
 return an explicit "not available on OpenCode 2" message instead of silently returning empty data;
 two more are restored through v2-native fallbacks, and one is v2-only:
 
