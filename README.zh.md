@@ -364,7 +364,7 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) —— 中文架构（与 ARCHITECTURE.md 对应）
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) —— 中文工具总览：28 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) —— dsh / OpenCode 兼容性矩阵与版本策略
-- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) —— OpenCode 2.3.0 实测兼容缺口，以及 0.2.0 已落地的分阶段迁移计划
+- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) —— OpenCode 2.3.0 实测兼容缺口，以及 0.2.0–0.7.1 分阶段落地的迁移计划
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) —— 2.3.0 未接入的 100 个端点的实测盘点与深度整合路线（inbox/steer、revert 检查点、worktree、stats、PTY、反向 MCP）
 - [docs/subagent-seam.md](docs/subagent-seam.md) —— dsh subagent provider 接缝
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) —— 插件页远端会话聊天提案
@@ -385,14 +385,16 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 
 | 组件 | 版本 | 状态 |
 |---|---|---|
-| dsh | `>=0.2.1-rc.2`（实测 `0.2.1-rc.2`） | 支持 |
-| OpenCode 1.18.x（v1 API） | `1.18.10` / `1.18.31` / `1.18.33` | 支持（基线） |
+| dsh | `>=0.2.1-rc.2`（实测 `0.2.2-rc.5`） | 支持 |
+| OpenCode 1.18.x（v1 API） | `1.18.10` / `1.18.31` / `1.18.33` | **已冻结**（代码保留、不再扩展、不做实机验证） |
 | OpenCode 2.x（v2 API） | v2 `/api/*` + HTTP Basic 认证（实测 `2.3.0`） | 端到端支持；五处已记录的版本例外 |
 
-插件采用独立语义化版本，**暂不发布 npm**（从 git 或本地路径安装）。**`0.2.0` 是
-「OpenCode v2 support」版本**：同一份安装支持两代 API，按 server 配置
-`apiVersion: auto|1|2`；`0.1.x` 是仅 v1 的版本线。v2 探测与五处版本例外见
-[功能](#opencode-118x-与-2x)；实测缺口与 0.2.0 已完成的阶段计划见
+插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前版本 `0.7.2`**
+（tag `v0.7.2`）；v2 端到端支持在 `0.7.1` 通过 [PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)
+合入 master，`0.2.0` 是第一个能读 OpenCode 2 的版本。同一份安装仍可用两代 API（按 server 配置
+`apiVersion: auto|1|2`），但 **v1 已冻结**（见
+[COMPATIBILITY.md](COMPATIBILITY.md#v1-policy-frozen)）；`0.1.x` 是仅 v1 的版本线。v2 探测与五处
+版本例外见[功能](#opencode-118x-与-2x)；实测缺口与分阶段计划见
 [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)。
 
 ## 说明与限制

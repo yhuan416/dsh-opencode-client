@@ -395,7 +395,7 @@ generic completion. With multiple servers, `opencode-auto` routes each child (se
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) — 中文架构（与 ARCHITECTURE.md 对应）
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：28 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) — dsh / OpenCode compatibility matrix and versioning policy
-- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) — measured OpenCode 2.3.0 gaps and the phased migration plan now implemented in 0.2.0
+- [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) — measured OpenCode 2.3.0 gaps and the phased migration plan, implemented across 0.2.0–0.7.1
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) — measured survey of the 100 unused OpenCode 2.3.0 endpoints and the candidate deeper-integration roadmap (inbox/steer, revert checkpoints, worktrees, stats, PTY, reverse MCP)
 - [docs/subagent-seam.md](docs/subagent-seam.md) — dsh subagent provider contract
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) — in-page remote-session chat proposal
@@ -416,16 +416,19 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 
 | Component | Version | Status |
 |---|---|---|
-| dsh | `>=0.2.1-rc.2` (verified against `0.2.1-rc.2`) | supported |
-| OpenCode 1.18.x (v1 API) | `1.18.10` / `1.18.31` / `1.18.33` | supported (baseline) |
+| dsh | `>=0.2.1-rc.2` (verified against `0.2.2-rc.5`) | supported |
+| OpenCode 1.18.x (v1 API) | `1.18.10` / `1.18.31` / `1.18.33` | **frozen** (code kept, not extended, not field-verified) |
 | OpenCode 2.x (v2 API) | v2 `/api/*` + HTTP Basic auth (verified against `2.3.0`) | supported end to end; five documented version exceptions |
 
-The plugin follows independent semantic versioning and is **not published to npm** for now
-(install from git or a local path). **`0.2.0` is the "OpenCode v2 support" release**: one install
-serves both API generations, with `apiVersion: auto|1|2` per server; `0.1.x` is the v1-only line.
-The v2 probe and the five version exceptions are described in
-[Features](#opencode-118x-vs-2x); the measured gaps and the phased plan that 0.2.0 completes live
-in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
+The plugin follows independent semantic versioning and is **not published to npm** (install from
+git or a local path). **Current release: `0.7.2`** (tag `v0.7.2`); v2 support was completed end to
+end in `0.7.1` via [PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5), and `0.2.0` was
+the first release that read OpenCode 2 at all. One install still serves both API generations with
+`apiVersion: auto|1|2` per server — but **v1 is frozen** (see
+[COMPATIBILITY.md](COMPATIBILITY.md#v1-policy-frozen)); `0.1.x` is the v1-only line. The v2 probe
+and the five version exceptions are described in [Features](#opencode-118x-vs-2x); the measured
+gaps and the phased plan live in
+[docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 
 ## Notes
 
