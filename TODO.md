@@ -185,7 +185,7 @@
 
 - [ ] `opencode_prompt` 支持 `delivery: steer|queue`（运行中插话/排队）
 - [ ] 新工具 `opencode_inbox`：列出/改投递/取消队列消息
-- [ ] 新工具 `opencode_stats`：`/experimental/session/stats` 聚合（会话/step/cost/工具成功率/活跃度）
+- [x] 新工具 `opencode_usage`（计划里叫 `opencode_stats`，0.7.1 落地）：`/experimental/session/stats` 聚合（会话/step/cost/工具成功率/活跃度）
 - [ ] `opencode_session_context`（或 session_info 扩展）：读模型实际上下文（`/session/{id}/context`）
 - 验收：真机演示 steer/queue/inbox 闭环；stats 面板数据一致
 

@@ -97,7 +97,7 @@
 
 ### D. 观测 / 成本（中高价值 / 低成本 / 无风险）→ 建议 0.4.0
 
-- 新工具 `opencode_stats`（`from/to/project/timezone` 过滤）：会话数、prompt/step、token、成本、工具成功率、活跃度；
+- 新工具 `opencode_usage`（0.7.1 已落地；参数收敛为 `server` / `days`，默认 7 天、`0` = 全部历史）：会话数、prompt/step、token、成本、工具成功率、活跃度；
 - `opencode_session_info` 增加 context 规模（message 数 / token 估算）；
 - 预算护栏：delegate 完成时按 `session.cost` 累计，超阈值告警（`usage/limits` 本机为空，需自建预算表）。
 

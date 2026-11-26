@@ -1,6 +1,6 @@
 # 工具总览 — dsh-opencode-client
 
-本插件的 27 个面向模型的工具全部由 `lib/tools.js` 的 `registerTools()` 通过
+本插件的 28 个面向模型的工具全部由 `lib/tools.js` 的 `registerTools()` 通过
 `ctx.tools.register(defineTool(...))` 注册，工具名统一以 `opencode_*` 开头。本文按主题列出每个
 工具的用途、关键参数、只读/可变属性、对应的远端 OpenCode HTTP API，以及 OpenCode 2（v2）上的
 可用性与行为差异；以源码为准，不包含未实现的工具。
@@ -17,7 +17,7 @@
 - **server 参数**：省略时使用配置里的第一台 server（默认 server）；`opencode_sessions`、
   `opencode_search`、`opencode_agents`、`opencode_models`、`opencode_commands`、
   `opencode_skills`、`opencode_tools`、`opencode_references`、`opencode_mcp`、
-  `opencode_progress`、`opencode_board` 省略时会聚合所有已配置 server。
+  `opencode_progress`、`opencode_board`、`opencode_usage` 省略时会聚合所有已配置 server。
 - **directory 参数**：省略时使用该 server 配置里的 `directory`；两者都没有时由远端 OpenCode
   使用它自己的默认目录。注意会话作用域的操作在 v2 上以会话自身的 `location.directory` 为准：
   `opencode_prompt` / `opencode_command` 的 `directory` 参数在 v2 不生效；`opencode_shell` 例外，
@@ -46,6 +46,7 @@
 | 工具 | 用途 | 关键参数 | 类型 | 远端 API（v1 / v2） | v2 差异 |
 |---|---|---|---|---|---|
 | `opencode_board` | **观测台**：跨 server 汇报「谁在跑 / 谁在等我 / 空闲」，先刷新快照再读登记表；与 Web 面板的 `/api/opencode-client/board` 共用同一个 `lib/board.js` | `server`、`idle`（默认 5，上限 30） | 只读 | v1 `GET /session/status` + `GET /permission` + `GET /question`；v2 `GET /session/active` + `GET /api/permission/request` + `GET /api/form` | 同 v1（v2 走 location 级全局端点，一次查询拿全） |
+| `opencode_usage` | **用量/成本**：按时间范围汇报各 server 与会话总数、步数、in/out/reasoning/cache token、成本、工具成功率；Web 面板的 per-server 概览卡与设置页「今日用量」同源（`/api/opencode-client/usage`） | `server`（省略=全部）、`days`（默认 7，`0`=全部历史） | 只读 | v1 无对应端点；v2 `GET /experimental/session/stats?from=&to=&tools=summary` | **仅 v2**：v1 明确报 “v1 server or stats unavailable” 而不是返回 0；服务端按 (range 起点分桶, 300 s TTL) 缓存，缓存键不含 `to`（`to` 随每次请求变化），一次 stats 调用在服务端要扫全历史 |
 | `opencode_sessions` | 列出远端会话（server、工作区、标题、最后更新、会话 id；服务端提供时附 model#variant/agent/outcome/cost），可按目录/标题过滤 | `server`、`directory`、`query`、`limit`（默认 50，上限 200） | 只读 | v1 `GET /global/health` + `GET /project` + `GET /session`；v2 `GET /info` + `GET /project` + `GET /session?limit=200` | 同 v1；v2 用 `canonical` 作工作区、列表为 `{data,cursor}`、目录在 `location.directory`，目录/标题过滤仍在客户端完成 |
 | `opencode_messages` | 读取某会话的最近消息（text / tool / file 展平；tool 行带入参摘要与输出首行） | `server`、`session`（必填）、`limit`（默认 20，上限 200）、`type`（可选消息类型过滤） | 只读 | v1 `GET /session/{id}/message`；v2 `GET /session/{id}/message?order=desc&limit=N`（跟随 `cursor.next` 分页） | 同 v1；v2 消息体是 `content[]`（无 `parts`），按 `order=desc` 取回后反转为旧→新输出；请求超过一页（服务端默认 50）时自动翻页，最多 20 页/4000 条；`type=` 在 v2 服务端过滤、v1 本地过滤，默认隐藏 idle/system 等记账消息 |
 | `opencode_session_info` | 读取会话元数据、todo 列表与改动文件 diff，用于判断会话做过什么 | `server`、`session`（必填） | 只读 | v1 `GET /session/{id}` + `/todo` + `/diff`；v2 `GET /session/{id}` + `/diff` + 最近消息（推导 todo） | v1 用 `/todo`；v2 无 todo 端点，从最后一次 `todowrite` 工具调用（`state.input.todos`）推导并标注 `[derived from the last todowrite call]`；元数据/cost/tokens/outcome/diff 可用 |
