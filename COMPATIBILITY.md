@@ -11,10 +11,14 @@ Declared in `package.json`:
 "engines": { "node": ">=22", "dsh": ">=0.2.1-rc.2" }
 ```
 
-- **Verified against**: dsh `0.2.1-rc.2` (the runtime used in development).
+- **Verified against**: dsh `0.2.2-rc.5` (current runtime), with `0.2.1-rc.2` still exercised by the
+  offline suite.
 - **Minimum declared**: `0.2.1-rc.2`. dsh 0.1.x is **not supported** (untested).
 - The range has no upper bound because the seam surface below has been stable across 0.2.x;
   if a future dsh breaks it, the plugin manager's version-exemption mechanism is the escape hatch.
+- **How it is enforced**: `plugin_manager` refuses to install or activate a package whose
+  `engines.dsh` (or, when absent, whose dsh peer ranges) do not admit the running version. The base
+  loader only reads the fields declaratively, so this is a management-surface gate, not a runtime check.
 
 dsh integration points used (each must exist for the plugin to load):
 
@@ -22,6 +26,12 @@ dsh integration points used (each must exist for the plugin to load):
 |---|---|
 | `dsh.manifestVersion: 1`, `dsh.bundle.patch` | profile bundle insertion |
 | `dsh.client.platform: "web"`, exports `./client` | plugin page section in the Web UI |
+| exports `./locale/*.json`, `./icon` | Plugin Manager reads `meta.title` / `meta.description` and renders the icon without activating the plugin |
+| `dsh.client.inject` (`dsh-client-ui-chat`, `-conversation`, `-sidebar`, `-sidebar-right`, `-plugin-manager`) | activation order for the slots and client services below |
+| `ctx.slots.inject` / `ctx.slots.register` on `main`, `sidebar.panellist`, `sidebar.right.pane.tab(.title)`, `conversation.session.header.actions`, `shell.overlay`, `plugins.detail.section` | board page, rail icon + badge, right-pane session tab, header button, toasts, settings section |
+| `ctx.sidebarRightTabs.register`, `ctx.sidebarRight.openTab` | registers the `opencode` tab kind and opens it |
+| `pluginNavigation.openBundle(owner)` | the settings pill that jumps to this plugin's config page |
+| `ctx.configEditor.edit(entry, fn)` | writing the `servers` list back to the profile row |
 | host `apply(ctx, config)`, `ctx.effect`, `ctx.inject`, `ctx.logger` | plugin lifecycle |
 | `ctx.connection.fetch.register(route)` | `/api/opencode-client/*` routes |
 | `ctx.tools.register(defineTool(...))` (from `@deepseek-ai/dsh-tools`) | model-facing tools |
@@ -29,6 +39,23 @@ dsh integration points used (each must exist for the plugin to load):
 | `ctx.approval.request(...)` | remote permission → dsh approval card |
 | `ctx.userQuestions.ask(...)` | remote question → dsh user-question UI |
 | client bundle `window.__ModuleLoader__`, `ctx.slots.inject("plugins.detail.section")` | plugin page section |
+
+## Gates
+
+`npm run check` is the offline gate; CI (`.github/workflows/check.yml`) runs the same command on
+pull requests and on pushes to `master`:
+
+1. `scripts/check.mjs` — `node --check` over `lib/`, `scripts/`, `test/` (a syntax error in the
+   browser bundle would otherwise ship green, since no test imports it), client-bundle source
+   assertions, and observation-registry smoke checks.
+2. `scripts/check-manifest.mjs` — identity/engines, bundle + `inject` declarations, `exports`
+   subpaths **resolved through Node's self-reference** (this is what silently breaks the locale),
+   locale `meta` parity across languages, icon format/size, `files` coverage, and version agreement
+   between `package.json`, the latest released `CHANGELOG` section and an exact-match git tag.
+3. `node --test` — the offline suite.
+
+Each gate has been exercised against a deliberately broken tree (missing export, version mismatch,
+oversized icon, injected syntax error) and fails on all four.
 
 ## OpenCode compatibility
 
