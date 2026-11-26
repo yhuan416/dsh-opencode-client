@@ -1,7 +1,11 @@
 # Compatibility
 
 This plugin follows **independent semantic versioning** (it does not mirror the dsh release train)
-and is **not published to npm** for now; install it from git or a local path.
+and is **not published to npm**; install it from git or a local path. **Current release: `0.7.2`**
+(2026-11-26). Release line: `0.2.0` first read OpenCode 2, `0.7.1` completed v2 end to end
+([PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)), `0.7.2` fixed the manifest/exports
+and added the CI gates. `1.0.0` is deliberately not cut yet: the host seam is still `0.2.x` and the
+v1 question is open (see below).
 
 ## dsh compatibility
 

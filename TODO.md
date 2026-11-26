@@ -3,7 +3,7 @@
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
 > 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
 >
-> **当前里程碑：v0.5.1（2026-11-21）** —— OpenCode v2（2.3.0）兼容主链路完成：双栈、原生 subagent、`opencode-auto` 路由、模型 variants/选择、v1 能力回填（文本搜索/todo/分页）、读取细节增强。详见「10. 后续迭代计划」。
+> **当前里程碑：v0.7.2（2026-11-26）** —— OpenCode v2 端到端支持已合入 `master`（PR #5），用量/成本、完成未查看分区、清单与 CI 门禁落地；**v1 已冻结**（保留代码、不再扩展、不再实机验证）。详见 CHANGELOG 与「10. 后续迭代计划」。
 
 ## 0.1 v0.2.0 新增（OpenCode v2 端到端）
 
@@ -41,6 +41,18 @@
 - [ ] **未完成**：同源代理（消除 iframe 跨域的登录 + Esc 限制）
 - [ ] **未完成**：空闲会话的机器会话过滤 / 按项目分组（等真实密度反馈）
 - [ ] **未完成**：SSE 连上之前就在跑的会话，`progress` 为空（可考虑快照补一次当前 tool）
+
+### v0.7.1 / v0.7.2 —— 用量与未读、清单与门禁（2026-11-26 完成）
+
+- [x] `opencode_usage` + `GET /api/opencode-client/usage`：按 server/时间窗聚合 sessions/steps/tokens/cost/工具成功率（v2 `/experimental/session/stats`，v1 明确报不支持）
+- [x] 看板 per-server 概览卡（状态/版本/会话·运行·待办/token/cost），点卡即过滤
+- [x] 「刚完成 · 未查看」分区：候选 = 本地看到的 running→idle，清除 = OpenCode 的 `viewed >= idle` 或 dsh 的 `/seen`；左栏徽标 = 待处理 + 未查看
+- [x] 完成 toast 带本轮用时/用量；`opencode_board` 同步输出未查看分区
+- [x] 看板 server 筛选（「全部」chip）落盘，修上次选中项单向粘滞
+- [x] 清单修复：`exports` 导出 `./locale/*.json` / `./icon`、`dsh.client.inject`、客户端注册逐条 guard、路由 `findServer` 未定义修复
+- [x] CI 门禁：`scripts/check-manifest.mjs`（版本/导出/locale/图标/files/patch）+ 全量 `node --check`，均做过负向验证
+- [x] 发布 `v0.7.2`（tag 在 master）
+- [ ] v1 去留：当前**冻结**（见 `COMPATIBILITY.md` §v1 policy）；若删除，作为 breaking 版本单独执行（清单：12 个 lib 文件的 92 处分派点、2 个 v1-only 工具、3 个测试夹具、8 份文档）
 
 ## 0. 已完成（基线）
 
@@ -164,7 +176,7 @@
 
 ## 10. 后续迭代计划（2026-11-21 起）
 
-> 分支策略不变：`feat/opencode-v2-support` 独立演进，master 不动；每个版本 = 代码 + 测试 + e2e + 文档 + 真机重启验证。
+> 分支策略（2026-11-26 起更新）：v2 线已 rebase-merge 进 `master`，此后每个版本走 PR（规则集不再要求人工批准，但仍要求走 PR + 线性历史）+ tag；每个版本 = 代码 + 测试 + 门禁（`npm run check`）+ e2e + 文档 + 真机重启验证。
 
 ### 10.0 v0.5.2 —— 收尾当前批次（立即，~0.5 天）
 
