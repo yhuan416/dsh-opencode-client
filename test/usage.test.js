@@ -250,7 +250,7 @@ test('collectCostByDirectory marks a capped report partial instead of under-coun
   }
 })
 
-test('collectCostByDirectory counts every priced message type, compaction included', async function () {
+test('collectCostByDirectory sums only the message type stats counts (compaction excluded)', async function () {
   const now = Date.now()
   const fake = await startServer({
     '/api/info': function () { return { version: '2.3.0' } },
@@ -268,7 +268,7 @@ test('collectCostByDirectory counts every priced message type, compaction includ
   try {
     const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
     const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
-    assert.equal(report.total.cost, 2, 'a compaction message carries cost and must not be filtered out')
+    assert.equal(report.total.cost, 1.5, 'compaction cost is outside the stats/session.cost definition and must not count')
   } finally {
     await fake.close()
   }

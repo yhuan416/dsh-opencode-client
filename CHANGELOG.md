@@ -12,8 +12,9 @@
   - `summarizeStats` 透出服务端权威的 per-model 归因（`models[]`：`model`/`steps`/`tokens`/`cost`，
     按成本降序、上限 10）；`opencode_usage` 工具每台 server 追加 `models:` 前三条。
   - 新 `collectCostByDirectory()`：按目录汇总**窗口内**成本。OpenCode 没有按目录聚合的端点，
-    而 `session.cost` 是**终生累计**，所以改为累加窗口内消息的 `cost`（assistant 步骤与 compaction 消息都会带成本，不做类型过滤，与
-    `/experimental/session/stats` 同一数据源）；活跃判定用 `time.busy`（只有真跑过的会话才有），
+    而 `session.cost` 是**终生累计**，所以改为累加窗口内 `assistant` 消息的 `cost`（与 `/experimental/session/stats` 同一数据源；
+    compaction 消息也带成本，但 stats 与 `session.cost` 都不计它，计入会让目录与总成本对不上——
+    e5 上一条 $0.444 的 compaction 就会让偏差到 0.45%）；活跃判定用 `time.busy`（只有真跑过的会话才有），
     不再用会被「查看/改名」刷新的 `time.updated`。目录取会话自身的，空或 `/` 时回退项目
     worktree（`global` 的 worktree 就是 `/`，把总账挂在 `/` 比标「未归属」更糟）。
     候选会话 = 活跃且有价成本；只为它们翻消息（每会话通常 1 页），并发 4、单次上限 50 个会话 /
