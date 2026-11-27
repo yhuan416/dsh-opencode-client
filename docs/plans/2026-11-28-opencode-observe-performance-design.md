@@ -110,6 +110,11 @@
 
 board 5s tick → 只重渲染 board 两组件；insights/activity/skills 各自到达 → 只重渲染对应组件。
 
+补充（PR-D）：首屏以下的两块内容——洞察区底部 4 个列表面板、空闲会话列表——用
+`LazyRender`（`IntersectionObserver`，rootMargin 400px）在接近视口时才建 DOM，占位高度按
+真实面板高度预留（面板 235px、空闲每组 280px）。实测看板挂载长任务从 ~95ms 继续下降；
+空转期间的主线程本来已无长任务（23s 窗口 0 条），所以剩下要优化的是挂载/交互尖峰而非稳态。
+
 ### 4.4 Board 数据流（用户特别指出的「数据流没优化」）
 
 新增客户端 **board store**（仿现有 about store，单例）：
