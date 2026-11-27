@@ -262,6 +262,9 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   board's "needs you" row, triggers the attention notification, and waits for you to answer in the
   session; `question: reject` opts an unattended deployment into dismissing it. Questions are
   forms with typed fields (string / number / integer / boolean / multiselect).
+  When several clients share the same OpenCode server, the first client that sees a form answers
+  it: keep `question` identical everywhere — a client still on `question: reject` (or an older
+  build) dismisses the form before the "needs you" card can appear.
 - **Live events** — per-server SSE subscription (`/api/event`) with reconnect; fast
   permission/question handling, live state, `GET /api/opencode-client/events` and `/status`.
 - **Polling fallback** — permission/question requests are answered while a delegated run is active:
@@ -491,6 +494,10 @@ are kept in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)
   (`once`/`always`/`reject`).
 - **Multiple servers** are configured as an array and aggregated by the client (opencode itself has
   no server-side federation); each server must expose the OpenCode 2 API.
+- **A shared OpenCode server is shared state**: every dsh/OpenCode client connected to it can claim
+  and answer a pending form or permission. If a question card flashes and disappears, another
+  client on that server is dismissing it (typically a `question: reject` deployment or an older
+  plugin/web build) — not the local plugin.
 - Permission/question requests are answered while a delegated run is active: SSE events are handled
   immediately, with a 15s polling fallback when the stream is unavailable.
 - The plugin page shows `live` (SSE connected) and the number of currently running sessions.

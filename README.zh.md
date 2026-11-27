@@ -240,6 +240,12 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
   没有 dsh run 的会话（例如你自己在 OpenCode TUI / Web 里开的）提问默认**挂起**，进入看板
   「需要你」并触发通知，等你到会话里回答；`question: reject` 供无人值守部署显式跳过（直接
   dismiss）。提问是带类型字段（string / number / integer / boolean / multiselect）的 form。
+  **多客户端共享同一个 OpenCode server 时**，谁先看到 form 谁就能回答/dismiss：请让所有 dsh
+  客户端的 `question` 配置保持一致——还配着 `question: reject`（或旧版本插件/旧 Web 构建）的
+  客户端会抢先把 form dismiss 掉，看板上的「需要你」卡就一闪而过。
+  **多客户端共享同一个 OpenCode server 时**，谁先看到 form 谁就能回答/dismiss：请让所有 dsh
+  客户端的 `question` 配置保持一致——还配着 `question: reject`（或旧版本插件/旧 Web 构建）的
+  客户端会抢先把 form dismiss 掉，看板上的「需要你」卡就一闪而过。
 - **实时** — 每台 server 常驻 SSE（`/api/event`），带重连；权限/提问快速应答、
   `GET /api/opencode-client/events`、`/status`、`live`/`running` 状态。
 - **轮询兜底** — 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
@@ -437,6 +443,9 @@ v1→v2 迁移记录保留在 [docs/opencode-v2-migration.zh.md](docs/opencode-v
 - 权限卡需要**工具发起的委派**（有 live agent）；HTTP 直接调用回落 allow/reject
   （`once`/`always`/`reject`）。
 - 多 server 由客户端聚合（OpenCode 服务端没有联邦 API）；每台 server 都必须提供 OpenCode 2 API。
+- **共享的 OpenCode server 是共享状态**：任何连着的 dsh/OpenCode 客户端都能抢答 form /
+  权限请求。如果「等待回答」卡一闪而过，通常是同 server 上另一个客户端（典型是配置了
+  `question: reject` 的部署，或旧版插件/Web 构建）把它 dismiss 了，而不是本机插件的问题。
 - 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
 - 插件页显示 `live`（SSE 已连接）与当前运行中的会话数。
 - **OpenCode 2 传输**：请求走 `@opencode/client`（`2.4.2`），路径、Basic 认证与响应信封由
