@@ -38,6 +38,13 @@
 
 - 明确不做（数据不可得，不伪造）：逐日 token/费用、token 构成、耗时拆解、活跃时长、
   技能/命令明细。脚注已写明「费用仅含报价模型 · 日图仅 steps」。
+- **OpenCode 2.4.2 验收（2026-11-27）**：e5 / n100 两台 server 从 2.3.0 升到 2.4.2，
+  `npm run e2e` 两台各 10/10 通过；`/openapi.json` 对比为纯增量，本插件读取的
+  endpoint / event / payload 无删除（详见 `COMPATIBILITY.md`「2.4.x deltas」）。
+  升级中踩到并已修掉：2.4.0 把 MCP `protocol` 默认值从 `legacy` 改成 `auto`，只提供
+  `2026-07-28` 的 stdio server（n100 `dev-tools`）会因探测超时回退 legacy 而连接失败，
+  需在 **v2 形态** `mcp.servers.<name>` 里写 `"protocol": "2026-07-28"`（v1 形态
+  `mcp.<name>` 会静默丢掉该字段）；另注意重启后首次读取 model/skill/mcp 清单可能为空。
 
 ## 0.8.0 (unreleased) — [observe] 可信度
 
