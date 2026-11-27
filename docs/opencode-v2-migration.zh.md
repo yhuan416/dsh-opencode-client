@@ -1,6 +1,6 @@
 # OpenCode v2（2.3.0）兼容缺口与迁移计划
 
-> 状态：**已实施（0.2.0 完成 Phase 1–4；0.7.1 端到端收口）**。本文最初是 `dsh-opencode-client` 0.1.0 对 OpenCode 2.3.0 的实测兼容报告和迁移计划，现已按计划完成 Phase 1–4（传输层、SSE/完成判定、只读面、运行/委派/交互、工作区/管理）。`0.7.1`（[PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)）补齐工具面并合入 `master`：工具数 **26 → 28**（新增仅 v2 的 `opencode_usage`）、find-text 走工作区 grep 回退、todo 从最后一次 `todowrite` 推导、完成未查看分区；`0.7.2` 修清单/导出并加 CI 门禁，v1 后续在未发布的 1.0.0 中**移除**（见 [COMPATIBILITY](../COMPATIBILITY.md#v1-policy-removed)）。下文中的 26 与「v1 行为不变」是 0.2.0 时点的记录。实施结果见 §0.4 与 §7。
+> 状态：**已实施（0.2.0 完成 Phase 1–4；0.7.1 端到端收口）**。本文最初是 `dsh-opencode-client` 0.1.0 对 OpenCode 2.3.0 的实测兼容报告和迁移计划，现已按计划完成 Phase 1–4（传输层、SSE/完成判定、只读面、运行/委派/交互、工作区/管理）。`0.7.1`（[PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)）补齐工具面并合入 `master`：工具数 **26 → 28**（新增仅 v2 的 `opencode_usage`）、find-text 走工作区 grep 回退、todo 从最后一次 `todowrite` 推导、完成未查看分区；`0.7.2` 修清单/导出并加 CI 门禁，v1 后续在1.0.0 中**移除**（见 [COMPATIBILITY](../COMPATIBILITY.md#v1-policy-removed)）。下文中的 26 与「v1 行为不变」是 0.2.0 时点的记录。实施结果见 §0.4 与 §7。
 >
 > 实测日期：2026-11-18（首测）／2026-11-20（实施与回归）。实测对象：`opencode v2.3.0`（Linux x64 官方 release）。相关 issue：<https://github.com/yhuan416/dsh-opencode-client/issues/1>。
 >

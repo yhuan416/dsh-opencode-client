@@ -1,12 +1,11 @@
 # Compatibility
 
 This plugin follows **independent semantic versioning** (it does not mirror the dsh release train)
-and is **not published to npm**; install it from git or a local path. **Current release: `0.7.2`**
-(2026-11-26). Release line: `0.2.0` first read OpenCode 2, `0.7.1` completed v2 end to end
-([PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)), `0.7.2` fixed the manifest/exports
-and added the CI gates. `1.0.0` is deliberately **not cut yet**: `master` carries the unreleased
-1.0.0 line (v1 removed, `@opencode/client` pinned); the tag will be cut only when you decide to
-release it.
+and is **not published to npm**; install it from git or a local path. **Current release: `1.0.0`**
+(2026-11-27, annotated tag `v1.0.0`). Release line: `0.2.0` first read OpenCode 2, `0.7.1`
+completed v2 end to end ([PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)),
+`0.7.2` fixed the manifest/exports and added the CI gates. `1.0.0` removes v1, pins
+`@opencode/client@2.4.2`, and includes the untagged 0.8.0/0.9.0 observation changes.
 
 ## dsh compatibility
 
@@ -64,9 +63,8 @@ oversized icon, injected syntax error) and fails on all four.
 ## v1 policy (removed)
 
 - **OpenCode 2 is the only supported generation.** OpenCode 1.x (1.18.x) was frozen in 0.7.2 and
-  is **removed on `master`** (the unreleased 1.0.0 line): a server that answers as v1 (old server,
-  or no `/api/info`) fails every call with `opencode.v1_unsupported` and an actionable
-  "requires OpenCode 2.x" message. `apiVersion: 1` is treated as `auto` and then rejected.
+  is **removed in 1.0.0**: a server that answers as v1 (old server, or no `/api/info`) fails every
+  call with `opencode.v1_unsupported` and an actionable "requires OpenCode 2.x" message. `apiVersion: 1` is treated as `auto` and then rejected.
 - **The v1 rows below are historical** and kept for migration context; they are not a support
   commitment.
 - **Field verification is v2-only.** `npm run e2e` and the weekly-free maintenance checks run
@@ -79,7 +77,7 @@ oversized icon, injected syntax error) and fails on all four.
 
 ## OpenCode compatibility
 
-Only OpenCode 2 is supported (**v1 removed on `master`**). Every request goes through
+Only OpenCode 2 is supported (**v1 removed in 1.0.0**). Every request goes through
 `@opencode/client` (pinned `2.4.2`) and carries HTTP Basic auth (username `opencode`, password from
 the serve process' `OPENCODE_SERVER_PASSWORD`). `apiVersion: auto|2` is accepted (`auto` probes
 `GET /api/info`); a missing password or HTTP 401 records one diagnosable reason on
@@ -206,9 +204,31 @@ Known upstream issues that shape the integration:
 - Servers are single-tenant and have no server-side federation; multiple servers are aggregated by
   this client.
 
+## SemVer scope (1.0.0)
+
+Covered by the 1.x compatibility promise:
+
+- `opencode_*` tool names and their documented parameters / return shape.
+- The config structure: `servers` (`id`/`url`/`password`/`directory`/`agent`/`model`/`apiVersion`),
+  `permission`, `question`, `pathMap`, `routing`.
+- The host routes the bundled UI actually calls: `/api/opencode-client/board`, `/list`, `/probe`,
+  `/seen`, `/usage`, `/insights`, `/insights/activity`, `/insights/skills`, `/upgrade`, `/servers`,
+  `/servers/remove`.
+
+Explicitly **not** covered:
+
+- The other `/api/opencode-client/*` routes: they mirror tool capabilities for external clients and
+  are **internal/experimental**; they may change without a major bump.
+- The dsh host seam (`engines.dsh`, slots/services) — it follows dsh, not this plugin.
+- The OpenCode upstream HTTP API and `@opencode/client` — pinned and upgraded independently.
+- UI layout, copy and `localStorage` keys.
+
+Breaking changes bump **major**, additive changes **minor**, fixes **patch**. Releases are
+git-only (annotated tag); the package is `private` and never published to npm.
+
 ## Versioning policy
 
 - `0.y.z` while pre-1.0; **minor** bumps add capabilities, **patch** bumps fix bugs/compat.
-- `1.0.0` (unreleased) removes the v1 API and moves the transport to `@opencode/client`; after it,
-  breaking seam/API changes bump the **major** version and are listed in `CHANGELOG.md`.
+- `1.0.0` removes the v1 API and moves the transport to `@opencode/client`; after it, breaking
+  seam/API changes bump the **major** version and are listed in `CHANGELOG.md`.
 - `CHANGELOG.md` records the tested dsh/OpenCode versions per release.

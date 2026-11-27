@@ -3,9 +3,10 @@
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
 > 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
 >
-> **当前里程碑：未发布的 1.0.0（`master`）** —— v1 已从传输层移除，`@opencode/client` 锁定
-> `2.4.2` 并按模块迁移完成（sessions / catalog / workspace / delegate / interactions / manage /
-> skills / insights）；最后一个 tag 仍是 `v0.7.2`。详见 CHANGELOG 与「10. 后续迭代计划」。
+> **当前里程碑：v1.0.0（2026-11-27，tag `v1.0.0`）** —— v1 已从传输层移除，
+> `@opencode/client` 锁定 `2.4.2` 并按模块迁移完成（sessions / catalog / workspace / delegate /
+> interactions / manage / skills / insights）；包含未单独发版的 0.8.0/0.9.0 观测变更。
+> 后续迭代只剩 delegate 轨（§10.3/10.4）与若干待裁项。
 
 ## 0.1 v0.2.0 新增（OpenCode v2 端到端）
 
@@ -40,9 +41,9 @@
 - [x] 面板改卡片看板：紧急组置顶、空闲按远端分组、远端筛选、点卡片浮层打开会话
 - [x] `opencode_board` 工具（跨 server 汇报，手机远程客户端也能用）
 - [x] `scripts/probe-observation.mjs` 独立探针（无需 dsh，直连 `opencode serve`）
-- [ ] **未完成**：同源代理（消除 iframe 跨域的登录 + Esc 限制）
-- [ ] **未完成**：空闲会话的机器会话过滤 / 按项目分组（等真实密度反馈）
-- [ ] **未完成**：SSE 连上之前就在跑的会话，`progress` 为空（可考虑快照补一次当前 tool）
+- [ ] 同源代理（消除 iframe 跨域的登录 + Esc 限制）
+- [x] 空闲会话按（机器, directory）分组 + 机器过滤（0.8.0）
+- [x] SSE 连上之前就在跑的会话补一次当前 tool（0.8.0）
 
 ### v0.7.1 / v0.7.2 —— 用量与未读、清单与门禁（2026-11-26 完成）
 
@@ -167,7 +168,7 @@
 
 ## 9. 决策记录
 
-- **只支持 OpenCode 2（未发布的 1.0.0，2026-11-27）**：传输层探测到 v1 直接
+- **只支持 OpenCode 2（1.0.0，2026-11-27）**：传输层探测到 v1 直接
   `opencode.v1_unsupported`；`apiVersion: 1` 视为 auto。13 个 lib 文件的 v1 死分支已清。
 - **语义跟随上游**：prompt 为 `{text,files}`、agent/model 走会话状态、完成看
   `session.execution.*`、权限 `decision`、提问变表单、shell 异步；没有 v1→v2 翻译 shim。
@@ -241,8 +242,9 @@
 
 - [x] v1 去留定案：**删除**（1.0.0 breaking）；运行路径已拒绝 v1，死分支已清理
 - [x] 传输迁移到 `@opencode/client`（锁定 `2.4.2`），全部 v2 调用按模块完成
-- [ ] `COMPATIBILITY.md` 写明 SemVer 覆盖范围：**工具名 / HTTP 路由 / config 结构**；dsh 宿主契约不在承诺内
-- [ ] 发布方式定稿（当前 git-only，不发布 npm）
+- [x] `COMPATIBILITY.md` 写明 SemVer 覆盖范围：**工具名 / 文档化 HTTP 路由 / config 结构**；
+      其余路由 internal、dsh 宿主契约不在承诺内
+- [x] 发布方式定稿：**git-only + annotated tag，不发布 npm**（`private: true`）
 
 ### 10.6 不排期 / 已否决（要做先改定位）
 
