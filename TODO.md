@@ -312,6 +312,8 @@
 - [ ] 首屏请求分层：P0 board、P1 insights+activity 立即；P2 usage/about/upgrade
       `requestIdleCallback` 延迟；P3 skills 等 insights 到达后再排
 - [ ] toast watcher 与 BoardPage 的 `/board` 轮询共享 in-flight（先止血，Phase 4 再全量 store）
+- [x] 占位符审计：所有异步块（看板首帧、远端条、设置页列表/用量/归因、版本 chip）在数据到达前
+      预留与最终内容等高的占位（`asyncSlot` + 看板形状缓存），避免布局被撑开
 
 ### Phase 2 — 渲染拆分（P0）
 
