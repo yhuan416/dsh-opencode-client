@@ -5,6 +5,10 @@
 - **洞察区不再整块等待 `/insights`**：以前 `insights === null` 时整块洞察区不渲染、也没有骨架，
   数据回来才一次性挂载，skills（~3.5s）随后填充造成布局二次跳动。现在布局与骨架从首帧就渲染，
   卡片 / 柱状 / 30 天热力 / 技能各自独立填充（固定高度，CLS≈0），并带局部「载入中…」。
+- **活跃度骨架按真实日历尺寸预留**：热力图骨架原先是一个灰色占位块，比真实 7 行日历矮，
+  `/insights/activity` 到达时会把整个 top 行撑开；现在骨架直接画同样的 7×N 单元格网格
+  （18px 格 + 3px 间距 + 月份表头 + 图例），数据替换时高度不变。下方 4 个列表面板也用
+  8 行占位对齐 `insightRows` 的 186px 上限。
 - **所有轮询收敛到一个调度器**：board 页、toast watcher、设置页的 `/board` 轮询合并为同一个
   board store（5s 可见 / 15s 后台），insights / activity / skills / usage / upgrade 改为 keyed
   task（优先级、并发上限、heavy 串行、in-flight 合并）；`visibilitychange` 只保留一个监听，
