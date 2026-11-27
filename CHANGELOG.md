@@ -16,6 +16,12 @@
 - **首屏请求分层**：board 与 insights/activity 立即发；usage / upgrade 延迟到首帧后（idle），
   skills 等 insights 到达后再以 heavy 任务启动；筛选变化通过 AbortController 取消在途请求。
 
+### Changed
+
+- **滚动合成优化**：卡片去掉 `content-visibility`（空闲列表已只剩 12 张，收益消失，但每张卡片
+  进入视口都要在滚动帧里做一次布局），页面滚动容器加 `will-change: scroll-position`、
+  `overscroll-behavior: contain`、`contain: paint`。实测看板页滚动比会话页更卡，而主线程 JS
+  15s 只有 231ms（GPU/合成侧才是瓶颈），这一版针对滚动帧的合成路径。
 ### Added
 
 - **空闲会话折叠上限 12 张**：原来按「目录分组 × 每组 6 张」渲染，最多能出 50–70 张卡，滚这段
