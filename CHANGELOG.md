@@ -52,10 +52,10 @@
   `state.input.id`（兼容旧数据的 `input.name`）按技能名计数；独立懒加载 + 10 分钟缓存，
   扫描上限（250 会话 / 60 页每会话 / 1200 请求）并用 `truncated` 标记；实测 7 天 1.5s、
   30 天 3.7s，与 stats 的 `skill` 总数一致（7 天 71、30 天 150）。
-- **独立活跃度热力图**：固定 **30 天**、与 7/30 天洞察窗口解耦；GitHub 风格周列 + 月份标签，
-  可切换 **会话 / Token / Steps** 三种口径。数据来自新增 `GET /api/opencode-client/insights/activity`
+- **独立活跃度热力图**：固定 **30 天**、与 7/30 天洞察窗口解耦；与 6 张卡和 steps 柱状图同排
+  （参考 context-insight 布局），GitHub 风格周列 + 月份标签，可切换 **会话 / Token消耗** 两种口径。数据来自新增 `GET /api/opencode-client/insights/activity`
   （每台 server 每天一次 `session/stats`，并发 4、10 分钟缓存；30 天首算约 1.9s，缓存后即时）。
-  热力图按所选指标分 4 档色阶，tooltip 同时给会话/Tokens/steps。
+  热力图按所选指标分 4 档色阶，tooltip 同时给会话/Tokens/steps；默认 Token消耗。
 - **7 / 30 天切换**：洞察区时间窗可切换（默认 7 天，选择记入 localStorage）；
   MCP 在 7 天窗口为 0，切 30 天即可看到分布。
 - **可升级提示**：server 卡片版本旁显示 `→ v2.4.2`。本地 API 没有「查最新版本」端点——
