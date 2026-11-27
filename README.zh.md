@@ -243,9 +243,6 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
   **多客户端共享同一个 OpenCode server 时**，谁先看到 form 谁就能回答/dismiss：请让所有 dsh
   客户端的 `question` 配置保持一致——还配着 `question: reject`（或旧版本插件/旧 Web 构建）的
   客户端会抢先把 form dismiss 掉，看板上的「需要你」卡就一闪而过。
-  **多客户端共享同一个 OpenCode server 时**，谁先看到 form 谁就能回答/dismiss：请让所有 dsh
-  客户端的 `question` 配置保持一致——还配着 `question: reject`（或旧版本插件/旧 Web 构建）的
-  客户端会抢先把 form dismiss 掉，看板上的「需要你」卡就一闪而过。
 - **实时** — 每台 server 常驻 SSE（`/api/event`），带重连；权限/提问快速应答、
   `GET /api/opencode-client/events`、`/status`、`live`/`running` 状态。
 - **轮询兜底** — 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。

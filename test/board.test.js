@@ -24,8 +24,10 @@ function startServer(routes) {
         response.end('{}')
         return
       }
-      response.writeHead(200, { 'content-type': 'application/json' })
-      response.end(JSON.stringify(handler(request)))
+      Promise.resolve(handler(request)).then(function (value) {
+        response.writeHead(200, { 'content-type': 'application/json' })
+        response.end(JSON.stringify(value))
+      })
     })
     server.listen(0, '127.0.0.1', function () {
       resolve({
@@ -112,16 +114,18 @@ test('a fresh listing prunes sessions deleted while the stream was down', async 
     const sync = function (value) {
       for (const group of value.projects) for (const summary of group.sessions) observation.observeIdentity(server.id, summary)
     }
-    const fresh = function (ids, info) { observation.retain(server.id, ids, { since: info.requestedAt }) }
+    const fresh = function (listing) {
+      observation.retain(server.id, listing.ids, { since: listing.requestedAt, olderThan: listing.truncated === true ? listing.minUpdatedAt : undefined })
+    }
 
-    const first = await collectServer(server, { onFresh: fresh })
+    const first = await collectServer(server, { onListing: fresh })
     sync(first)
     observation.observeRunning(server.id, new Set(), true)
     assert.equal(observation.board().idleCount, 2)
 
     // A cached listing must not run the prune callback (it is not authoritative).
     let calls = 0
-    const cached = await collectServer(server, { onFresh: function (ids, info) { calls += 1; fresh(ids, info) } })
+    const cached = await collectServer(server, { onListing: function (listing) { calls += 1; fresh(listing) } })
     assert.equal(calls, 0)
     assert.equal(cached, first, 'served from the snapshot cache')
 
@@ -129,7 +133,7 @@ test('a fresh listing prunes sessions deleted while the stream was down', async 
     // board drops the stale row instead of keeping it forever.
     sessions = sessions.filter(function (item) { return item.id !== 'ses_vanish' })
     server.snapshot = undefined
-    const second = await collectServer(server, { onFresh: fresh })
+    const second = await collectServer(server, { onListing: fresh })
     sync(second)
     observation.observeRunning(server.id, new Set(), true)
     const board = observation.board()
@@ -159,7 +163,8 @@ test('a listing raced by a deletion is served but not cached', async function ()
   try {
     const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
     serverRef = servers[0]
-    await collectServer(serverRef)
+    const raced = await collectServer(serverRef)
+    assert.equal(raced.raced, true, 'raced listing is marked for the board')
     assert.equal(serverRef.snapshot, undefined, 'raced listing must not be cached')
     const before = fake.requests.filter(function (path) { return path === '/api/session' }).length
     await collectServer(serverRef)
@@ -197,6 +202,96 @@ test('createBoard prunes sessions the server listing dropped', async function ()
     const after = board.snapshot()
     assert.equal(after.idleCount, 1)
     assert.deepEqual(after.idle.map(function (row) { return row.sessionId }), ['ses_b'])
+  } finally {
+    await fake.close()
+  }
+})
+
+test('concurrent refreshes share one listing request', async function () {
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: [{ id: 'ses_a', title: 'a', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const server = servers[0]
+    const [first, second] = await Promise.all([collectServer(server), collectServer(server)])
+    assert.equal(first, second, 'both callers see the same snapshot')
+    const listings = fake.requests.filter(function (path) { return path === '/api/session' }).length
+    assert.equal(listings, 1, 'concurrent refreshes must not fan out into duplicate list calls')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('a truncated listing reports the page boundary for safe pruning', async function () {
+  const many = []
+  for (let index = 0; index < 500; index += 1) {
+    many.push({ id: 'ses_' + index, title: 't', directory: '/tmp', time: { updated: NOW - index * 1000 } })
+  }
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: many, cursor: { next: 'cursor-2' } } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    let listing
+    await collectServer(servers[0], { onListing: function (value) { listing = value } })
+    assert.ok(listing, 'a full page still reports its listing metadata')
+    assert.equal(listing.truncated, true)
+    assert.equal(listing.ids.length, 500)
+    assert.equal(listing.minUpdatedAt, NOW - 499 * 1000, 'the oldest listed row is the prune lower bound')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('a raced listing is not applied to the board', async function () {
+  const { createBoard } = await import('../lib/board.js')
+  const { invalidateSnapshot } = await import('../lib/snapshot.js')
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () {
+      return new Promise(function (resolve) {
+        setTimeout(function () { resolve({ data: [{ id: 'ses_gone', title: 'gone', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } }) }, 120)
+      })
+    },
+    '/api/session/active': function () { return { data: {} } },
+    '/api/form': function () { return { data: [] } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const server = servers[0]
+    const observation = createObservation()
+    const board = createBoard({ servers: servers, observation: observation })
+    const refreshing = board.refreshServer(server)
+    await new Promise(function (resolve) { setTimeout(resolve, 30) })
+    // The session is deleted while the listing request is still in flight.
+    invalidateSnapshot(server)
+    await refreshing
+    assert.equal(observation.rows().length, 0, 'the raced listing must not observe the deleted row back')
+    assert.equal(board.snapshot().idleCount, 0)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('collectPending renders the v2 question text on the card detail', async function () {
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/permission/request': function () { return { data: [] } },
+    '/api/form': function () {
+      return { data: [{ id: 'frm_1', sessionID: 'ses_q', title: 'Questions', fields: [{ key: 'q0', type: 'string', description: 'state-test：是否继续？' }] }] }
+    },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const entries = await collectPending(servers[0], ['ses_q'])
+    assert.equal(entries.length, 1)
+    assert.equal(entries[0].detail, 'form: state-test：是否继续？')
   } finally {
     await fake.close()
   }

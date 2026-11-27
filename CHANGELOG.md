@@ -34,13 +34,17 @@
 ### Fixed
 
 - **删除会话后看板残留行**：远端会话被删除（或在插件未连着 SSE 时被删）后，行仍留在看板
-  「空闲」里、`idleCount` 不降，直到插件重载。根因是「SSE `session.deleted` 先 forget、下一轮
-  刷新又用 10s 的旧快照把行 observe 回来」；现在删除事件同时作废旧快照，另外每次**权威**的
-  会话列表快照（非截断、非缓存）都会 `retain` 一次，把列表里已不存在的行清掉（列表请求开始
-  之后才观测到的新会话受保护，不会误删）。
+  「空闲」里、`idleCount` 不降，直到插件重载。根因两条：SSE `session.deleted` 先 forget、下一轮
+  刷新又用 10s 的旧快照把行 observe 回来；以及插件没连着 SSE 时根本收不到删除事件。
+  现在：`session.deleted` 会让该 server 的会话快照失效（含 epoch，防止在途旧请求把快照写回）；
+  `collectServer` 对同一 server 做 single-flight，避免并发刷新里「慢的旧列表后到」覆盖新状态；
+  每次权威列表快照都会 `retain` 一次，把列表里已不存在的行清掉——列表请求开始后由 SSE 证明还
+  活着的新会话受保护；会话数超过单页上限（500）时只裁剪「能证明早于本页最旧一条」的行，不会
+  误删翻页之外的会话。
 - **「等待回答」卡只显示 `form: Questions`**：v2 form 的问题正文在 `fields[].description`，
-  以前只取 `title`（dock 头，固定是 "Questions"），卡片上看不出在问什么；现在优先取
-  `fields[].description` / `fields[].title`，与提问内容一致。
+  以前只取 `title`（dock 头，固定是 "Questions"），卡片上看不出在问什么。根因是同一段文案在
+  三个地方各写了一份（observation / interactions / pending 快照），后写的覆盖先写的；现在抽成
+  `lib/pending-text.js` 单一实现，三处都调它，并过滤隐藏字段、优先真正的 question 文本。
 - **看板卡片行尾的 OpenCode `finish` 原始英文**：以前除 `stop` 外会原样拼上 `error` /
   `tool-calls` / `length` / `aborted`（用户在「未查看」卡上看到「… · error」不知所以）。现在收敛为
   中文 `出错` / `中断` / `超出长度` / `被拦截`，`stop` 与 `tool-calls` 不显示；真正的失败 outcome

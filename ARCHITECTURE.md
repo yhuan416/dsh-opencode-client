@@ -32,6 +32,8 @@ dsh web host process
 │   ├── lib/sse.js               per-server SSE (/api/event); progress, idle listeners, events ring
 │   ├── lib/observation.js       (server, session) registry: running/pending/jobs/SSE merged into one status;
 │   │                            a fresh session listing prunes rows deleted while the stream was down
+│   ├── lib/pending-text.js      one-line text for a pending permission/form (single implementation)
+│   ├── lib/snapshot.js          invalidate a server's cached session listing (+ epoch vs in-flight)
 │   ├── lib/jobs.js              v2 background jobs (`/experimental/job`): work that outlives the turn
 │   ├── lib/insights.js          windowed fleet insights + 30-day daily activity (sessions/tokens/steps)
 │   ├── lib/skills.js            per-skill counts: walks messages for `skill` input.id (lazy, cached)

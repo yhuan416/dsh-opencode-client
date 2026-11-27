@@ -153,6 +153,15 @@ test('describePending keeps permission and form readable', function () {
   )
   assert.equal(describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', title: '继续吗', type: 'string' }] } }), 'form: 继续吗')
   assert.equal(describePending('form', { form: { title: 'Questions', fields: [] } }), 'form: Questions')
+  // Hidden fields and headers must not shadow the real question.
+  assert.equal(
+    describePending('form', { form: { title: 'Questions', fields: [
+      { key: 'q0', type: 'string', hidden: true, description: 'internal hidden text' },
+      { key: 'q1', type: 'string', title: 'Short header' },
+      { key: 'q2', type: 'string', description: 'real question' },
+    ] } }),
+    'form: real question',
+  )
 })
 
 test('retain drops rows missing from a fresh listing but keeps listed and newer ones', function () {
@@ -172,15 +181,34 @@ test('retain drops rows missing from a fresh listing but keeps listed and newer 
   assert.equal(observation.retain('n100', ['ses_live']), 0, 'idempotent')
 })
 
-test('retain keeps a session first observed after the listing request started', function () {
+test('retain protects sessions the event stream announced after the request started', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  observation.observeIdentity('n100', { id: 'ses_old', title: 'listed before' })
+  c.advance(1000)
+  const since = c.now()
+  // A session created after the list request started: the listing cannot know it
+  // yet, so pruning it would fight the event stream.
+  c.advance(1000)
+  observation.observeEvent('n100', { kind: 'session.created', sessionId: 'ses_new', at: 9999, data: {} })
+  observation.observeRunning('n100', new Set(), true)
+  assert.equal(observation.retain('n100', [], { since: since }), 1)
+  const rows = observation.rows('n100')
+  assert.deepEqual(rows.map(function (row) { return row.sessionId }), ['ses_new'])
+  // Without the protection the same row would go.
+  assert.equal(observation.retain('n100', [], {}), 1)
+})
+
+test('retain on a truncated listing only prunes rows below the page boundary', function () {
   const observation = createObservation()
-  observation.observeIdentity('n100', { id: 'ses_new', title: 'created mid-refresh' })
-  observation.observeEvent('n100', { kind: 'run.started', sessionId: 'ses_new', at: 5000, data: {} })
-  // The list was requested at 4000, before this session's event at 5000.
-  assert.equal(observation.retain('n100', [], { since: 4000 }), 0)
-  assert.equal(observation.board().running.length + observation.board().idle.length, 1)
-  // An older event does not protect an unlisted session.
-  assert.equal(observation.retain('n100', [], { since: 6000 }), 1)
+  observation.observeIdentity('n100', { id: 'ses_very_old', title: 'old', updatedAt: 100 })
+  observation.observeIdentity('n100', { id: 'ses_page_edge', title: 'edge', updatedAt: 900 })
+  observation.observeRunning('n100', new Set(), true)
+  // The page only returned ses_page_edge; rows older than its oldest row are
+  // provably deleted, rows whose age is unproven are kept.
+  assert.equal(observation.retain('n100', ['ses_page_edge'], { olderThan: 500 }), 1)
+  assert.deepEqual(observation.board().idle.map(function (row) { return row.sessionId }), ['ses_page_edge'])
+  assert.equal(observation.retain('n100', ['ses_page_edge'], { olderThan: 50 }), 0)
 })
 test('finished-but-unread stays out of idle until viewed', function () {
   const c = clock()

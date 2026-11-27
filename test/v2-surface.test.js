@@ -508,7 +508,7 @@ test('v2 interactions: default question policy keeps an unowned form pending', a
       getApproval: function () { return undefined },
       markPending: function (_server, sessionId, request) { pending.push({ sessionId: sessionId, request: request }) },
     })
-    interactions.handleQuestion(server, undefined, { form: { id: 'frm_9', sessionID: 'ses_9', title: 'Q', fields: [{ key: 'q0', type: 'string' }] } })
+    interactions.handleQuestion(server, undefined, { form: { id: 'frm_9', sessionID: 'ses_9', title: 'Questions', fields: [{ key: 'q0', title: '继续吗', description: 'state-test：是否继续？', type: 'string' }] } })
     await new Promise(function (resolve) { setTimeout(resolve, 80) })
     const dismissed = fake.requests.filter(function (request) { return request.method === 'DELETE' })
     assert.equal(dismissed.length, 0, 'the default must not dismiss a question the user has never seen')
@@ -516,6 +516,10 @@ test('v2 interactions: default question policy keeps an unowned form pending', a
     assert.equal(pending[0].sessionId, 'ses_9')
     assert.equal(pending[0].request.kind, 'form')
     assert.equal(pending[0].request.requestId, 'frm_9')
+    // The card must carry the question itself, not the "Questions" dock header.
+    // This is the producer that overwrote the observation event's detail before
+    // the text moved into one shared helper.
+    assert.equal(pending[0].request.detail, 'form: state-test：是否继续？')
     // Only an explicit reject opts out; anything else surfaces the request.
     assert.equal(questionPolicyOf(undefined), 'ignore')
     assert.equal(questionPolicyOf('ignore'), 'ignore')
