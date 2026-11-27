@@ -296,6 +296,14 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   the activity heatmap is served by `/insights/activity` (30 days, sessions/tokens).
 - **Upgrade hint** — each server card shows `→ vX.Y.Z` when a newer OpenCode is out (checked once at
   startup and then daily against the official update service; no badge when offline).
+- **Plugin's own version / repository / update check (1.1.0)** — the board header carries a `vX.Y.Z`
+  chip (opens the GitHub repository) that turns into "可更新 vY" when a newer release exists; the
+  settings section ends with an About block: version, repository link, latest / update-available /
+  unavailable check, last-checked time and 重新检查. Version and repository come from this package's
+  `package.json`; the newest release comes from GitHub Releases (cached 24 h in the Host, retried
+  after 1 h on failure; offline only degrades the check area). 更新 hands registry installations to
+  DSH's own update flow, and opens the release page plus the local `git pull --ff-only` command for a
+  path-linked checkout.
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
   and SSE reconnect counts.
 - **Entry points** — the left sidebar `OpenCode` entry opens the board; server rows and board cards

@@ -1,3 +1,22 @@
+## 1.1.0 (unreleased) — [observe] 插件自身的版本 / 仓库 / 更新检查
+
+### Added
+
+- **看板页与插件设置页显示插件自己的版本 / 仓库 / 更新状态**：DSH 内置的「版本」区只在 registry
+  安装（`pkg.update === 'registry'`）时渲染，本插件是路径安装，详情页永远不会出现版本检查。
+  现在宿主新增 `GET /api/opencode-client/about`：版本与仓库链接从本包 `package.json` 读，
+  最新版本查 GitHub Releases（`/releases/latest`，没有 release 时回退 tags），成功缓存 24 小时、
+  失败 1 小时；离线 / 限流只把检查区降级成「无法检查更新」，版本与仓库链接照常显示。
+- 看板页头部新增 `vX.Y.Z` chip（点击打开 GitHub 仓库）；有新版本时变成「可更新 vY」并带提示点。
+- 插件设置区底部新增「关于」块：版本、仓库、`已是最新版本` / `可更新到 vY` / `无法检查更新`、
+  上次检查时间与「重新检查」。有新版本时提供「更新」——registry 安装交给 DSH 原生更新流程，
+  路径安装打开 GitHub 发布页并显示本机 `git pull --ff-only` 命令。
+- `plugins.detail.badge`：插件详情页标题旁显示「可更新 vY」标签（仅本插件页面）。
+
+### Notes
+
+- 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。
+- 没有 `pluginManager` 服务（无 profile 启动）时省略安装来源，「更新」退化为发布页链接。
 ## 1.0.2 (unreleased) — [observe] 洞察布局按容器宽度自适应
 
 ### Fixed
@@ -30,6 +49,7 @@
   2×2（≥1100 时 4 连排）；截图确认三档布局。
 - **门禁**：`scripts/check.mjs` 新增四条防回退断言（必须用容器查询、不得再出现
   `@media(max-width)`、三档断点齐全、列定义不得写进 inline style）；`node --test` 131 全绿。
+
 
 ## 1.0.1 (2026-11-27) — [observe] 看板状态色
 
