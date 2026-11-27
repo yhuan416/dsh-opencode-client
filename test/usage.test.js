@@ -49,8 +49,15 @@ function startServer(routes) {
         response.end('{}')
         return
       }
+      const payload = handler(request)
+      // Tests can answer a non-200 by returning `{ __status, body }`.
+      if (payload !== null && typeof payload === 'object' && typeof payload.__status === 'number') {
+        response.writeHead(payload.__status, { 'content-type': 'application/json' })
+        response.end(JSON.stringify(payload.body === undefined ? {} : payload.body))
+        return
+      }
       response.writeHead(200, { 'content-type': 'application/json' })
-      response.end(JSON.stringify(handler(request)))
+      response.end(JSON.stringify(payload))
     })
     server.listen(0, '127.0.0.1', function () {
       resolve({
@@ -380,6 +387,100 @@ test('GET /usage exposes byModel and, on request, a reconciled byDirectory', asy
     assert.equal(grouped.total.byDirectoryDelta, 0)
     assert.equal(grouped.total.reconciled, true, 'directory cost must reconcile with the stats total')
     assert.deepEqual(grouped.servers[0].directories.map(function (entry) { return entry.directory }), ['/work/alpha', '/work/beta'])
+  } finally {
+    await fake.close()
+  }
+})
+
+function singleSessionFixture(now, messageHandler) {
+  return {
+    '/api/info': function () { return { version: '2.3.0' } },
+    '/api/project': function () { return { data: [] } },
+    '/api/session': function () {
+      return {
+        data: [{
+          id: 's1', location: { directory: '/work/a' }, cost: 2,
+          time: { created: now - 3600000, updated: now, busy: now - 1000 },
+        }],
+      }
+    },
+    '/api/session/s1/message': messageHandler,
+    '/api/experimental/session/stats': function () {
+      return { data: { sessions: 1, steps: 1, cost: 2, tokens: { input: 1 }, tools: { totals: {} }, models: [] } }
+    },
+  }
+}
+
+test('collectCostByDirectory retries a failed read once and caches the complete report', async function () {
+  const now = Date.now()
+  let calls = 0
+  const fake = await startServer(singleSessionFixture(now, function () {
+    calls += 1
+    return calls === 1
+      ? { __status: 500, body: { error: 'boom' } }
+      : { data: [{ type: 'assistant', cost: 2, time: { created: now - 1000 } }] }
+  }))
+  try {
+    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const from = now - 7 * 86400000
+    const report = await collectCostByDirectory(server, { from: from })
+    assert.equal(calls, 2, 'one failed page is retried from a fresh first page')
+    assert.equal(report.total.cost, 2, 'the retry keeps the cost instead of dropping the session')
+    assert.equal(report.total.partial, false)
+    assert.equal(report.total.retried, 1)
+    assert.equal(report.total.failed, 0)
+    // A complete report is cached (no extra requests).
+    await collectCostByDirectory(server, { from: from })
+    assert.equal(calls, 2)
+  } finally {
+    await fake.close()
+  }
+})
+
+test('collectCostByDirectory records the failure reason and does not cache a partial report', async function () {
+  const now = Date.now()
+  let calls = 0
+  const fake = await startServer(singleSessionFixture(now, function () {
+    calls += 1
+    return { __status: 500, body: { error: 'storage unavailable' } }
+  }))
+  try {
+    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const from = now - 7 * 86400000
+    const first = await collectCostByDirectory(server, { from: from })
+    assert.equal(first.total.partial, true)
+    assert.equal(first.total.failed, 1)
+    assert.equal(first.total.failures.length, 1)
+    assert.equal(first.total.failures[0].session, 's1')
+    assert.match(first.total.failures[0].reason, /500/)
+    assert.equal(calls, 2, 'the single retry failed too')
+
+    // Partial results are not cached, so the next poll retries immediately.
+    await collectCostByDirectory(server, { from: from })
+    assert.equal(calls, 4, 'second call must hit the server again, not the cache')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('GET /usage exposes directory failure details and retry counts', async function () {
+  const now = Date.now()
+  const fake = await startServer(singleSessionFixture(now, function () {
+    return { __status: 503, body: { error: 'busy' } }
+  }))
+  try {
+    const observation = createObservation()
+    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const usage = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
+      .find(function (route) { return route.path === '/api/opencode-client/usage' })
+    const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?from=' + (now - 7 * 86400000) + '&group=directory' })).json()
+    assert.equal(grouped.total.byDirectoryPartial, true)
+    assert.equal(grouped.total.byDirectoryRetried, 0)
+    assert.equal(grouped.total.byDirectoryFailures.length, 1)
+    assert.equal(grouped.total.byDirectoryFailures[0].server, 'e5')
+    assert.equal(grouped.total.byDirectoryFailures[0].session, 's1')
+    assert.match(grouped.total.byDirectoryFailures[0].reason, /503/)
+    assert.equal(grouped.servers[0].directoryFailures.length, 1)
   } finally {
     await fake.close()
   }
