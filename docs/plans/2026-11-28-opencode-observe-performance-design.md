@@ -110,6 +110,10 @@
 
 board 5s tick → 只重渲染 board 两组件；insights/activity/skills 各自到达 → 只重渲染对应组件。
 
+补充（PR-E）：折叠态空闲会话从「每组 6 张、最多 50–70 张」收敛为全局 12 张（"展开更多（还有
+N 个）"）；会话卡改为固定 100px + `content-visibility: auto`，离屏卡片不参与布局/绘制且高度
+精确、滚动无跳动；`dsh-oc-perf=1` 时额外采样滚动期间 >20ms 的帧间隔（`slowFrames`）。
+
 补充（PR-D）：首屏以下的两块内容——洞察区底部 4 个列表面板、空闲会话列表——用
 `LazyRender`（`IntersectionObserver`，rootMargin 400px）在接近视口时才建 DOM，占位高度按
 真实面板高度预留（面板 235px、空闲每组 280px）。实测看板挂载长任务从 ~95ms 继续下降；
