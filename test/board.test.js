@@ -115,7 +115,7 @@ test('a fresh listing prunes sessions deleted while the stream was down', async 
       for (const group of value.projects) for (const summary of group.sessions) observation.observeIdentity(server.id, summary)
     }
     const fresh = function (listing) {
-      observation.retain(server.id, listing.ids, { since: listing.requestedAt, olderThan: listing.truncated === true ? listing.minUpdatedAt : undefined })
+      observation.retain(server.id, listing.ids, { since: listing.requestedAt, pageFloorUpdatedAt: listing.truncated === true ? listing.pageFloorUpdatedAt : undefined })
     }
 
     const first = await collectServer(server, { onListing: fresh })
