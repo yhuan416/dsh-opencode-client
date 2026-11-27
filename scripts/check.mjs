@@ -2,7 +2,7 @@
 /** Offline smoke checks for the plugin modules (no network, no dsh runtime). */
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as entry from '../lib/index.js'
