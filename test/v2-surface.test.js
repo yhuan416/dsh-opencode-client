@@ -22,7 +22,7 @@ import { gitStatus, gitDiff, readRemoteFile, findFiles, findText, runShell } fro
 import { forkSession, summarize, sessionChildren, initSession } from '../lib/manage.js'
 import { ensureSession, sendSessionMessage, prepareTurn, modelRef } from '../lib/session-run.js'
 import { buildPrompt, captureTurnBaseline, extractAssistant, v2PromptBody } from '../lib/delegate.js'
-import { createInteractions } from '../lib/interactions.js'
+import { createInteractions, questionPolicyOf } from '../lib/interactions.js'
 
 const SESSION = {
   id: 'ses_1',
@@ -490,6 +490,36 @@ test('v2 interactions: permission decisions and typed form answers', async funct
     assert.equal(questions[0][0].question, 'Favorite color?')
     const formReply = lastRequest(fake, 'POST', '/api/session/ses_1/form/frm_1/reply')
     assert.deepEqual(JSON.parse(formReply.body), { answer: { q0: 'blue', q1: 7, q2: ['a', 'b'] } })
+  } finally {
+    await fake.close()
+  }
+})
+
+test('v2 interactions: default question policy keeps an unowned form pending', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const pending = []
+    const interactions = createInteractions({
+      permissionMode: 'ask',
+      questionPolicy: questionPolicyOf(undefined),
+      activeRuns: new Map(),
+      getUserQuestions: function () { return undefined },
+      getApproval: function () { return undefined },
+      markPending: function (_server, sessionId, request) { pending.push({ sessionId: sessionId, request: request }) },
+    })
+    interactions.handleQuestion(server, undefined, { form: { id: 'frm_9', sessionID: 'ses_9', title: 'Q', fields: [{ key: 'q0', type: 'string' }] } })
+    await new Promise(function (resolve) { setTimeout(resolve, 80) })
+    const dismissed = fake.requests.filter(function (request) { return request.method === 'DELETE' })
+    assert.equal(dismissed.length, 0, 'the default must not dismiss a question the user has never seen')
+    assert.equal(pending.length, 1)
+    assert.equal(pending[0].sessionId, 'ses_9')
+    assert.equal(pending[0].request.kind, 'form')
+    assert.equal(pending[0].request.requestId, 'frm_9')
+    // Only an explicit reject opts out; anything else surfaces the request.
+    assert.equal(questionPolicyOf(undefined), 'ignore')
+    assert.equal(questionPolicyOf('ignore'), 'ignore')
+    assert.equal(questionPolicyOf('reject'), 'reject')
   } finally {
     await fake.close()
   }

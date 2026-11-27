@@ -13,13 +13,27 @@
   路径安装打开 GitHub 发布页并显示本机 `git pull --ff-only` 命令。
 - `plugins.detail.badge`：插件详情页标题旁显示「可更新 vY」标签（仅本插件页面）。
 
+### Changed
+
+- **无主会话的提问默认改为「挂起等待」**：没有 dsh run 的会话（例如你在 OpenCode TUI / Web 里
+  自己开的）提问，以前默认被 dismiss（`question: reject`），远端 agent 收到的是 "The user
+  dismissed this question"，看板「需要你」/ 通知 / 侧栏 badge 永远看不到它——这与通知功能的
+  目的相反。现在默认 `question: ignore`：请求保持挂起，进入看板「需要你」并触发通知，你到
+  会话里回答后由 SSE `form.replied` / pending 快照自动清卡；无人值守部署仍可显式配
+  `question: reject` 恢复自动 dismiss。委派运行（有 owning run）转发 dsh 提问/审批卡的路径不变，
+  权限审批默认 `ask` 也不变。
+
 ### Notes
 
 - 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。
 - 没有 `pluginManager` 服务（无 profile 启动）时省略安装来源，「更新」退化为发布页链接。
 
-### Fixed（合入后 review 修订）
+### Fixed
 
+- **看板卡片行尾的 OpenCode `finish` 原始英文**：以前除 `stop` 外会原样拼上 `error` /
+  `tool-calls` / `length` / `aborted`（用户在「未查看」卡上看到「… · error」不知所以）。现在收敛为
+  中文 `出错` / `中断` / `超出长度` / `被拦截`，`stop` 与 `tool-calls` 不显示；真正的失败 outcome
+  仍显示「失败」，且与 `出错` 不重复。
 - **「读取中」吞掉失败**：`/about` 404/500/断网时卡片永远停在「正在读取版本信息…」；现在
   加载中 / 已加载 / 失败三态分开，失败显示「无法读取版本信息」，「重新检查」失败也在块内回写一行提示。
 - **同一数据两套状态**：看板 chip、设置区块、详情页「可更新」标签各自 fetch，详情页冷加载打两次

@@ -51,6 +51,12 @@ assert.match(clientSource, /boardSection\("刚完成 · 未查看"/)
 assert.match(clientSource, /function markSeen\(serverId, sessionId, idle\)/)
 assert.match(clientSource, /\/api\/opencode-client\/seen/)
 assert.match(clientSource, /function boardRunLine\(row\)/)
+// The run line used to print OpenCode's raw `finish` enum (`error`, `tool-calls`,
+// `length`…): unreadable English next to Chinese copy. Only curated Chinese
+// labels may reach the card, and the raw push must not come back.
+assert.match(clientSource, /var FINISH_LABELS = \{/)
+assert.match(clientSource, /error: "出错"/)
+assert.doesNotMatch(clientSource, /parts\.push\(run\.finish\)/)
 // Unread rows are `status: idle`, so a card that follows `status` alone turns
 // grey and disappears among the idle ones; the violet "done" token + tint is
 // what keeps the section visible.
