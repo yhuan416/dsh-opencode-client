@@ -183,18 +183,19 @@
 > **分支策略**：走 PR（规则集不再要求人工批准，但要求 PR + 线性历史）+ annotated tag；每版 =
 > 代码 + `npm run check`（语法/客户端/清单/测试四道）+ 文档 + 真机验证（仅 v2）。
 
-### 10.1 v0.8.0 —— [observe] 可信度（约 3–4 天）
+### 10.1 v0.8.0 —— [observe] 可信度（约 2–3 天）
 
 目标：看板说的事必须是**对**的、**全**的、**能追到钱**的。
 
-- [ ] **预算/成本护栏**：复用 `opencode_usage`（stats）、`step.ended`（本轮 tokens/cost）、`time.busy/idle`；按 server 与全局设日预算，超阈值 → 徽标 + toast（复用现有注意力通道）。**只提醒不阻断**
+> 2026-11-27 决策：**不做预算/成本护栏**（订阅/未报价模型 `cost=0` 会让阈值失真；
+> 7/30 天洞察已覆盖成本可见；只提醒不阻断，维护成本大于收益）——移入 §10.6。
 - [x] **成本归因**：`/api/opencode-client/usage` 增 `byModel` / `byDirectory`（窗口内 assistant 消息成本，与 stats 同口径；`reconciled` 守门）。初稿用会话累计成本 + `time.updated` 判活，实测虚高 5.1 倍，已改
 - [x] **后台任务可见**：`/experimental/job` 合并进登记表，新增 `background` 状态；看板「后台运行」分区、`opencode_board`/`opencode_progress` 同步（v2 only，接口缺失静默降级）
 - [x] **机群健康**：`/board` 的 `servers[]` 增 `probe`（版本/原因/时间/详情）与 `sse`（state/attempts/connects/openedAt）；设置页与看板卡展示
 - [ ] **空闲会话过滤/分组**（v0.6.0 遗留）：按 directory 分组 + 机器过滤
 - [ ] **SSE 补 progress**（v0.6.0 遗留）：连上前就在跑的会话，上线后补一次当前 tool
 - [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`（v2 要映射成 `type=directory`，传 `dir` 会 400）；`opencode_sessions` 增 `archived` 并去掉 500 条截断（改 cursor 翻页）；~~`opencode_read_file` 截断提示~~（已实现：40k 处追加 `… (truncated)`）
-- 验收：每台 server 的版本/探测/重连与成本归因可见；超预算收到提醒；`npm run check` 全绿
+- 验收：每台 server 的版本/探测/重连与成本归因可见；`npm run check` 全绿
 
 ### 10.2 v0.9.0 —— [observe] 注意力与趋势（约 2–3 天）
 
@@ -247,6 +248,7 @@
 | `client-mcp` / `rpc` 反向调用 | 与本定位无关 |
 | `export` / `import` / `move` / `migration` 诊断 | 会话运维属于客户端能力，交给 OpenCode 自己演进 |
 | 调度桥（远端 `experimental.schedules`） | 无人值守委派，收益/风险未论证；若要做，先给出「可见、可暂停」的设计 |
+| 预算/成本护栏（日预算阈值提醒） | 订阅/未报价模型 `cost=0` 会让阈值失真；7/30 天洞察已能看成本；「只提醒不阻断」收益低、维护成本高（2026-11-27 决定不做） |
 | 聊天页 / 聚合工作台 / LLM 桥接 | 0.6.0 定位已明确排除 |
 
 ### 10.7 历史残项台账
