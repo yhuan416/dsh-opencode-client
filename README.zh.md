@@ -135,6 +135,28 @@ OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模�
 权限/提问桥接。`lib/http.js` 每台 server 只探测一次 `GET /api/info`，加 HTTP Basic 认证，
 并对 v1 直接报错；`lib/oc-client.js` 负责 client 实例与错误映射。
 
+### 观测台性能与数据流（1.1.1）
+
+看板/洞察的数据流不是"一次性拉全再渲染"，而是**分层 + 渐进填充**：
+
+- **客户端单调度器**：所有轮询（board / insights / activity / skills / usage / upgrade）注册到同一个
+  1s tick 的 keyed 调度器，按优先级（board > insights/activity > usage/about/upgrade > skills）排队、
+  并发上限 3、重任务串行、同 key in-flight 去重；`visibilitychange` 只保留一个监听，回页时只补刷已到期任务。
+- **board store**：`/board` 的轮询收敛成一个共享 store（看板 / 注意力 toast / 设置页共用），
+  5s 一跳，其中每 3 跳才 `refresh=1` 让远端重新采集，其余读宿主 observation 快照（`refresh=0`，
+  内存读）；payload 序列化相同则不通知，内容没变的 tick 不触发任何重渲染。
+- **渐进填充 / 占位**：洞察区、远端条、看板首帧都先渲染骨架与等高占位（`asyncSlot`）；
+  看板首帧按上次快照的**形状**（只存分组计数）预留分组，数据到达不撑页。首屏以下的两块
+  （洞察 4 个列表面板、空闲会话）用 `LazyRender` 接近视口才建 DOM；空闲列表折叠态最多 12 张卡。
+- **服务端 SWR + 预热**：`/insights`（60s）、`/insights/activity`（60s）、`/insights/skills`（600s）、
+  `/usage`（60s）走内存 SWR（过期先返回旧值、后台单飞刷新，响应带 `at`/`stale`）；插件启动 8s 后
+  空闲窗口串行预热 board / 7 天 insights / 30 天 activity；30 天活跃度的历史天按 `server+日期`
+  永久缓存，只有今天 60s 短 TTL；`collectStats` 按 server 合并 in-flight。
+
+想量化某次访问：控制台执行 `localStorage.setItem("dsh-oc-perf", "1")` 后刷新，观测台会记录
+`board-skeleton / board-ready / board-idle / insights-core / activity / skills` 时间点与 >50ms 长任务、
+滚动期间 >20ms 的帧间隔，`__dshOcPerf.dump()` 出表；该开关默认关闭、正常访问零开销。
+
 更多：[ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md)。
 
 ## 功能
