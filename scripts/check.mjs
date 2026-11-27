@@ -137,6 +137,11 @@ assert.match(clientSource, /asyncSlot\(\{\s*state: attribution === null \? "load
 assert.match(clientSource, /function readBoardShape\(\)/)
 assert.match(clientSource, /function boardSkeletonSection\(title, count\)/)
 assert.match(clientSource, /function serverOverviewSkeleton\(count\)/)
+// The usage chips wrap onto a second line at normal card widths, so the card
+// reserves a 34px usage row plus dedicated 16px health and top-model slots;
+// they must not share a wrapping row or the card grows when /usage lands.
+assert.match(clientSource, /minHeight: "34px", lineHeight: "17px"/)
+assert.match(clientSource, /"top: " \+ stats\.models\[0\]\.model/)
 assert.match(clientSource, /return boardSkeleton\(insightBlock\)/)
 assert.doesNotMatch(clientSource, /正在采集会话状态…/)
 
