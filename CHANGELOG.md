@@ -1,4 +1,4 @@
-## 1.0.1 (unreleased) — [observe] 看板状态色
+## 1.0.1 (2026-11-27) — [observe] 看板状态色
 
 ### Fixed
 
@@ -25,6 +25,12 @@
   这种字符串比较（换成 token 后它必然失效）。
 - **命名与比例归一**：卡片主题变量统一 `--dsh-oc-*` 前缀（与面板既有的 `.dsh-oc-*` 类名一致）；
   「需要你」的描边/底色也从硬编码比例改走变量，与未查看同构——以后按主题调档只改 CSS，不必动 JS。
+
+### Docs
+
+- **仓库展示与市场投稿**：补齐 GitHub 社区健康文件（Code of Conduct / Security / Contributing）、
+  180px 插件市场图标；增加 dshmarket 投稿条目与说明，市场分类改为 tools（对齐 OpenCode
+  工具/子代理类插件）。
 
 ### Verification
 

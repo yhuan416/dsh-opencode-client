@@ -452,10 +452,11 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 | OpenCode 1.x (v1 API) | any | **rejected** with `opencode.v1_unsupported` |
 
 The plugin follows independent semantic versioning and is **not published to npm** (install from
-git or a local path). **Current release: `1.0.0`** (annotated tag `v1.0.0`). This release removes
-the v1 API and moves the transport to
+git or a local path). **Current release: `1.0.1`** (annotated tag `v1.0.1`): the session board's
+status colours now come from dsh theme tokens, and finished-but-unread sessions get a card of
+their own instead of looking idle. The `1.0.0` line removed the v1 API and moved the transport to
 [`@opencode/client`](https://github.com/sst/opencode) **pinned to `2.4.2`** (one client per
-server; upgrades are deliberate, independent releases); it also includes the untagged 0.8.0
+server; upgrades are deliberate, independent releases); it also included the untagged 0.8.0
 (observation trust) and 0.9.0 (insights/activity) changes. The pin policy, SemVer scope and
 version matrix live in [COMPATIBILITY.md](COMPATIBILITY.md); historical v1→v2 migration notes
 are kept in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
