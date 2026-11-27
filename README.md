@@ -468,12 +468,11 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 | OpenCode 1.x (v1 API) | any | **rejected** with `opencode.v1_unsupported` |
 
 The plugin follows independent semantic versioning and is **not published to npm** (install from
-git or a local path). **Current release: `1.1.0`** (annotated tag `v1.1.0`): the plugin shows its
-own version / repository / update check in the board header and the settings page (the host's
-built-in version section only renders for registry installs), unowned OpenCode questions stay
-pending on the board instead of being dismissed, and deleted sessions no longer linger as idle
-rows. It also folds in the `1.0.2` insights layout fix (container-query layout, nothing clipped or
-scrolling sideways). The `1.0.0` line removed the v1 API and moved the transport to
+git or a local path). **Current release: `1.1.1`** (annotated tag `v1.1.1`): the observe page fills
+in progressively instead of mounting after `/insights`, every poll runs on one client scheduler
+(board, insights, activity, skills, usage), async blocks reserve their final height on the first
+frame, and the host serves those reads through SWR + a startup warm-up (cold `/insights` ~9s → warm
+~0.6s). It also ships the `1.1.0` version/update chip plus the question/board fixes. The `1.0.0` line removed the v1 API and moved the transport to
 [`@opencode/client`](https://github.com/sst/opencode) **pinned to `2.4.2`** (one client per
 server; upgrades are deliberate, independent releases); it also included the untagged 0.8.0
 (observation trust) and 0.9.0 (insights/activity) changes. The pin policy, SemVer scope and

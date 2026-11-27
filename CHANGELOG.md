@@ -1,4 +1,7 @@
-## 1.1.1 (unreleased) — [observe] 观测台渐进填充 + 统一轮询调度
+## 1.1.1 (2026-11-28) — [observe] 观测台渐进填充、统一轮询、占位与滚动优化
+
+> 主题：看板不再"整页等数据再挂载"，轮询收敛到一个调度器，所有异步块首帧占好尺寸；
+> 服务端加 SWR + 启动预热，冷加载不再吃历史扫描。
 
 ### Changed
 
@@ -9,62 +12,63 @@
   `/insights/activity` 到达时会把整个 top 行撑开；现在骨架直接画同样的 7×N 单元格网格
   （18px 格 + 3px 间距 + 月份表头 + 图例），数据替换时高度不变。下方 4 个列表面板也用
   8 行占位对齐 `insightRows` 的 186px 上限。
-- **所有轮询收敛到一个调度器**：board 页、toast watcher、设置页的 `/board` 轮询合并为同一个
-  board store（5s 可见 / 15s 后台），insights / activity / skills / usage / upgrade 改为 keyed
-  task（优先级、并发上限、heavy 串行、in-flight 合并）；`visibilitychange` 只保留一个监听，
-  回到页面时按到期 + 120ms 抖动补刷，不再 7 个请求一起打。
+- **所有轮询收敛到一个调度器**：新增客户端 keyed 调度器（1s tick、优先级、并发上限 3、重任务串行、
+  同 key in-flight 合并）；board 页、toast watcher、设置页的 `/board` 轮询合并为同一个 board store
+  （5s 可见 / 15s 后台），insights / activity / skills / usage / upgrade 改为 keyed task；
+  `visibilitychange` 只保留一个监听，回到页面时按到期 + 120ms 抖动补刷，不再 7 个请求一起打。
 - **首屏请求分层**：board 与 insights/activity 立即发；usage / upgrade 延迟到首帧后（idle），
-  skills 等 insights 到达后再以 heavy 任务启动；筛选变化通过 AbortController 取消在途请求。
+  skills 等 insights 到达后再以 heavy 任务启动；筛选变化通过 `AbortController` 取消在途请求。
+- **看板中段 tick 不再全量采集**：`/board` 每 3 个 tick（15s）才 `refresh=1` 让远端重新采集，
+  其余两跳 `refresh=0` 直接读宿主已有的 observation 快照（内存读）；配置变更 / 手动刷新仍强制全量。
+- **快照去重，内容没变就不重渲染**：board store 按 payload 序列化结果判重，内容相同的轮询不再
+  notify —— 空转的 5s tick 不再重渲染整页（"页面一直在动"的忙感来源之一）。
+- **会话卡固定 100px 高度**：卡片内容本来就是单行/两行截断，高度实际恒定；固定后网格等距，
+  滚动不会因为卡片高度自适应而抖动。曾用 `content-visibility` 跳过离屏卡的布局绘制，
+  实测在滚动帧里反而逐帧触发布局，已改回普通渲染（见下条）。
+- **滚动合成优化**：看板页滚动容器加 `will-change: scroll-position`、`overscroll-behavior: contain`、
+  `contain: paint`，把滚动绘制限制在面板内、不扩散到宿主布局。
 
-### Changed
-
-- **滚动合成优化**：卡片去掉 `content-visibility`（空闲列表已只剩 12 张，收益消失，但每张卡片
-  进入视口都要在滚动帧里做一次布局），页面滚动容器加 `will-change: scroll-position`、
-  `overscroll-behavior: contain`、`contain: paint`。实测看板页滚动比会话页更卡，而主线程 JS
-  15s 只有 231ms（GPU/合成侧才是瓶颈），这一版针对滚动帧的合成路径。
 ### Added
 
-- **空闲会话折叠上限 12 张**：原来按「目录分组 × 每组 6 张」渲染，最多能出 50–70 张卡，滚这段
-  是唯一还会卡主线程的交互。现在折叠态全局最多 12 张，标题旁显示「展开更多（还有 N 个）」，
-  点开后仍是完整列表。
-- **卡片固定高度 + 离屏跳过布局绘制**：会话卡内容本来就全是单行/两行截断，高度实际恒定，
-  改为固定 `100px` 后对卡片加 `content-visibility: auto` + `contain-intrinsic-size: 100px`，
-  离屏卡片不参与布局与绘制；因为高度精确，滚动时不会出现"卡片进视口才量高"的跳动。
-- **滚动帧间隔采样**（`dsh-oc-perf=1` 时）：滚动期间记录 >20ms 的帧间隔，`__dshOcPerf.dump()`
-  会单独出一张 `slowFrames` 表，用来验证滚动是否真的变顺。
-- **离屏区块延迟建 DOM**：洞察区底部的 4 个列表面板、空闲会话列表都折叠在首屏以下，
-  现在由 `LazyRender`（`IntersectionObserver`，提前 400px 预热）在接近视口时才真正创建；
-  占位高度按真实面板高度预留（面板 235px、空闲每组 280px），挂载时不顶动上面的内容。
-  这削掉了首帧 ~95ms 长任务里最重的一块（60 张空闲卡 + 32 行列表骨架）。
-- **看板中段 tick 不再全量采集**：`/board` 每 3 个 tick（15s）才 `refresh=1` 让远端重新采集，
-  其余两次 `refresh=0` 直接读宿主已有的 observation 快照（内存读）。配置变更 / 手动刷新仍强制全量。
-- **快照去重，内容没变就不重渲染**：`boardWatch` 用 payload 序列化结果判重，内容相同的轮询不再
-  notify，空转的 5s tick 不再重渲染 60 张空闲卡 + 洞察块（页面"一直在动"的忙感来源之一）。
-- **头部「更新于 hh:mm · 刷新中…」**：独立的 1s 小组件按快照年龄推导刷新状态，只重渲染这一小段
-  文字，不引入第二个 store，也不会因为指示器把整页刷一遍。
+- **空闲会话折叠上限 12 张**：原来按「目录分组 × 每组 6 张」渲染，最多能出 50–70 张卡；现在折叠态
+  全局最多 12 张，标题旁显示「展开更多（还有 N 个）」，点开后仍是完整列表。
+- **离屏区块延迟建 DOM**：洞察区底部 4 个列表面板、空闲会话列表由 `LazyRender`
+  （`IntersectionObserver`，提前 400px 预热）在接近视口时才真正创建；占位高度按真实面板高度预留
+  （面板 235px、空闲每组 280px），挂载时不顶动上方内容。
+- **头部「更新于 hh:mm · 刷新中…」**：独立的 1s 小组件按最近一次成功轮询的年龄推导刷新状态，
+  只重渲染这一小段文字，不引入第二个 store。
 - **可选的性能埋点**：`localStorage.setItem("dsh-oc-perf", "1")` + 刷新后记录
-  `board-skeleton / board-ready / board-idle / insights-core / activity / skills` 时间点，并用
-  `PerformanceObserver("longtask")` 收集 >50ms 主线程阻塞；控制台 `__dshOcPerf.dump()` 出表。
-  默认关闭，正常访问零开销。
-- **服务端 SWR + 启动预热 + single-flight**：观测台的只读接口（`/insights`、`/insights/activity`、
-  `/insights/skills`、`/usage`）改为 stale-while-revalidate——过期后立即返回上一份数据（`stale: true`
-  + `at`），后台只刷新一次；插件启动后 8s 在空闲窗口串行预热 board / 7 天 insights / 30 天
-  activity，首个页面不再吃冷扫描（实测冷 `/insights` ~9s、暖 ~0.6s）。`collectStats` 增加
-  per-server in-flight 合并，insights / usage / 预热不会重复扫同一窗口。
+  `board-skeleton / board-ready / board-idle / insights-core / activity / skills` 时间点，
+  用 `PerformanceObserver("longtask")` 收 >50ms 主线程阻塞、并在滚动期间采样 >20ms 帧间隔；
+  控制台 `__dshOcPerf.dump()` 出表。默认关闭，正常访问零开销。
+- **服务端 SWR + 启动预热 + single-flight**：`/insights`（60s）、`/insights/activity`（60s）、
+  `/insights/skills`（600s）、`/usage`（60s）改为 stale-while-revalidate——过期后立即返回上一份
+  数据（`stale: true` + `at`），后台只刷新一次；插件启动 8s 后在空闲窗口串行预热
+  board / 7 天 insights / 30 天 activity，首个页面不再吃冷扫描。`collectStats` 增加 per-server
+  in-flight 合并，insights / usage / 预热不会重复扫同一窗口。
 - **历史天的活跃度永久缓存**：30 天热力按「server + 日期」缓存每日聚合，过去的日子在进程内不再
-  重扫（只有今天 60s 短 TTL），并顺带把 per-day 并发从 4 提到 8。
+  重扫（只有今天 60s 短 TTL），per-day 并发从 4 提到 8。
 
 ### Fixed
 
-- **占位符审计：异步块首帧即占好最终尺寸**：看板首帧不再只渲染一行「正在采集会话状态…」，
-  而是按上次快照的结构（`localStorage` 里只存分组/卡片数，不存数据）直接画出头部、洞察骨架、
+- **占位符审计：所有异步块首帧即占好最终尺寸**：看板首帧不再只渲染一行「正在采集会话状态…」，
+  而是按上次快照的结构（`localStorage` 只存分组/卡片数，不存数据）直接画出头部、洞察骨架、
   远端条与各分组占位；设置页的远端列表 / 今日用量 / 近 7 天归因、头部插件版本 chip 同样先占位
   （统一走 `asyncSlot`：loading / empty / error 三种状态等高），数据到达后不再撑开所在行或卡片。
-- **远端卡片用量/健康/top 模型拆成固定行高**：用量 chip（`25.1M in / 2.4M out · cache 2.20B` + 费用）
-  在常规卡片宽度下会换行，和「重连 / API v1」提示、`top: 模型 $xx` 挤在同一个 `flex-wrap` 行里，
-  `/usage` 到达后整卡多出一行（截图复现）。现在用量行预留两行（34px）、健康提示与 top 模型各占
-  一行 16px，卡片首帧与数据到达后同高。
-- 冷加载同时发 7+ 个请求、toast 与看板各自轮询 `/board` 造成的首屏卡顿与刷新节奏不一致。
+- **远端卡片用量 / 健康 / top 模型拆成固定行高**：用量 chip（`25.1M in / 2.4M out · cache 2.20B`
+  + 费用）在常规卡片宽度下会换行，和「重连 / API v1」提示、`top: 模型 $xx` 挤在同一个
+  `flex-wrap` 行里，`/usage` 到达后整卡多一行。现在用量行预留两行（34px）、健康提示与 top 模型
+  各占一行 16px，卡片首帧与数据到达后同高。
+- **冷加载同时发 7+ 个请求、toast 与看板各自轮询 `/board`** 造成的首屏卡顿与刷新节奏不一致。
+
+### Verification
+
+- `npm run check`：173 项测试 + manifest gate（语法、manifest、单元、路由断言）全绿。
+- 服务端（本机 dsh-web，两台 OpenCode 2.4.2，暖后）：`/board` 2–8ms、`/insights?days=7` 2–4ms、
+  `/insights/activity?days=30` 2ms、`/usage` 2ms（冷 `/insights` 原 ~9s，预热后首个页面 ~0.6s）。
+- 客户端埋点（`dsh-oc-perf=1`）：看板首帧从一行式 gate 变为骨架；挂载长任务 **95ms → 55ms**；
+  看板空转 23s 内 **0 条 >50ms 长任务**；滚动期间原本 321ms 的尖峰消失。剩余 20–60ms 帧间隔经
+  trace 归因为 GPU/合成侧（渲染主线程 15s 内 JS 仅 231ms），插件侧不再继续优化。
 
 ## 1.1.0 (2026-11-27) — [observe] 插件自身的版本 / 仓库 / 更新检查 + 看板与洞察修复
 
