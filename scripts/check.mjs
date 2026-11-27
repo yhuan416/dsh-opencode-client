@@ -115,6 +115,21 @@ assert.match(clientSource, /"git -C " \+ localPath \+ " pull --ff-only"/)
 // /upgrade request; the About work removed that dead fetch.
 assert.doesNotMatch(clientSource, /setLatestOpenCode\(payload\.latest\);[\s\S]{0,400}setInterval\(loadUpgrade, 86400000\)/)
 
+// One polling clock for the board page: the old per-effect intervals drifted and
+// all fired together on tab focus; the page, toasts and settings share the store.
+assert.match(clientSource, /function schedulerEvery\(key, options\)/)
+assert.match(clientSource, /boardWatch\.start/)
+assert.doesNotMatch(clientSource, /setInterval\(tick, 5000\)/)
+assert.doesNotMatch(clientSource, /setInterval\(tick, document\.visibilityState === "hidden" \? 15000 : 8000\)/)
+assert.doesNotMatch(clientSource, /document\.addEventListener\("visibilitychange", loadInsights\)/)
+// Progressive fill: the insights section is rendered from the first paint with
+// per-panel skeletons instead of being gated behind /insights.
+assert.match(clientSource, /insightSkeletonRows/)
+assert.match(clientSource, /insightBarsSkeleton/)
+assert.match(clientSource, /insightActivitySkeleton/)
+assert.doesNotMatch(clientSource, /insights === null \? null : insightSection/)
+
+
 // The model-facing board must surface the same partition, or finished-but-unread
 // sessions vanish from the agent's view entirely.
 const toolsSource = readFileSync(new URL('../lib/tools.js', import.meta.url), 'utf8')

@@ -1,3 +1,21 @@
+## 1.1.1 (unreleased) — [observe] 观测台渐进填充 + 统一轮询调度
+
+### Changed
+
+- **洞察区不再整块等待 `/insights`**：以前 `insights === null` 时整块洞察区不渲染、也没有骨架，
+  数据回来才一次性挂载，skills（~3.5s）随后填充造成布局二次跳动。现在布局与骨架从首帧就渲染，
+  卡片 / 柱状 / 30 天热力 / 技能各自独立填充（固定高度，CLS≈0），并带局部「载入中…」。
+- **所有轮询收敛到一个调度器**：board 页、toast watcher、设置页的 `/board` 轮询合并为同一个
+  board store（5s 可见 / 15s 后台），insights / activity / skills / usage / upgrade 改为 keyed
+  task（优先级、并发上限、heavy 串行、in-flight 合并）；`visibilitychange` 只保留一个监听，
+  回到页面时按到期 + 120ms 抖动补刷，不再 7 个请求一起打。
+- **首屏请求分层**：board 与 insights/activity 立即发；usage / upgrade 延迟到首帧后（idle），
+  skills 等 insights 到达后再以 heavy 任务启动；筛选变化通过 AbortController 取消在途请求。
+
+### Fixed
+
+- 冷加载同时发 7+ 个请求、toast 与看板各自轮询 `/board` 造成的首屏卡顿与刷新节奏不一致。
+
 ## 1.1.0 (2026-11-27) — [observe] 插件自身的版本 / 仓库 / 更新检查 + 看板与洞察修复
 
 ### Added
