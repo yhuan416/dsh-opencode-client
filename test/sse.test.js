@@ -337,7 +337,7 @@ test('v2: session.deleted forgets the row and drops the cached listing', async f
     })
     const dispose = stream.subscribeEvents(server)
     await waitFor(function () {
-      return observation.rows().length === 0 && server.snapshot === undefined
+      return observation.rows().length === 0 && server.snapshot === undefined && server.snapshotEpoch === 1
     }, 4000)
     dispose()
   } finally {

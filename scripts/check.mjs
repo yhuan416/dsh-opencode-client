@@ -145,6 +145,8 @@ assert.equal(staleSmoke.board().idleCount, 0)
 assert.equal(staleSmoke.retain('s1', []), 0)
 assert.match(readFileSync(new URL('../lib/board.js', import.meta.url), 'utf8'), /observation\.retain\(server\.id/)
 assert.match(readFileSync(new URL('../lib/sse.js', import.meta.url), 'utf8'), /server\.snapshot = undefined/)
+assert.match(readFileSync(new URL('../lib/sse.js', import.meta.url), 'utf8'), /server\.snapshotEpoch/)
+assert.match(readFileSync(new URL('../lib/sessions.js', import.meta.url), 'utf8'), /snapshotEpoch/)
 assert.equal(
   describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', type: 'string', description: '继续吗？' }] } }),
   'form: 继续吗？',

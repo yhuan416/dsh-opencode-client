@@ -140,6 +140,36 @@ test('a fresh listing prunes sessions deleted while the stream was down', async 
   }
 })
 
+test('a listing raced by a deletion is served but not cached', async function () {
+  let serverRef
+  let bumpEpoch = true
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () {
+      // Simulates `session.deleted` arriving while the listing request is in
+      // flight: the response still contains the deleted session.
+      if (bumpEpoch) {
+        bumpEpoch = false
+        serverRef.snapshotEpoch = (typeof serverRef.snapshotEpoch === 'number' ? serverRef.snapshotEpoch : 0) + 1
+      }
+      return { data: [{ id: 'ses_old', title: 'old', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } }
+    },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    serverRef = servers[0]
+    await collectServer(serverRef)
+    assert.equal(serverRef.snapshot, undefined, 'raced listing must not be cached')
+    const before = fake.requests.filter(function (path) { return path === '/api/session' }).length
+    await collectServer(serverRef)
+    const after = fake.requests.filter(function (path) { return path === '/api/session' }).length
+    assert.equal(after, before + 1, 'next call refetches instead of reusing a stale snapshot')
+  } finally {
+    await fake.close()
+  }
+})
+
 test('an unreachable server yields no pending and no throw', async function () {
   const servers = normalizeServers([{ id: 'dead', url: 'http://127.0.0.1:9' }])
   const observation = createObservation()
