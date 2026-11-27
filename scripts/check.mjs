@@ -183,6 +183,14 @@ assert.equal((clientSource.match(/cardSurface\(/g) || []).length >= 8, true, 'ca
 // asyncSlot bodies must be lazy: building them eagerly dereferenced still-null
 // data and blanked the whole settings section (remote CRUD included).
 assert.match(clientSource, /typeof props\.render === "function" \? props\.render\(\)/)
+// Existing remotes are patchable (rename / re-point / new password) without
+// dropping the stored password, which never reaches the client.
+const indexSource = readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8')
+assert.match(indexSource, /update: function \(id, fields\) \{/)
+const updateRouteSource = readFileSync(new URL('../lib/routes.js', import.meta.url), 'utf8')
+assert.match(clientSource, /function startEdit\(server\)/)
+assert.match(clientSource, /"\/api\/opencode-client\/servers\/update"/)
+assert.match(updateRouteSource, /path: '\/api\/opencode-client\/servers\/update'/)
 assert.match(clientSource, /render: function \(\) \{/)
 assert.ok(existsSync(new URL('../test/client-render.test.js', import.meta.url)), 'client render smoke test must exist')
 assert.match(clientSource, /var IDLE_CARD_CAP = 12;/)

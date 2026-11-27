@@ -132,6 +132,8 @@ test('the settings section keeps the remote form when /board and /usage are stil
   assert.match(flat, /添加远端/)
   assert.match(flat, /测试连接/)
   assert.match(flat, /保存/)
+  // The remote list is still loading here; the editable row itself is asserted
+  // statically in scripts/check.mjs (edit buttons live in the loaded list).
 })
 
 test('the board page renders its first-frame skeleton before /board lands', () => {
