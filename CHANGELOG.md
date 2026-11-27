@@ -1,4 +1,4 @@
-## 1.1.0 (unreleased) — [observe] 插件自身的版本 / 仓库 / 更新检查
+## 1.1.0 (2026-11-27) — [observe] 插件自身的版本 / 仓库 / 更新检查 + 看板与洞察修复
 
 ### Added
 
@@ -23,15 +23,27 @@
   `question: reject` 恢复自动 dismiss。委派运行（有 owning run）转发 dsh 提问/审批卡的路径不变，
   权限审批默认 `ask` 也不变。
 
-### Notes
-
-- **共享 OpenCode server 是共享状态**：同一 server 上的其它 dsh/OpenCode 客户端也能抢答
-  form/权限请求；`question` 策略在各客户端保持一致，否则旧 `question: reject` 客户端会把
-  本机挂起的问题先 dismiss 掉（README 已补充说明）。
-- 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。
-- 没有 `pluginManager` 服务（无 profile 启动）时省略安装来源，「更新」退化为发布页链接。
-
 ### Fixed
+
+- **洞察三列溢出面板：右列被裁 + 整页横向滚动条**：`.dsh-oc-top` 三条轨道写死
+  `minmax(360px/420px/300px)`，合计 1100px。插件页挂在宿主的 main slot 里，宽度由侧栏
+  决定（窗口约 1400px 时面板只有 ~1000px），而旧断点 `@media(max-width:1100px)` 看的是
+  视口，永远不触发 → 活跃度列被裁掉 133/300，日历只剩 3 个半周列，页面底部多出一条
+  横向滚动条。现在改为容器查询（`.dsh-oc-insight{container-type:inline-size}`）+
+  `minmax(0,fr)` 轨道：≥840px 三列、720–839 两列（活跃度跨满行）、<720 单列；卡片组
+  1249px 以下切成 2×3，四宫格 1099px 以下 2×2，不再出现「3+1」孤儿（项目分布单独一行、
+  右边两大块空）。
+- **月份表头「10月11月」叠字**：表头按「月跨度 × 18px」算宽度，但 18px 装不下「10月」
+  （≈24px），`overflow:visible` 直接压到下一个月。改成按周列逐格渲染，只有跨度 ≥2 周的
+  月份才出标签（单周残月不再标），`paddingLeft` 18 → 19 与周列对齐；页脚补上日历自己的
+  区间（`10/29 – 11/27`），因为卡片可能是 7 天而日历固定 30 天。
+- **列表 184px 把第 9 行切成两半**：行高 18 + 间距 6，改取 8 行的整数倍 186px。
+- **指标卡底部死白**：`grid-auto-rows:1fr` 把卡片拉到与图表同高后内容顶对齐，下面空
+  ~30px；改成垂直居中。
+- **模型名三行一模一样的省略号**：区分位在尾部（`#high` / `#max`），末尾省略正好吃掉；
+  改成保留尾部 20 字符并挂 `title`。MCP / 技能的空态也改成垂直居中，不再顶着卡片上沿。
+- **活跃度配色不跟主题**：热力格与柱状图原来是硬编码的四个深蓝 + `#4dabf7`，浅色主题下
+  与周围 token 不一致；改为 `--dsw-alias-state-business-primary` + `color-mix` 分档。
 
 - **删除会话后看板残留行**：远端会话被删除（或在插件未连着 SSE 时被删）后，行仍留在看板
   「空闲」里、`idleCount` 不降，直到插件重载。根因两条：SSE `session.deleted` 先 forget、下一轮
@@ -68,42 +80,29 @@
   「上次检查于」跨天时显示日期。
 - **顺手修掉既有 bug**：设置页（`OpenCodePanel`）里 `setLatestOpenCode` 未定义，
   `/api/opencode-client/upgrade` 请求每轮抛 ReferenceError 并被 `.catch` 吞掉——是死代码，已删除。
+
+### Notes
+
+- **共享 OpenCode server 是共享状态**：同一 server 上的其它 dsh/OpenCode 客户端也能抢答
+  form/权限请求；`question` 策略在各客户端保持一致，否则旧 `question: reject` 客户端会把
+  本机挂起的问题先 dismiss 掉（README 已补充说明）。
+- 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。
+- 没有 `pluginManager` 服务（无 profile 启动）时省略安装来源，「更新」退化为发布页链接。
 - 文档：设计文档、`COMPATIBILITY.md` 路由清单（补 `/about`）、`ARCHITECTURE.md` 模块树（补
   `lib/about.js`）、README 双语同步。
 
-## 1.0.2 (unreleased) — [observe] 洞察布局按容器宽度自适应
-
-### Fixed
-
-- **洞察三列溢出面板：右列被裁 + 整页横向滚动条**：`.dsh-oc-top` 三条轨道写死
-  `minmax(360px/420px/300px)`，合计 1100px。插件页挂在宿主的 main slot 里，宽度由侧栏
-  决定（窗口约 1400px 时面板只有 ~1000px），而旧断点 `@media(max-width:1100px)` 看的是
-  视口，永远不触发 → 活跃度列被裁掉 133/300，日历只剩 3 个半周列，页面底部多出一条
-  横向滚动条。现在改为容器查询（`.dsh-oc-insight{container-type:inline-size}`）+
-  `minmax(0,fr)` 轨道：≥840px 三列、720–839 两列（活跃度跨满行）、<720 单列；卡片组
-  1249px 以下切成 2×3，四宫格 1099px 以下 2×2，不再出现「3+1」孤儿（项目分布单独一行、
-  右边两大块空）。
-- **月份表头「10月11月」叠字**：表头按「月跨度 × 18px」算宽度，但 18px 装不下「10月」
-  （≈24px），`overflow:visible` 直接压到下一个月。改成按周列逐格渲染，只有跨度 ≥2 周的
-  月份才出标签（单周残月不再标），`paddingLeft` 18 → 19 与周列对齐；页脚补上日历自己的
-  区间（`10/29 – 11/27`），因为卡片可能是 7 天而日历固定 30 天。
-- **列表 184px 把第 9 行切成两半**：行高 18 + 间距 6，改取 8 行的整数倍 186px。
-- **指标卡底部死白**：`grid-auto-rows:1fr` 把卡片拉到与图表同高后内容顶对齐，下面空
-  ~30px；改成垂直居中。
-- **模型名三行一模一样的省略号**：区分位在尾部（`#high` / `#max`），末尾省略正好吃掉；
-  改成保留尾部 20 字符并挂 `title`。MCP / 技能的空态也改成垂直居中，不再顶着卡片上沿。
-- **活跃度配色不跟主题**：热力格与柱状图原来是硬编码的四个深蓝 + `#4dabf7`，浅色主题下
-  与周围 token 不一致；改为 `--dsw-alias-state-business-primary` + `color-mix` 分档。
-
 ### Verification
 
-- **无头 Firefox（geckodriver 0.37.1）驱动真实 CSS 的结构 fixture**：1004 / 1100 / 1280 /
-  1400 / 960 / 840 / 800 / 720 / 700 九个宽度实测——`scrollWidth == clientWidth`（无横向
-  溢出）、活跃度面板始终在 section 内、卡片副标题 0 处截断、技能列表 0 个半行、四宫格
-  2×2（≥1100 时 4 连排）；截图确认三档布局。
-- **门禁**：`scripts/check.mjs` 新增四条防回退断言（必须用容器查询、不得再出现
-  `@media(max-width)`、三档断点齐全、列定义不得写进 inline style）；`node --test` 131 全绿。
-
+- **门禁**：`npm run check` 168 tests 全绿（含 `scripts/check.mjs` 防回退断言与 `manifest` gate），CI 绿。
+- **洞察布局**：无头 Firefox（geckodriver 0.37.1）驱动真实 CSS 的结构 fixture，1004 / 1100 / 1280 /
+  1400 / 960 / 840 / 800 / 720 / 700 九个宽度实测——`scrollWidth == clientWidth`（无横向溢出）、
+  活跃度面板始终在 section 内、卡片副标题 0 处截断、技能列表 0 个半行、四宫格 2×2（≥1100 时 4 连排）；
+  截图确认三档布局。
+- **看板修复（真机）**：重启 dsh-web 后，删除会话 **1s** 内从看板消失（`stale_present=0`，无需重载插件）；
+  触发 question → 等待回答卡的 detail 为「state-test：是否继续？」（不再是 `form: Questions`）；
+  在会话里回答后 **1s** 自动清卡。日志：`/tmp/verify-board-fixes.log`。
+- **About / 更新检查**：`GET /api/opencode-client/about` 返回 200；路径安装下只展示版本 / 仓库 / 发布页，
+  GitHub Releases 检查在离线、限流、404 时降级为「无法检查更新」。
 
 ## 1.0.1 (2026-11-27) — [observe] 看板状态色
 
