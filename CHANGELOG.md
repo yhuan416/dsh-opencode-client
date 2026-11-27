@@ -2,6 +2,9 @@
 
 ### Changed
 
+- **入口收敛**：去掉会话头的「OpenCode」按钮和右侧栏 `opencode` 标签页；统一从左侧栏
+  `OpenCode` 入口进看板，服务器行/看板卡片仍可打开内嵌 UI。插件注入的客户端包从 5 个减到 3 个
+  （`chat` / `sidebar` / `plugin-manager`）。
 - **OpenCode 1.x 不再支持**：探测为 v1（含 `/api/info` 缺失）时，所有请求以
   `opencode.v1_unsupported` 失败，并提示「requires OpenCode 2.x」；`apiVersion: 1` 视为 auto
   并被拒绝。
