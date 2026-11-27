@@ -96,7 +96,7 @@ dsh plugin --profile web add D:\dev\dsh-opencode-client
 要点：
 
 - **缩进只能是空格**，不能是 Tab；
-- `password` 在 OpenCode 2.x 上是**必须的**，缺了会回退 v1 并显示 offline；
+- `password` 在 OpenCode 2.x 上是**必须的**，缺了会以 401 提示失败并显示 offline；
 - 想自动批准所有权限（旧行为）就写 `permission: auto`；
 - 想让 OpenCode 的表单/提问也进「需要你」，加一行 `question: ignore`（默认 `reject` 会自动取消表单）。
 

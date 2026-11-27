@@ -4,8 +4,9 @@ This plugin follows **independent semantic versioning** (it does not mirror the 
 and is **not published to npm**; install it from git or a local path. **Current release: `0.7.2`**
 (2026-11-26). Release line: `0.2.0` first read OpenCode 2, `0.7.1` completed v2 end to end
 ([PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)), `0.7.2` fixed the manifest/exports
-and added the CI gates. `1.0.0` is deliberately not cut yet: the host seam is still `0.2.x` and the
-v1 question is open (see below).
+and added the CI gates. `1.0.0` is deliberately **not cut yet**: `master` carries the unreleased
+1.0.0 line (v1 removed, `@opencode/client` pinned); the tag will be cut only when you decide to
+release it.
 
 ## dsh compatibility
 
@@ -61,15 +62,14 @@ pull requests and on pushes to `master`:
 Each gate has been exercised against a deliberately broken tree (missing export, version mismatch,
 oversized icon, injected syntax error) and fails on all four.
 
-## v1 policy (removed in 1.0.0)
+## v1 policy (removed)
 
 - **OpenCode 2 is the only supported generation.** OpenCode 1.x (1.18.x) was frozen in 0.7.2 and
-  is **removed** in 1.0.0: a server that probes as v1 (old server, 401, missing password,
-  unreachable, or no `/api/info`) fails every call with `opencode.v1_unsupported` and an
-  actionable "requires OpenCode 2.x" message. `apiVersion: 1` is treated as `auto` and then
-  rejected.
-- **The v1 column in the tables below is historical** and kept for migration context; it is not a
-  support commitment.
+  is **removed on `master`** (the unreleased 1.0.0 line): a server that answers as v1 (old server,
+  or no `/api/info`) fails every call with `opencode.v1_unsupported` and an actionable
+  "requires OpenCode 2.x" message. `apiVersion: 1` is treated as `auto` and then rejected.
+- **The v1 rows below are historical** and kept for migration context; they are not a support
+  commitment.
 - **Field verification is v2-only.** `npm run e2e` and the weekly-free maintenance checks run
   against real OpenCode 2 servers; there is no v1 fixture in the suite anymore.
 - **New features land on v2 only** — `opencode_usage`, the board's "finished, not looked at"
@@ -80,40 +80,36 @@ oversized icon, injected syntax error) and fails on all four.
 
 ## OpenCode compatibility
 
-Only OpenCode 2 is supported (**v1 was removed in 1.0.0**). Every request is
-prefixed with `/api` and carries HTTP Basic auth (username `opencode`, password from the serve
-process' `OPENCODE_SERVER_PASSWORD`). `apiVersion: auto|2` is accepted (`auto` probes
-`GET /api/info`); probe failure, a missing password or HTTP 401 records one diagnosable reason on
-`server.versionProbe` and the server is reported as v1 — i.e. unsupported, not silently routed to
-old paths.
+Only OpenCode 2 is supported (**v1 removed on `master`**). Every request goes through
+`@opencode/client` (pinned `2.4.2`) and carries HTTP Basic auth (username `opencode`, password from
+the serve process' `OPENCODE_SERVER_PASSWORD`). `apiVersion: auto|2` is accepted (`auto` probes
+`GET /api/info`); a missing password or HTTP 401 records one diagnosable reason on
+`server.versionProbe`, and any v1 answer is rejected — never silently routed to old paths.
 
-> The `OpenCode 1.18.x (v1 API)` column below is historical (frozen in 0.7.2, removed in 1.0.0).
+| Capability | OpenCode 2 |
+|---|---|
+| Version/health probe | `/api/info` |
+| Project/session discovery | `/api/project` (`canonical`), `/api/session` (`{data,cursor}`, `location.directory`, `?directory=`) |
+| Messages | `content[]`; first page `order=desc`, later pages `cursor` only; presented oldest-first |
+| Agents | `/api/agent` (`id`/`name`/`mode`/`hidden`) |
+| Models | `/api/provider` + `/api/model` + `/api/model/default` |
+| Commands / skills / references / MCP | `{location,data}`; commands keep name/description, skills expose `path`, MCP `status` is an object |
+| Prompt | `prompt` `{text,files}`; agent/model are session state (`/agent`, `/model`) |
+| Completion | `session.execution.succeeded\|failed\|interrupted` + `idle` message `outcome` |
+| Abort | `/session/{id}/interrupt` (`{interrupted}`) |
+| Status | `/session/active` |
+| Permissions | session-scoped `/session/{sid}/permission` + `/reply {decision: once\|always\|reject}` |
+| Questions | forms: `/session/{sid}/form` + `/reply {answer:{key:value}}` / `DELETE` |
+| Shell | asynchronous `POST /api/shell` + `/api/shell/{id}/output` (output pages followed via `cursor`, truncation reported) |
+| VCS status/diff | `{location,data}`, `mode=working\|branch\|committed` (`git`→`working`) |
+| File read / find | raw `/api/fs/read`, `/api/fs/find` (file paths only); content search emulated with workspace `grep` via `/api/shell` |
+| Fork / summarize / init / children | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` |
+| Share / tool ids | **not available** (explicit error, never silent empty data) |
+| Session todos | no endpoint; derived from the last `todowrite` tool call (`state.input.todos`) |
+| Model variants | `/api/model` `variants[]` (reasoning-effort ids) surfaced by `opencode_models`; selectable as `provider/model#variant` |
 
-| Capability | OpenCode 1.18.x (v1 API) | OpenCode 2.x (v2 API) |
-|---|---|---|
-| Version/health probe | `/global/health` | `/api/info` |
-| Project/session discovery | `/project` (`worktree`), `/session` | `/api/project` (`canonical`), `/api/session` (`{data,cursor}`, `location.directory`, `?directory=`) |
-| Messages | `info` + `parts` | `content[]`; fetched `order=desc` and presented oldest-first |
-| Agents | `/agent` (`name`/`native`) | `/api/agent` (`id`/`name`/`mode`/`hidden`) |
-| Models | `/config/providers` | `/api/provider` + `/api/model` + `/api/model/default` |
-| Commands / skills / references / MCP | bare arrays | `{location,data}`; commands keep only name/description, skills expose `path`, MCP `status` is an object |
-| Prompt | `prompt_async` `{parts,agent,model}` | `prompt` `{text,files}`; agent/model are session state (`/agent`, `/model`) |
-| Completion | `session.idle` + message polling | `session.execution.succeeded\|failed\|interrupted` + `idle` message `outcome` |
-| Abort | `/session/{id}/abort` | `/session/{id}/interrupt` (`{interrupted}`) |
-| Status | `/session/status` | `/session/active` |
-| Permissions | `/permission` + `/permission/{id}/reply {reply}` | session-scoped `/session/{sid}/permission` + `/reply {decision: once\|always\|reject}` |
-| Questions | `/question` + `/reply|/reject` | forms: `/session/{sid}/form` + `/reply {answer:{key:value}}` / `DELETE` |
-| Shell | synchronous `/session/{id}/shell` | asynchronous `POST /api/shell` + `/api/shell/{id}/output` (output pages followed via `cursor`, truncation reported) |
-| VCS status/diff | `/vcs/status`, `/vcs/diff?mode=git|branch` | `{location,data}`, `mode=working|branch|committed` (`git`→`working`) |
-| File read / find | `/file/content`, `/find/file`, `/find` | raw `/api/fs/read/*`, `/api/fs/find` (file paths only); content search emulated with workspace `grep` via `/api/shell` |
-| Fork / summarize / init / children | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` |
-| Share / tool ids | available | **not available** (explicit error, never silent empty data) |
-| Session todos | `/session/{id}/todo` | no endpoint; derived from the last `todowrite` tool call (`state.input.todos`) |
-| Model variants | none | `/api/model` `variants[]` (reasoning-effort ids) surfaced by `opencode_models`; selectable as `provider/model#variant` (v2 `Model.Ref.variant`) |
-
-- **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`,
-  `2.4.2` (Linux x64, live servers; measured 2026-11-18, v2 surface completed 2026-11-20,
-  2.4.2 added 2026-11-27 — `npm run e2e` 10/10 on two 2.4.2 servers).
+- **Verified against**: OpenCode `2.3.0` and `2.4.2` (Linux x64, live servers; v2 surface
+  completed 2026-11-20, 2.4.2 added 2026-11-27 — `npm run e2e` 10/10 on two 2.4.2 servers).
 
 ### Upstream client pinning (2026-11-27)
 
@@ -135,23 +131,22 @@ old paths.
 This trades new upstream capabilities for stability: the observation console
 prefers a known-good client over chasing weekly releases.
 
-- v1 remains the baseline for existing installs: all 26 `opencode_*` tools keep their names and
-  v1 behaviour. `COMPATIBILITY` is aggregated across servers, so one profile can mix v1 and v2.
+- All `opencode_*` tools keep their names; no profile can mix v1 and v2 because v1 servers are
+  rejected at the transport.
 - Transport failures are never degraded into "0 results": 401, HTML/SPA bodies, non-JSON bodies,
   other non-2xx responses and network/timeout errors raise `OpenCodeError`, and per-server
   discovery failures are reported in the tool output.
-- v2 session listing pages the API (v1 returns everything): one request asks for the 500 newest
-  sessions per server and the tool output says so when more exist; older sessions stay reachable
-  through `opencode_search`.
-- v2 limitations that stay explicit (never silent): `opencode_share` and `opencode_tools` have no
-  v2 endpoint. `opencode_shell` runs asynchronously in the session workspace and does not append a
+- Session listing pages the API: one request asks for the 500 newest sessions per server and the
+  tool output says so when more exist; older sessions stay reachable through `opencode_search`.
+- Limitations that stay explicit (never silent): `opencode_share` and `opencode_tools` have no
+  endpoint. `opencode_shell` runs asynchronously in the session workspace and does not append a
   message to the session history; `opencode_summarize` maps to `compact` (session's own model, so
-  `model` is optional on v2); `opencode_init` runs the built-in `init` command.
-- v2 capability restorations (fallbacks, 0.4.0): `opencode_find(kind=text)` runs a workspace
+  `model` is optional); `opencode_init` runs the built-in `init` command.
+- Capability restorations (fallbacks, 0.4.0): `opencode_find(kind=text)` runs a workspace
   `grep -rIn -F` through the async shell (literal substring, first 100 matches, `.git` skipped);
   `opencode_session_info` derives todos from the last `todowrite` tool call; `opencode_messages`
   follows `cursor.next` so long sessions are not truncated at the server page size.
-- The live acceptance run for both generations is `npm run e2e` (`scripts/e2e-live.mjs`) with
+- The live acceptance run is `npm run e2e` (`scripts/e2e-live.mjs`) with
   `OPC_LIVE_URL` / `OPC_LIVE_PASSWORD` / `OPC_LIVE_DIR` and optional `OPC_LIVE_INTERACTIONS=1`.
 
 ### 2.4.x deltas (2.3.0 → 2.4.2, measured 2026-11-27)
@@ -173,7 +168,7 @@ Compared from the two servers' own `GET /openapi.json` (170 → 188 operations, 
   `2026-07-28` revision can now fail: the discovery probe is answered too late (`Received a
   response for an unknown message ID` in the server log), opencode falls back to the legacy
   `initialize`, and such a server rejects it. Fix per server: put it under `mcp.servers.<name>`
-  (v2 shape) and set `"protocol": "2026-07-28"`. The legacy v1 `mcp.<name>` shape **silently drops**
+  (v2 shape) and set `"protocol": "2026-07-28"`. The legacy `mcp.<name>` config shape **silently drops**
   the `protocol` field during normalisation, so setting it there has no effect.
 - **First catalog read after a restart can be empty/partial** (2.4.0 restored asynchronous plugin
   loading). `model`/`provider`/`skill`/`mcp` answer with whatever has loaded; subsequent reads are
@@ -200,25 +195,21 @@ Subagent dispatch:
 
 Known upstream issues that shape the integration:
 
-- `format: {type:"json_schema"}` (structured output) persists a `retryCount` field in the user
-  message and makes `GET /session/{id}/message` return 400 afterwards (1.18.10 and 1.18.31).
-  The plugin therefore uses prompt-enforced JSON (`schema` parameter) instead of `format`.
-- Live progress on v1 comes from `message.part.updated` / `message.part.delta` /
-  `session.status` / `session.idle`; v2 reports progress through `session.text.*`,
-  `session.reasoning.*`, `session.tool.*` and `session.step.*`, which `lib/events.js` maps to the
-  same canonical model.
-- `POST /api/session/{id}/wait` (v2) returns `503 Session wait is not available yet` on 1.18.31
-  and 1.18.33, so completion uses SSE events (`session.idle` on v1, `session.execution.*` on v2)
-  with a polling fallback instead of the v2 wait endpoint.
+- Structured output uses prompt-enforced JSON (`schema` parameter) instead of upstream `format`,
+  and the result is validated locally.
+- Live progress is derived from `session.text.*`, `session.reasoning.*`, `session.tool.*` and
+  `session.step.*`, which `lib/events.js` maps to the canonical model.
+- `POST /api/session/{id}/wait` returns `503 Session wait is not available yet` on some 2.x
+  builds, so completion uses SSE events (`session.execution.*`) with a polling fallback.
 - `session.idle` / `session.status` still exist in the 2.3.0 schema but are not emitted for
-  completed v2 runs; they are logged as informational events and are never used as v2
-  completion signals.
-- `GET /experimental/capabilities` reports `backgroundSubagents: false` on 1.18.31.
+  completed runs; they are logged as informational events and are never used as completion
+  signals.
 - Servers are single-tenant and have no server-side federation; multiple servers are aggregated by
   this client.
 
 ## Versioning policy
 
 - `0.y.z` while pre-1.0; **minor** bumps add capabilities, **patch** bumps fix bugs/compat.
-- Breaking seam/API changes bump the **minor** version and are listed in `CHANGELOG.md`.
+- `1.0.0` (unreleased) removes the v1 API and moves the transport to `@opencode/client`; after it,
+  breaking seam/API changes bump the **major** version and are listed in `CHANGELOG.md`.
 - `CHANGELOG.md` records the tested dsh/OpenCode versions per release.

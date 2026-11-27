@@ -3,17 +3,19 @@
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
 > 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
 >
-> **当前里程碑：v0.7.2（2026-11-26）** —— OpenCode v2 端到端支持已合入 `master`（PR #5），用量/成本、完成未查看分区、清单与 CI 门禁落地；**v1 已冻结**（保留代码、不再扩展、不再实机验证）。详见 CHANGELOG 与「10. 后续迭代计划」。
+> **当前里程碑：未发布的 1.0.0（`master`）** —— v1 已从传输层移除，`@opencode/client` 锁定
+> `2.4.2` 并按模块迁移完成（sessions / catalog / workspace / delegate / interactions / manage /
+> skills / insights）；最后一个 tag 仍是 `v0.7.2`。详见 CHANGELOG 与「10. 后续迭代计划」。
 
 ## 0.1 v0.2.0 新增（OpenCode v2 端到端）
 
-- [x] 传输/探测：`apiVersion: auto|1|2`，`/api/info` + Basic auth 探测，v1 回退原因记录；401/HTML/非 JSON/网络错误 `OpenCodeError`（不再静默空结果）
+- [x] 传输/探测：`apiVersion: auto|2`，`/api/info` + Basic auth 探测，v1 直接 `opencode.v1_unsupported`；401/HTML/非 JSON/网络错误 `OpenCodeError`（不再静默空结果）
 - [x] 只读面：session/project/message/agent/provider+model/command/skill/reference/MCP/active/diff 的 v2 解包、字段映射与目录作用域
 - [x] 运行/委派：`{text,files}` prompt、创建时 `location.directory`、会话级 agent/model、execution 事件完成判定、`interrupt`
 - [x] 交互：session 作用域权限（`once|always|reject`）+ 表单（类型化字段、`{answer}`、`DELETE` 取消）桥接 dsh 审批/提问
 - [x] 工作区/管理：异步 shell（`/api/shell` + `/output`）、vcs `mode=working|branch|committed`、`/api/fs/read/*` 原始字节、`/api/fs/find`、fork `{before}`、compact、`init` 命令、`parentID` 子会话
 - [x] 不可用功能明确报错：v2 的 share / tool ids / 文本搜索 / session todo
-- [x] 测试：`test/v2-surface.test.js`（8 项离线）+ `scripts/e2e-live.mjs`（v1/v2 真实 server 各 10 步，`npm run e2e`）
+- [x] 测试：离线 129 项（`npm run check`）+ `scripts/e2e-live.mjs`（两台 OpenCode 2.4.2 真机，`npm run e2e`）
 - [x] 文档：COMPATIBILITY 兼容矩阵、CHANGELOG 0.2.0、README/工具文档/架构文档同步
 - [ ] v2 Web UI iframe 免登录（dsh 侧注入 Basic auth 的代理）——**遗留：目前需在嵌入的 v2 UI 里手动登录**
 - [ ] v2 share/todo/tool-ids/text-search 的替代方案（外部存储或 shell 近似）——**暂缓：当前明确报错**
@@ -32,7 +34,7 @@
 - [x] `lib/observation.js`：`(server, session)` 登记表，三层来源（running 快照 / SSE 增量 / 待办快照），
       优先级 `waiting-permission > waiting-question > error > running > idle > unknown`；子会话折叠进父行；stale 只标记不改状态
 - [x] `lib/board.js`：`/board`、`/list` 行内状态、`opencode_board` 工具共用的刷新器
-- [x] `collectPending()`：v1 全局 `/permission`+`/question`；v2 location 级 `/api/permission/request`+`/api/form`（实测 2.3.0，一次查询替代逐会话）
+- [x] `collectPending()`：location 级 `permission.request.list` + `form.list`（一次查询替代逐会话；旧版 v2 保留 per-session 回退）
 - [x] 无 dsh run 归属的权限请求不再自动答复（`permission: ask`），登记为待办；`permission: auto` 回退旧行为
 - [x] `GET /api/opencode-client/board`；`/list` 每行带 `status`
 - [x] 面板改卡片看板：紧急组置顶、空闲按远端分组、远端筛选、点卡片浮层打开会话
@@ -44,7 +46,7 @@
 
 ### v0.7.1 / v0.7.2 —— 用量与未读、清单与门禁（2026-11-26 完成）
 
-- [x] `opencode_usage` + `GET /api/opencode-client/usage`：按 server/时间窗聚合 sessions/steps/tokens/cost/工具成功率（v2 `/experimental/session/stats`，v1 明确报不支持）
+- [x] `opencode_usage` + `GET /api/opencode-client/usage`：按 server/时间窗聚合 sessions/steps/tokens/cost/工具成功率（`/experimental/session/stats`）
 - [x] 看板 per-server 概览卡（状态/版本/会话·运行·待办/token/cost），点卡即过滤
 - [x] 「刚完成 · 未查看」分区：候选 = 本地看到的 running→idle，清除 = OpenCode 的 `viewed >= idle` 或 dsh 的 `/seen`；左栏徽标 = 待处理 + 未查看
 - [x] 完成 toast 带本轮用时/用量；`opencode_board` 同步输出未查看分区
@@ -52,7 +54,7 @@
 - [x] 清单修复：`exports` 导出 `./locale/*.json` / `./icon`、`dsh.client.inject`、客户端注册逐条 guard、路由 `findServer` 未定义修复
 - [x] CI 门禁：`scripts/check-manifest.mjs`（版本/导出/locale/图标/files/patch）+ 全量 `node --check`，均做过负向验证
 - [x] 发布 `v0.7.2`（tag 在 master）
-- [ ] v1 去留：当前**冻结**（见 `COMPATIBILITY.md` §v1 policy）；若删除，作为 breaking 版本单独执行（清单：12 个 lib 文件的 92 处分派点、2 个 v1-only 工具、3 个测试夹具、8 份文档）
+- [x] v1 去留：**删除**（1.0.0 breaking）——传输层拒绝，13 个 lib 文件的 v1 死分支已清，v1-only 工具文案与测试夹具已改；`COMPATIBILITY.md` §v1 policy 记录
 
 ## 0. 已完成（基线）
 
@@ -72,10 +74,10 @@
 
 ## 1. P0 — 上游阻塞（等 opencode 修复）
 
-- [ ] 结构化输出：opencode 1.18.x 的 `format: {type:"json_schema"}` 会把 `retryCount` 持久化进 user message，之后 `GET /session/{id}/message` 返回 400（会话"毒化"）。
+- [ ] 结构化输出：继续用 prompt 约束 + 本地校验，不依赖上游 `format`。
       → 已改用 prompt 约束 + 本地校验（`schema` 参数）；等上游修复后恢复真 format。
 - [ ] OpenCode 2 的 policies（`experimental.policies`）只在 2.x 生效；1.x 不读。
-- [ ] 后台子代理：1.18.31 的 `experimental/capabilities` 仍是 `backgroundSubagents: false`。
+- [ ] 后台子代理：`experimental/capabilities` 的 `backgroundSubagents` 在部分构建仍为 false。
 
 ## 2. P1 — 客户端目录能力（只读，低风险）
 
@@ -109,10 +111,10 @@
 
 ## 5. P4 — 权限/实时增强
 
-- [x] 工具进度事件（v1 SSE `message.part.updated`/`session.status`/`session.idle`；v2 `session.text.*`/`reasoning.*`/`tool.*`/`step.*`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。
+- [x] 工具进度事件（`session.text.*` / `reasoning.*` / `tool.*` / `step.*`）→ `opencode_progress`、`GET /progress`、`/status` 的 tool/progress/tail、`/list` 的 `activeTool`。
 - [x] 完成等待改为 **SSE `session.idle` 事件驱动** + 5s 轮询兜底（原 1.5s 纯轮询）。
 - [x] 流式文本 tail：`message.part.delta` 记录 400 字符（未做完整流式渲染，够用于进度展示）。
-- [ ] v2 `POST /api/session/{id}/wait`：**上游不可用**——1.18.31/1.18.33 实测 503 `Session wait is not available yet`，已由 SSE wait 替代。
+- [ ] `POST /api/session/{id}/wait`：部分 2.x 构建返回 503 `Session wait is not available yet`，已由 SSE wait 替代。
 - [ ] saved permissions 查看/删除——**暂缓：本地审批卡已覆盖交互，远端规则管理属低频诊断**
 - [ ] 读远端 `GET /config` 的 permission 配置——**暂缓：本地档位已够用**
 - [ ] v2 `delivery: steer|queue`、`resume`——**暂缓：一发式委派，无并发插话需求**
@@ -136,7 +138,7 @@
 - [x] MCP 只读列表/状态：`opencode_mcp` → `GET /mcp`（connect/disconnect/auth 仍不做）
 - [ ] PTY 远端终端——**暂缓：需要 WebSocket 客户端交互，当前没有；`opencode_shell` 已覆盖确定性命令**
 - [x] 附件发送：`opencode_subagent` 的 `files` JSON 数组（text/base64 → data URL FilePartInput），单文件 ≤5MB
-- [x] 会话搜索：`opencode_search` → v2 `/api/session?search=`，v1 列表过滤兜底
+- [x] 会话搜索：`opencode_search` → `/api/session?search=`
 
 ## 7. 不做（边界）
 
@@ -165,10 +167,12 @@
 
 ## 9. 决策记录
 
-- **v2 为支持目标，v1 冻结（0.7.2）**：同一版本仍能读两代（按 `/api/info` 探测），但 v1 只保留现状、不再扩展、不再实机验证；v2 缺失能力（share/todo/tool ids/文本搜索）明确报错而不是伪造。
-- **v2 语义跟随上游**：prompt 改 `{text,files}`、agent/model 走会话状态、完成看 `session.execution.*`、权限 `decision`、提问变表单、shell 异步；不做 v1→v2 翻译 shim。
-- **v1 下线（1.0.0，2026-11-27）**：传输层探测到 v1 直接 `opencode.v1_unsupported`；
-  `apiVersion: 1` 视为 auto。sessions/jobs/skills 的 v1 分支已删，其余模块的死分支后续清理。
+- **只支持 OpenCode 2（未发布的 1.0.0，2026-11-27）**：传输层探测到 v1 直接
+  `opencode.v1_unsupported`；`apiVersion: 1` 视为 auto。13 个 lib 文件的 v1 死分支已清。
+- **语义跟随上游**：prompt 为 `{text,files}`、agent/model 走会话状态、完成看
+  `session.execution.*`、权限 `decision`、提问变表单、shell 异步；没有 v1→v2 翻译 shim。
+- **传输统一走 `@opencode/client`**：按模块迁移完成，`oc-client.js` 每台 server 缓存一个实例；
+  剩余 raw 调用只有旧版 v2 的 per-session 回退、`/probe` 诊断与启动探测。
 - **上游 client 锁版本（2026-11-27）**：`@opencode/client` 固定精确版本（现 `2.4.2`），插件版本独立；**只在遇到兼容性问题或需要新端点时**才升级，每次升级单独 PR + `npm run check` + 真机 e2e + 更新 COMPATIBILITY。CI 门禁禁止 `^`/`~`/`*`，防止浮动把上游 churn 带进运行中的插件。
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
@@ -238,7 +242,8 @@
 
 ### 10.5 v1.0.0 —— 承诺（条件驱动，不排期）
 
-- [x] v1 去留定案：**删除**（1.0.0 breaking）；运行路径已拒绝 v1，剩余死分支清理见 §10.7
+- [x] v1 去留定案：**删除**（1.0.0 breaking）；运行路径已拒绝 v1，死分支已清理
+- [x] 传输迁移到 `@opencode/client`（锁定 `2.4.2`），全部 v2 调用按模块完成
 - [ ] `COMPATIBILITY.md` 写明 SemVer 覆盖范围：**工具名 / HTTP 路由 / config 结构**；dsh 宿主契约不在承诺内
 - [ ] 发布方式定稿（当前 git-only，不发布 npm）
 
@@ -265,7 +270,8 @@
 | 同源代理（iframe 免登录） | ⬜ 入口体验，低优先（不做也能用，需手动登录） |
 | routing per-server `directory` 是否进模板默认 | 待决策 |
 | workflow backend 是否默认开 | 待决策（会显著放大远端调用与成本） |
-| v1 删除 | 进行中：传输层拒绝 + sessions/jobs/skills 已清；catalog/workspace/delegate/manage/interactions/session-run/routes/tools/事件映射的死分支待清（实测 12 文件 69 处 `apiVersionOf`，非 92） |
+| v1 删除 | ✅ 完成：传输层拒绝，13 个 lib 文件的死分支已清，文档/工具文案/测试夹具已对齐 |
+| client 迁移 | ✅ 完成：sessions / catalog / workspace / delegate / session-run / interactions / manage / skills；`@opencode/client` 锁定 `2.4.2` |
 
 ### 10.8 待裁：HTTP API 面（第三面）
 

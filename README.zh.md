@@ -5,7 +5,7 @@
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/github/license/yhuan416/dsh-opencode-client"></a>
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen">
   <img alt="dsh" src="https://img.shields.io/badge/dsh-%3E%3D0.2.1--rc.2-blue">
-  <img alt="opencode" src="https://img.shields.io/badge/opencode-1.18.x%20%7C%202.x-orange">
+  <img alt="opencode" src="https://img.shields.io/badge/opencode-2.x-orange">
   <a href="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml"><img alt="check" src="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml/badge.svg"></a>
 </p>
 
@@ -24,7 +24,8 @@ dsh 原生 subagent provider（`opencode-<serverId>`）。
 > 在后续版本逐步推进。两者共用同一套传输与版本探测核心。分轨路线图见 `TODO.md` §10。
 
 **兼容性**：**仅支持 OpenCode 2.x**（`/api/*` + HTTP Basic 认证）。v1（1.18.x）在 0.7.2 冻结、
-1.0.0 移除；探测到 v1 会直接报「requires OpenCode 2.x」。`apiVersion: auto|2` 仍可用，
+`master` 上按下一个大版本（未发布的 1.0.0）移除；探测到 v1 会直接报「requires OpenCode 2.x」。
+`apiVersion: auto|2` 仍可用，
 `auto` 探测 `GET /api/info` 并记录失败原因。详见 [兼容性与版本](#兼容性与版本)。
 
 > **定位**：核心能力是把 OpenCode 注册为 dsh 的**原生 subagent 后端**
@@ -70,12 +71,12 @@ OPC_LIVE_DIR=/home/yhuan/workspace \
 node scripts/e2e-live.mjs        # 或 npm run e2e；OPC_LIVE_INTERACTIONS=1 还会验证权限/提问桥接
 ```
 
-`OPC_LIVE_PASSWORD` 对 OpenCode 2 必填、对 OpenCode 1.18.x 可选。离线检查：`npm test`
+`OPC_LIVE_PASSWORD` 对 OpenCode 2 必填。离线检查：`npm test`
 （单元 + 传输层测试）或 `npm run check`（冒烟检查 + 测试）。
 
 前提：远端 OpenCode 需从 dsh 宿主可达；`opencode serve` 默认绑 `127.0.0.1`，网络访问需绑
 `0.0.0.0` 或走 SSH 隧道。**OpenCode 2 必须**在 serve 进程设置
-`OPENCODE_SERVER_PASSWORD`，并在插件 server 配置里填同一个 `password`；OpenCode 1.18.x 建议
+`OPENCODE_SERVER_PASSWORD`，并在插件 server 配置里填同一个 `password`；
 设置。
 
 ## 架构
@@ -93,7 +94,7 @@ flowchart LR
         ROUTES["routes<br/>/api/opencode-client/*"]
         TOOLS["tools<br/>28 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
-        SSE["sse<br/>v1 /global/event · v2 /api/event"]
+        SSE["sse<br/>v2 /api/event"]
     end
 
     DSH --> CLIENT
@@ -101,12 +102,12 @@ flowchart LR
     DSH --> TOOLS
     DSH --> PROVIDER
 
-    ROUTES -->|"v1 / v2 HTTP API"| N100["opencode serve · n100"]
-    TOOLS -->|"v1 / v2 HTTP API"| N100
-    PROVIDER -->|"v1 / v2 HTTP API"| N100
-    ROUTES -->|"v1 / v2 HTTP API"| M65["opencode serve · m65"]
-    TOOLS -->|"v1 / v2 HTTP API"| M65
-    PROVIDER -->|"v1 / v2 HTTP API"| M65
+    ROUTES -->|"v2 HTTP API"| N100["opencode serve · n100"]
+    TOOLS -->|"v2 HTTP API"| N100
+    PROVIDER -->|"v2 HTTP API"| N100
+    ROUTES -->|"v2 HTTP API"| M65["opencode serve · m65"]
+    TOOLS -->|"v2 HTTP API"| M65
+    PROVIDER -->|"v2 HTTP API"| M65
 
     N100 -.->|"SSE"| SSE
     M65 -.->|"SSE"| SSE
@@ -115,92 +116,86 @@ flowchart LR
 
 浏览器只与 **dsh 同源**通信 —— `lib/client.js` 渲染插件页和右侧栏标签页，并用 iframe 嵌入
 OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模型的 `opencode_*` 工具
-（`lib/tools.js`）通过按 server 选定的 v1 或 v2 传输发出确定性 HTTP 调用；`lib/provider.js`
-（`opencode-<serverId>`）和 `lib/session-run.js` 驱动委派运行；`lib/sse.js` 订阅每台 server 的
-事件流（v1 `/global/event`、v2 `/api/event` 带 Basic 认证；带重连），提供实时进度、完成判定与
-权限/提问桥接。`lib/http.js` 每台 server 只探测一次 `GET /api/info`，对 v2 请求加 `/api` 前缀
-与 HTTP Basic 认证（v1 路径保持不变）。
+（`lib/tools.js`）通过 `@opencode/client`（锁定 `2.4.2`，每台 server 一个实例）发出确定性调用；
+`lib/provider.js`（`opencode-<serverId>`）和 `lib/session-run.js` 驱动委派运行；`lib/sse.js`
+订阅每台 server 的 `/api/event` 事件流（Basic 认证、带重连），提供实时进度、完成判定与
+权限/提问桥接。`lib/http.js` 每台 server 只探测一次 `GET /api/info`，加 HTTP Basic 认证，
+并对 v1 直接报错；`lib/oc-client.js` 负责 client 实例与错误映射。
 
 更多：[ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md)。
 
 ## 功能
 
 28 个面向模型的 `opencode_*` 工具、宿主 HTTP 路由，以及每台 server 一个原生 subagent
-provider —— OpenCode 1.18.x（v1 API）与 OpenCode 2.x（v2 API）下工具名一致，仅有五处版本例外
-（见下）。**支持目标是 OpenCode 2；v1 已冻结**：代码保留、离线用例仍覆盖，但不再新增能力，也不再
-对 1.18.x 做实机验证（[政策](COMPATIBILITY.md#v1-policy-frozen)）。
+provider。**OpenCode 2 是唯一支持代际**：v1 在 0.7.2 冻结，`master` 上按未发布的 1.0.0
+移除；探测到 v1 会在传输层直接报错（[政策](COMPATIBILITY.md#v1-policy-removed)）。
 
-### OpenCode 1.18.x 与 2.x
+### OpenCode 2 API 说明
 
-同一份安装同时支持两代 API，版本按 server 探测，28 个 `opencode_*` 工具名在两代上完全一致
-（下面 v1 列记录的是冻结路径的现有行为，不是支持承诺）；
-但有四个能力在 OpenCode 2 上没有对应端点 —— 它们会返回明确的「not available on OpenCode 2」提示，而不是静默返回
-空数据。另有两项在 v2 上**通过 v2 原生能力补回**，一项**仅 v2 可用**：
+OpenCode 2 移除了少量 v1 端点。两项能力现在返回明确的「not available on OpenCode 2」提示而不
+是空数据，两项通过 v2 原生能力补回，另两项仅 v2 可用：
 
-| 能力 | OpenCode 1.18.x（v1） | OpenCode 2.x（v2） |
-|---|---|---|
-| 下表之外的 `opencode_*` 工具与模式 | 支持 | 支持 |
-| `opencode_share` | share / unshare 链接 | **不可用**（v2 没有 share 端点） |
-| `opencode_tools` | 工具 id 目录 | **不可用**（v2 没有 tool-ids 端点） |
-| `opencode_find` 的 `kind=text` | 文本内容搜索 | **已补回**：v2 无内容搜索端点，改用异步 shell 跑工作区 `grep`（字面子串，最多 100 条） |
-| `opencode_session_info` 的 todo 列表 | todo 条目 | **已补回**：v2 移除了 `/session/{id}/todo`，改为从最后一次 `todowrite` 工具调用推导 |
-| `opencode_usage` | **不可用**（v1 没有 stats 端点） | **仅 v2**：`GET /experimental/session/stats` 聚合会话数/步数/token/成本/工具成功率，并含按模型归因与（宿主路由 `?group=directory`）按目录成本 |
-| 后台任务（看板/进度） | **不可用**（没有端点） | **仅 v2 · 实验性**：`GET /experimental/job` 列出活过回合的工作（如会话已 idle、脚本仍在跑）；显示为 `background` 状态 |
+| 能力 | OpenCode 2 行为 |
+|---|---|
+| `opencode_share` | **不可用**（没有 share 端点） |
+| `opencode_tools` | **不可用**（没有 tool-ids 端点） |
+| `opencode_find` 的 `kind=text` | **已补回**：无内容搜索端点，改用异步 shell 跑工作区 `grep`（字面子串，最多 100 条） |
+| `opencode_session_info` 的 todo 列表 | **已补回**：移除了 `/session/{id}/todo`，改为从最后一次 `todowrite` 工具调用推导 |
+| `opencode_usage` | **仅 OpenCode 2**：`GET /experimental/session/stats` 聚合会话数/步数/token/成本/工具成功率，并含按模型归因与（宿主路由 `?group=directory`）按目录成本 |
+| 后台任务（看板/进度） | **仅 OpenCode 2 · 实验性**：`GET /experimental/job` 列出活过回合的工作（如会话已 idle、脚本仍在跑）；显示为 `background` 状态 |
 
-v2 上插件还会替你吸收这些 API 差异：
+OpenCode 2 上插件还会替你吸收这些 API 差异：
 
-- 会话携带 `location.directory`；session / message / diff 结果会归一化成 v1 形状。
+- 会话携带 `location.directory`；session / message / diff 结果归一化成同一形状。
 - prompt 是 `{text, files}`；`agent` 与 `model` 是会话状态
-  （`POST /api/session/{id}/agent|model`），不再像 v1 那样放在 prompt body 里。
-- 完成判定来自 `session.execution.succeeded|failed|interrupted` 事件（v1 仍用
-  `session.idle`）。
+  （`POST /api/session/{id}/agent|model`）。
+- 完成判定来自 `session.execution.succeeded|failed|interrupted` 事件。
 - 权限审批使用 `once|always|reject`；提问变成带类型字段（string / number / integer / boolean /
   multiselect）的 form。
-- `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）；v2 输出按 cursor 翻页（最多 1 MiB），
-  截断会显式提示，并带 exit/signal。
-- `opencode_summarize` 映射到 `compact`（使用会话自身的 model，因此 v2 上 `model` 可省略）；
-  `opencode_init` 执行内置 `init` 命令；`opencode_git_diff` 把 `git` 映射为 v2 的
-  `working`；`opencode_find` 在 v2 上会把 glob 查询退化成子串再试一次（v2 端点不认 `*`/`?`）。
+- `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）；输出按 cursor 翻页（最多 1 MiB），
+  截断时明确给出 exit/signal。
+- `opencode_summarize` 映射为 `compact`（使用会话自身 model，`model` 可省略）；
+  `opencode_init` 执行内置 `init` 命令；`opencode_git_diff` 把 `git` 映射为 `working`；
+  `opencode_find` 会把 glob 查询重试为纯子串（端点不认 `*`/`?`）。
 
 ### 子代理委派
 
 - **原生子代理** — provider `opencode-<serverId>`，配合 `@deepseek-ai/dsh-tool-subagent` 可暴露
   一次性执行的 `opencode_subagent_<server>` 工具。
 - **委派** — 工具 `opencode_subagent`（新建会话，或 `session=` 续用；可选 `agent`、`model` 与
-  prompt 级 `schema`）；走 `prompt_async` + 消息轮询，失败回退阻塞式 prompt，返回最终答案和
-  会话 id。v2 上 prompt 为 `{text, files}`，`agent`/`model` 作为会话状态应用。
+  prompt 级 `schema`）；走 `session.prompt` + 消息轮询（阻塞等待兜底），返回最终答案和
+  会话 id。prompt 为 `{text, files}`，`agent`/`model` 作为会话状态应用。
 - **回合制续聊** — `opencode_prompt` 向已有远端会话发一条消息（默认 fire-and-forget，
   `wait=true` 则阻塞等本轮结束）；用 `opencode_messages`/`opencode_progress` 读回复，再发下一条。
   远端会话可跨 dsh 回合长期存活。
-- **完成等待** — `prompt_async` + SSE 事件驱动（远端结束立即返回），5s 轮询兜底，再回退到阻塞式
-  prompt 接口。v1 以 `session.idle` 完成；v2 以
-  `session.execution.succeeded|failed|interrupted` 完成。
+- **完成等待** — SSE 事件驱动（远端结束立即返回），5s 轮询兜底，再阻塞等待。
+  完成判定来自 `session.execution.succeeded|failed|interrupted`。
 - **实时进度** — `opencode_progress`（当前工具/步骤、耗时、输出 tail），由 SSE 工具事件驱动；
-  委派完成由 SSE 完成事件触发（按版本如上拆分）。
-- **中止** — `opencode_abort` 停止远端运行中的会话（v1 `/abort`，v2 `/interrupt`）；等待中的
+  委派完成由 SSE 完成事件触发。
+- **中止** — `opencode_abort` 停止远端运行中的会话（`session.interrupt`）；等待中的
   委派会返回 abort 错误而不是继续挂起。注意：同一轮次内 dsh 会串行执行工具调用，因此 abort
   需从**另一个会话/agent** 发起，无法抢占同轮次里阻塞中的 `opencode_subagent`。
-- **附件** — `opencode_subagent` 支持 `files` JSON 数组（text/base64 → data URL；v2 发送
-  `{uri, name}` 附件）。
+- **附件** — `opencode_subagent` 支持 `files` JSON 数组（text/base64 → data URL；以
+  `{uri, name}` 附件发送）。
 
 ### 会话与消息
 
 - **服务配置** — `servers: [{ id, label?, url, password?, directory? }]`，可带每台 server 的默认
   `agent` 与 `model`。
-- **发现** — `GET /api/opencode-client/list`（健康状态、projects、按目录分组的 sessions；v2 的
+- **发现** — `GET /api/opencode-client/list`（健康状态、projects、按目录分组的 sessions；
   目录取自 `location.directory`）。
 - **会话列表** — 工具 `opencode_sessions` + `GET /api/opencode-client/sessions`；每行在服务端提供时带
   model（含 `#variant`）、agent、outcome 与 cost。
 - **会话消息** — 工具 `opencode_messages` + `GET /api/opencode-client/messages`（含 text / tool /
-  file part；v2 的 `content[]` text/reasoning/tool part 会归一化）；tool 行带调用入参摘要与输出首行，
-  `type=` 可按消息类型过滤（v2 服务端过滤）；可用来判断某会话是否值得续用。
+  file part；`content[]` text/reasoning/tool part 会归一化）；tool 行带调用入参摘要与输出首行，
+  `type=` 可按消息类型过滤（服务端过滤）；可用来判断某会话是否值得续用。
 - **会话信息** — 工具 `opencode_session_info`（title/summary/todos/diff、model#variant、agent、
-  parent/fork 来源与时间；无 model 时显示 `(server default)`；OpenCode 2 的 todo 从 `todowrite`
-  推导）与 `opencode_share`（share/unshare 链接；仅 v1 —— OpenCode 2 移除了该端点，工具会明确说明）。
-- **会话管理** — `opencode_fork`、`opencode_children`、`opencode_summarize`（mutating；v2 映射为
+  parent/fork 来源与时间；无 model 时显示 `(server default)`；todo 从 `todowrite` 推导）与
+  `opencode_share`（share/unshare 链接；OpenCode 2 不可用，工具会明确说明）。
+- **会话管理** — `opencode_fork`、`opencode_children`、`opencode_summarize`（mutating；映射为
   `compact`，使用会话自身 model，`model` 可省略）、`opencode_init`（写 AGENTS.md，需
-  `confirm=true`；v2 执行内置 `init` 命令）。
-- **会话搜索 / 诊断** — `opencode_search`（v2 通过列表端点的 `search` 过滤；v1 本地按标题过滤）、
+  `confirm=true`；执行内置 `init` 命令）。
+- **会话搜索 / 诊断** — `opencode_search`（通过列表端点的 `search` 过滤）、
   `opencode_mcp`（MCP 服务状态）。
 - **多 server** — 以数组配置，由客户端聚合（OpenCode 服务端没有联邦 API）。
 
@@ -209,28 +204,27 @@ v2 上插件还会替你吸收这些 API 差异：
 - **Agent 目录** — 工具 `opencode_agents` + `GET /api/opencode-client/agents`（primary/subagent，
   native/custom）；委派前可用它挑 agent 名。
 - **目录类** — `opencode_models`（provider/model，凭据已脱敏）、`opencode_commands`、
-  `opencode_skills`、`opencode_tools`（仅 v1；OpenCode 2 没有 tool-ids 端点）、
+  `opencode_skills`、`opencode_tools`（OpenCode 2 不可用；没有 tool-ids 端点）、
   `opencode_references`。
 - **命令执行** — `opencode_command` 在会话内执行远端命令（如 `init`）并返回最终文本。
 
 ### 工作区与 git
 
 - **工作区操作** — `opencode_shell`、`opencode_git_status`、`opencode_git_diff`、
-  `opencode_read_file`、`opencode_find`（按文件路径搜索；v1 支持文本内容搜索，v2 只有
-  `kind=file` 可用，`kind=text` 返回明确提示）。
+  `opencode_read_file`、`opencode_find`（`kind=file` 搜索路径；`kind=text` 用工作区 grep 兜底）。
 - 这些都是确定性的直连调用（不经过远端模型）：核对远端 agent 改了什么、读文件、跑命令或搜索
   工作区。
-- 版本差异：`opencode_shell` 在 v1 同步、在 v2 异步（提交、轮询、读输出），均在会话工作区执行；
-  `opencode_git_diff` 在 v2 接受 `committed`/`branch`/`working`，`git` 映射为 `working`。
+- `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）；
+  `opencode_git_diff` 接受 `committed`/`branch`/`working`，`git` 映射为 `working`。
 
 ### 权限与事件
 
 - **权限审批** — `permission: ask`（默认）把远端权限请求转成 dsh 审批卡；`allow`/`reject`
-  确定性应答（v2 回复 `once`/`always`/`reject`）。
+  确定性应答（回复 `once`/`always`/`reject`）。
 - **提问桥接** — 工具发起的运行（有 agent 在作用域）会把远端提问转发到 dsh 用户提问 UI；
-  否则自动拒绝。v2 上提问是带类型字段（string / number / integer / boolean / multiselect）的
+  否则自动拒绝。提问是带类型字段（string / number / integer / boolean / multiselect）的
   form。
-- **实时** — 每台 server 常驻 SSE（v1 `/global/event`、v2 `/api/event`），带重连；权限/提问快速应答、
+- **实时** — 每台 server 常驻 SSE（`/api/event`），带重连；权限/提问快速应答、
   `GET /api/opencode-client/events`、`/status`、`live`/`running` 状态。
 - **轮询兜底** — 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
 
@@ -293,16 +287,11 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
       - id: n100
         label: n100 opencode 2.x
         url: http://192.168.4.50:4096
-        apiVersion: auto            # auto（探测 GET /api/info）| 1 | 2
+        apiVersion: auto            # auto（探测 GET /api/info）| 2（v1 会被拒绝）
         password: "<OPENCODE_SERVER_PASSWORD>"
         # directory: /home/yhuan/workspace   # 调用方未给目录时的默认远端目录
         # agent: plan            # 委派默认 agent
         # model: deepseek/deepseek-chat      # 默认模型 "provider/model"
-      # OpenCode 1.18.x：password 可选（暴露在网络上时建议设置）。
-      - id: m65
-        label: 4.65 opencode 1.18
-        url: http://192.168.4.65:4096
-        apiVersion: 1
     permission: ask              # ask（默认，审批卡）| allow | reject
     question: reject             # reject（默认）| ignore
     pathMap:                     # 本地/远端路径布局不同时
@@ -314,10 +303,9 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
       failover: true             # start 发布前失败时换下一台
 ```
 
-`apiVersion: auto`（默认）每台 server 探测一次 `GET /api/info`。若探测被 401 拒绝、未配置密码，
-或端点返回的不是 JSON，则按 v1 处理并在 `server.versionProbe` 记录原因（启动时打印一次）——
-此时 OpenCode 2 的工具会以 401 提示失败，直到 `password` 与 `OPENCODE_SERVER_PASSWORD` 一致。
-可用 `apiVersion: 1` 或 `2` 跳过探测。v2 server 可先自检：
+`apiVersion: auto`（默认）每台 server 探测一次 `GET /api/info`。401 表示密码缺失或错误；
+其它探测失败会记录在 `server.versionProbe`（启动时打印一次）并以明确错误呈现。返回 v1 的
+server 会被 `opencode.v1_unsupported` 拒绝。可用 `apiVersion: 2` 跳过探测。可先自检：
 `curl -u opencode:$OPENCODE_SERVER_PASSWORD http://host:4096/api/info`。
 
 ### 注册为原生 subagent
@@ -381,7 +369,7 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) —— 2.3.0 未接入的 100 个端点的实测盘点与深度整合路线（inbox/steer、revert 检查点、worktree、stats、PTY、反向 MCP）
 - [docs/subagent-seam.md](docs/subagent-seam.md) —— dsh subagent provider 接缝
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) —— 插件页远端会话聊天提案
-- [scripts/e2e-live.mjs](scripts/e2e-live.mjs) —— 对真实 v1/v2 server 的实机验收脚本（离线检查仍为 `npm test` / `npm run check`）
+- [scripts/e2e-live.mjs](scripts/e2e-live.mjs) —— 对真实 OpenCode 2 server 的实机验收脚本（离线检查仍为 `npm test` / `npm run check`）
 - [README.md](README.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## 生态
@@ -399,35 +387,30 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 | 组件 | 版本 | 状态 |
 |---|---|---|
 | dsh | `>=0.2.1-rc.2`（实测 `0.2.2-rc.5`） | 支持 |
-| OpenCode 1.18.x（v1 API） | `1.18.10` / `1.18.31` / `1.18.33` | **已冻结**（代码保留、不再扩展、不做实机验证） |
-| OpenCode 2.x（v2 API） | v2 `/api/*` + HTTP Basic 认证（实测 `2.3.0`） | 端到端支持；五处已记录的版本例外 |
+| OpenCode 2.x（v2 API） | `/api/*` + HTTP Basic 认证（实测 `2.4.2`；预期 `2.3.0+`） | 端到端支持 |
+| OpenCode 1.x（v1 API） | 任意 | **拒绝**（`opencode.v1_unsupported`） |
 
-插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前版本 `0.7.2`**
-（tag `v0.7.2`）；v2 端到端支持在 `0.7.1` 通过 [PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)
-合入 master，`0.2.0` 是第一个能读 OpenCode 2 的版本。同一份安装仍可用两代 API（按 server 配置
-`apiVersion: auto|1|2`），但 **v1 已冻结**（见
-[COMPATIBILITY.md](COMPATIBILITY.md#v1-policy-frozen)）；`0.1.x` 是仅 v1 的版本线。v2 探测与五处
-版本例外见[功能](#opencode-118x-与-2x)；实测缺口与分阶段计划见
-[docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)。
+插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前 tag 版本 `0.7.2`**
+（tag `v0.7.2`）。`master` 是**未发布的 1.0.0 线**：v1 API 已移除，传输层改用
+[`@opencode/client`](https://github.com/sst/opencode) **锁定 `2.4.2`**（每台 server 一个实例；
+升级按兼容性独立发版）。版本矩阵与锁定策略见 [COMPATIBILITY.md](COMPATIBILITY.md)；历史
+v1→v2 迁移记录保留在 [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)。
 
 ## 说明与限制
 
 - 远端 OpenCode 需从 dsh 宿主可达；`opencode serve` 默认绑 `127.0.0.1`，网络访问需绑
   `0.0.0.0` 或走 SSH 隧道。OpenCode 2 必须在 serve 进程设置 `OPENCODE_SERVER_PASSWORD`，并在
-  插件 `password` 填同一个值（否则探测回退到 v1，工具会以 401 提示失败）；OpenCode 1.18.x 建议
-  设置。
+  插件 `password` 填同一个值；不一致时探测以 401 提示失败。
 - 会话续用通过 OpenCode HTTP API；原生外部子代理仍是一次性执行（与 Codex/Claude Code 后端一致）。
 - 远端 agent 的交互式提问，在运行由 `opencode_subagent` 发起（有 agent 在作用域）时转发到 dsh
-  用户提问 UI；否则自动拒绝。v2 上同一桥接会应答带类型的 form。
-- **结构化输出是 prompt 约束而非 `format=` 强约束**：**OpenCode 1.18.x** 使用
-  `format: {type:"json_schema"}` 后会把 `retryCount` 持久化，导致 `GET /session/{id}/message`
-  返回 400，会话不可读。插件因此不发送 `format`，而是追加"只返回 JSON"指令并本地校验（`schema`）。
-- 权限卡需要**工具发起的委派**（有 live agent）；HTTP 直接调用回落 allow/reject（v2：
-  `once`/`always`/`reject`）。
-- 多 server 由客户端聚合（OpenCode 服务端没有联邦 API）；v1 与 v2 server 可在同一份配置里混用。
+  用户提问 UI；否则自动拒绝。同一桥接会应答带类型的 form。
+- 权限卡需要**工具发起的委派**（有 live agent）；HTTP 直接调用回落 allow/reject
+  （`once`/`always`/`reject`）。
+- 多 server 由客户端聚合（OpenCode 服务端没有联邦 API）；每台 server 都必须提供 OpenCode 2 API。
 - 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
 - 插件页显示 `live`（SSE 已连接）与当前运行中的会话数。
-- **两代 API 都受支持**：版本按 server 探测或强制指定，请求据此路由 —— v1 路径保持不变，v2
-  请求带 `/api` 前缀与 Basic 认证。剩余 v2 缺口（`opencode_share`、`opencode_tools`）返回明确的
-  「not available on OpenCode 2」提示而不是空数据；文本搜索与会话 todo 已通过 v2 原生能力补回
-  —— 见[功能](#opencode-118x-与-2x)与 [COMPATIBILITY.md](COMPATIBILITY.md)。
+- **OpenCode 2 传输**：请求走 `@opencode/client`（`2.4.2`），路径、Basic 认证与响应信封由
+  client 负责；`lib/oc-client.js` 每台 server 缓存一个实例。剩余 v2 缺口（`opencode_share`、
+  `opencode_tools`）返回明确的「not available on OpenCode 2」提示而不是空数据；文本搜索与会话
+  todo 已用 v2 原生能力补回 —— 见[功能](#opencode-2-api-说明)与
+  [COMPATIBILITY.md](COMPATIBILITY.md)。

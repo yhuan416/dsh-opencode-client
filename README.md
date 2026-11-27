@@ -26,9 +26,10 @@ dsh subagent provider (`opencode-<serverId>`).
 > agent-facing tools and native subagent provider — follows in later releases. Both share one
 > transport and version-probing core. See `TODO.md` §10 for the per-track roadmap.
 
-**Compatibility**: **OpenCode 2.x only** (`/api/*` + HTTP Basic auth). v1 (1.18.x) was frozen in
-0.7.2 and removed in 1.0.0 — a v1 server now fails with a clear "requires OpenCode 2.x" error.
-`apiVersion: auto|2` is accepted; `auto` probes `GET /api/info` and records why a probe failed.
+**Compatibility**: **OpenCode 2.x only** (`/api/*` + HTTP Basic auth). The v1 API (OpenCode
+1.18.x) was frozen in 0.7.2 and removed on `master` for the next major (unreleased 1.0.0) — a v1
+server now fails with a clear "requires OpenCode 2.x" error. `apiVersion: auto|2` is accepted;
+`auto` probes `GET /api/info` and records why a probe failed.
 See [Compatibility & versioning](#compatibility--versioning).
 
 > **Primary role**: register OpenCode as a native dsh subagent backend
@@ -81,7 +82,7 @@ node scripts/e2e-live.mjs        # or: npm run e2e; OPC_LIVE_INTERACTIONS=1 also
 Prerequisite: `opencode serve` must be reachable from the dsh host. It binds `127.0.0.1` by
 default — bind `0.0.0.0` or put it behind an SSH tunnel. **OpenCode 2 always requires
 `OPENCODE_SERVER_PASSWORD` on the serve process plus the same value in the plugin's server
-`password`**; for OpenCode 1.18.x it is recommended.
+`password`**.
 
 ## Architecture
 
@@ -99,7 +100,7 @@ flowchart LR
         ROUTES["routes<br/>/api/opencode-client/*"]
         TOOLS["tools<br/>28 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
-        SSE["sse<br/>v1 /global/event · v2 /api/event"]
+        SSE["sse<br/>v2 /api/event"]
     end
 
     DSH --> CLIENT
@@ -107,12 +108,12 @@ flowchart LR
     DSH --> TOOLS
     DSH --> PROVIDER
 
-    ROUTES -->|"v1 / v2 HTTP API"| N100["opencode serve · n100"]
-    TOOLS -->|"v1 / v2 HTTP API"| N100
-    PROVIDER -->|"v1 / v2 HTTP API"| N100
-    ROUTES -->|"v1 / v2 HTTP API"| M65["opencode serve · m65"]
-    TOOLS -->|"v1 / v2 HTTP API"| M65
-    PROVIDER -->|"v1 / v2 HTTP API"| M65
+    ROUTES -->|"v2 HTTP API"| N100["opencode serve · n100"]
+    TOOLS -->|"v2 HTTP API"| N100
+    PROVIDER -->|"v2 HTTP API"| N100
+    ROUTES -->|"v2 HTTP API"| M65["opencode serve · m65"]
+    TOOLS -->|"v2 HTTP API"| M65
+    PROVIDER -->|"v2 HTTP API"| M65
 
     N100 -.->|"SSE"| SSE
     M65 -.->|"SSE"| SSE
@@ -122,12 +123,12 @@ flowchart LR
 The browser only talks to the **dsh origin** — `lib/client.js` renders the plugin page and the
 right-sidebar tab and embeds the native OpenCode UI in an iframe. `lib/routes.js`
 (`/api/opencode-client/*`) and the model-facing `opencode_*` tools (`lib/tools.js`) make
-deterministic HTTP calls through the per-server v1 or v2 transport; `lib/provider.js`
-(`opencode-<serverId>`) and `lib/session-run.js` drive delegated runs; `lib/sse.js` subscribes to
-each server's event stream (v1 `/global/event`, v2 `/api/event` with Basic auth; with reconnect)
-for live progress, completion and permission/question bridging. `lib/http.js` probes
-`GET /api/info` once per server, prefixes v2 requests with `/api` and adds HTTP Basic auth
-(v1 paths are untouched).
+deterministic calls through `@opencode/client` (pinned `2.4.2`, one client per server);
+`lib/provider.js` (`opencode-<serverId>`) and `lib/session-run.js` drive delegated runs;
+`lib/sse.js` subscribes to each server's `/api/event` stream with Basic auth and reconnect for
+live progress, completion and permission/question bridging. `lib/http.js` probes
+`GET /api/info` once per server, adds HTTP Basic auth and rejects v1 with an actionable error;
+`lib/oc-client.js` owns the client instance and error mapping.
 
 More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md).
 
@@ -135,89 +136,83 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
 
 28 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
 same tool names. **OpenCode 2 is the only supported generation**: v1 was frozen in 0.7.2 and
-removed in 1.0.0; a v1 server is rejected at the transport with an actionable error
-([policy](COMPATIBILITY.md#v1-policy-removed-in-100)).
+removed on `master` for the unreleased 1.0.0; a v1 server is rejected at the transport with an
+actionable error ([policy](COMPATIBILITY.md#v1-policy-removed)).
 
-### OpenCode 1.18.x vs 2.x (historical)
+### OpenCode 2 API notes
 
-One install speaks both API generations; the generation is detected per server and the 28
-`opencode_*` tool names were identical on both — the v1 column below records the removed path's
-current behaviour, not a support commitment. Two capabilities have no OpenCode 2 endpoint and
-return an explicit "not available on OpenCode 2" message instead of silently returning empty data;
-two more are restored through v2-native fallbacks, and one is v2-only:
+OpenCode 2 removed a few v1 endpoints. Two capabilities now return an explicit "not available on
+OpenCode 2" message instead of empty data, two are restored with v2-native calls, and two are
+v2-only:
 
-| Capability | OpenCode 1.18.x (v1) | OpenCode 2.x (v2) |
-|---|---|---|
-| `opencode_*` tools and modes not listed below | supported | supported |
-| `opencode_share` | share / unshare link | **not available** (no share endpoint) |
-| `opencode_tools` | tool-id catalog | **not available** (no tool-ids endpoint) |
-| `opencode_find` with `kind=text` | content search | **restored via fallback**: v2 has no content-search endpoint, so the plugin runs workspace `grep` through the async shell (literal substring, first 100 matches) |
-| todo list in `opencode_session_info` | todo items | **restored via fallback**: v2 removed `/session/{id}/todo`, so todos are derived from the last `todowrite` tool call |
-| `opencode_usage` | **not available** (v1 has no stats endpoint) | **v2 only**: `GET /experimental/session/stats` aggregates sessions/steps/tokens/cost/tool success rate, plus per-model attribution and (host route `?group=directory`) per-directory cost |
-| background jobs (board/progress) | **not available** (no endpoint) | **v2 only, experimental**: `GET /experimental/job` lists work that outlives the turn (e.g. a shell script still running after the session went idle); shown as the `background` status |
+| Capability | OpenCode 2 behaviour |
+|---|---|
+| `opencode_share` | **not available** (no share endpoint) |
+| `opencode_tools` | **not available** (no tool-ids endpoint) |
+| `opencode_find` with `kind=text` | **restored via fallback**: no content-search endpoint, so the plugin runs a workspace `grep` through the async shell (literal substring, first 100 matches) |
+| todo list in `opencode_session_info` | **restored via fallback**: `/session/{id}/todo` was removed, so todos are derived from the last `todowrite` tool call |
+| `opencode_usage` | **OpenCode 2 only**: `GET /experimental/session/stats` aggregates sessions/steps/tokens/cost/tool success rate, plus per-model attribution and (host route `?group=directory`) per-directory cost |
+| background jobs (board/progress) | **OpenCode 2 only, experimental**: `GET /experimental/job` lists work that outlives the turn (e.g. a shell script still running after the session went idle); shown as the `background` status |
 
-On v2 the plugin also absorbs these API differences for you:
+On OpenCode 2 the plugin also normalizes these API differences for you:
 
-- Sessions carry `location.directory`; session/message/diff results are normalized to the v1 shapes.
+- Sessions carry `location.directory`; session/message/diff results are normalized to one shape.
 - Prompts are `{text, files}`; `agent` and `model` are session state
-  (`POST /api/session/{id}/agent|model`) rather than prompt-body fields as in v1.
-- Completion is detected from `session.execution.succeeded|failed|interrupted` events (v1 keeps
-  `session.idle`).
+  (`POST /api/session/{id}/agent|model`).
+- Completion is detected from `session.execution.succeeded|failed|interrupted` events.
 - Permission approvals use `once|always|reject`; questions arrive as forms with typed fields
   (string / number / integer / boolean / multiselect).
-- `opencode_shell` runs asynchronously in the session workspace (submit, poll, read output); v2 output
+- `opencode_shell` runs asynchronously in the session workspace (submit, poll, read output); output
   pages are followed via cursor (up to 1 MiB) and truncation is reported explicitly with exit/signal.
-- `opencode_summarize` maps to `compact` (the session's own model is used, so `model` is optional
-  on v2); `opencode_init` runs the built-in `init` command; `opencode_git_diff` maps `git` → v2's
-  `working`; `opencode_find` retries a glob query as a plain substring on v2 (the v2 endpoint does
-  not understand `*`/`?`).
+- `opencode_summarize` maps to `compact` (the session's own model is used, so `model` is optional);
+  `opencode_init` runs the built-in `init` command; `opencode_git_diff` maps `git` → `working`;
+  `opencode_find` retries a glob query as a plain substring (the endpoint does not understand
+  `*`/`?`).
 
 ### Subagent delegation
 
 - **Native subagent** — provider `opencode-<serverId>`; pair with `@deepseek-ai/dsh-tool-subagent`
   to expose one-shot `opencode_subagent_<server>` tools.
 - **Delegation** — tool `opencode_subagent` (new session, or continue with `session=`; optional
-  `agent`, `model` and prompt-enforced `schema`); uses `prompt_async` + message polling with a
-  blocking-prompt fallback, and returns the final answer plus the session id. On v2 the prompt is
-  `{text, files}` and `agent`/`model` are applied as session state.
+  `agent`, `model` and prompt-enforced `schema`); uses `session.prompt` + message polling with a
+  blocking wait, and returns the final answer plus the session id. The prompt is `{text, files}`
+  and `agent`/`model` are applied as session state.
 - **Turn-by-turn continuation** — `opencode_prompt` sends one message to an existing remote session
   (fire-and-forget by default, `wait=true` to block); read the reply with
   `opencode_messages`/`opencode_progress` and send the next message. This keeps a remote worker
   session alive across dsh turns.
 - **Completion wait** — `prompt_async` + SSE event-driven (returns immediately when the remote
-  finishes), 5 s polling fallback, then a fallback to the blocking prompt endpoint. v1 completes on
-  `session.idle`; v2 on `session.execution.succeeded|failed|interrupted`.
+  finishes), 5 s polling fallback, then a blocking wait. Completion is detected from
+  `session.execution.succeeded|failed|interrupted`.
 - **Live progress** — `opencode_progress` (current tool/step, elapsed, output tail) fed by SSE
-  tool events; delegation completes on the SSE completion event (version-split as above).
-- **Abort** — `opencode_abort` stops a running remote session (v1 `/abort`, v2 `/interrupt`); a
+  tool events; delegation completes on the SSE completion event.
+- **Abort** — `opencode_abort` stops a running remote session (`session.interrupt`); a
   waiting delegation returns an abort error instead of hanging. Call it from another dsh
   session/agent: tool calls inside one turn are serialized, so it cannot preempt a blocking
   `opencode_subagent` in the same turn.
-- **Attachments** — `opencode_subagent` accepts a `files` JSON array (text/base64 → data URL; v2
-  sends `{uri, name}` file attachments).
+- **Attachments** — `opencode_subagent` accepts a `files` JSON array (text/base64 → data URL);
+  attachments are sent as `{uri, name}`.
 
 ### Sessions & messages
 
 - **Server configuration** — `servers: [{ id, label?, url, password?, directory? }]`, with optional
   per-server default `agent` and `model`.
 - **Discovery** — `GET /api/opencode-client/list` (server health, projects, sessions grouped by
-  directory; on v2 the directory comes from `location.directory`).
+  directory; the directory comes from `location.directory`).
 - **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`; rows include
   the model (with `#variant`), agent, outcome and cost when the server reports them.
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages` (text, tool
-  and file parts; v2 `content[]` text/reasoning/tool parts are normalized). Tool lines include the
-  call input summary and the first output line; `type=` filters one message kind (server-side on v2).
+  and file parts; `content[]` text/reasoning/tool parts are normalized). Tool lines include the
+  call input summary and the first output line; `type=` filters one message kind (server-side).
   Useful to decide whether a session is the right one to continue.
-- **Session info** — tool `opencode_session_info` (title/summary/todos/diff; on OpenCode 2 the todo
-  list is derived from the last `todowrite` call and outcome/cost/tokens plus the changed-file diff
-  are reported) and `opencode_share` (share/unshare link; v1 only — OpenCode 2 removed the endpoint
-  and the tool says so).
+- **Session info** — tool `opencode_session_info` (title/summary/todos/diff; the todo list is derived from the last `todowrite` call, and
+  outcome/cost/tokens plus the changed-file diff are reported) and `opencode_share` (share/unshare
+  link; not available on OpenCode 2 and the tool says so).
 - **Session management** — `opencode_fork`, `opencode_children`, `opencode_summarize` (mutating;
   v2 maps it to `compact`, where the session's own model is used and `model` is optional),
-  `opencode_init` (writes AGENTS.md, requires `confirm=true`; on v2 it runs the built-in `init`
-  command).
-- **Session search & diagnostics** — `opencode_search` (v2 session search through the list
-  endpoint's `search` filter; v1 filters titles locally), `opencode_mcp` (MCP server status).
+  `opencode_init` (writes AGENTS.md, requires `confirm=true`; runs the built-in `init` command).
+- **Session search & diagnostics** — `opencode_search` (session search through the list endpoint's
+  `search` filter), `opencode_mcp` (MCP server status).
 - **Multiple servers** — configured as an array and aggregated by the client (opencode itself has
   no server-side federation).
 
@@ -226,7 +221,7 @@ On v2 the plugin also absorbs these API differences for you:
 - **Agent catalog** — tool `opencode_agents` + `GET /api/opencode-client/agents`
   (primary/subagent, native/custom); call it before `opencode_subagent` to pick an agent name.
 - **Catalogs** — `opencode_models` (providers/models, credentials stripped), `opencode_commands`,
-  `opencode_skills`, `opencode_tools` (v1 only; OpenCode 2 has no tool-ids endpoint),
+  `opencode_skills`, `opencode_tools` (not available on OpenCode 2; no tool-ids endpoint),
   `opencode_references`.
 - **Command execution** — `opencode_command` runs a remote command (e.g. `init`) inside a session
   and returns its final text.
@@ -234,22 +229,21 @@ On v2 the plugin also absorbs these API differences for you:
 ### Workspace & git
 
 - **Workspace ops** — `opencode_shell`, `opencode_git_status`, `opencode_git_diff`,
-  `opencode_read_file`, `opencode_find` (file-path search, or text-content search on v1; on v2
-  `kind=file` works and `kind=text` returns an explicit message).
+  `opencode_read_file`, `opencode_find` (`kind=file` searches paths; `kind=text` runs a workspace
+  grep fallback).
 - These are deterministic direct calls (no remote model involved): verify what a remote agent
   changed, read a file, run a command, or search the workspace.
-- Version notes: `opencode_shell` is synchronous on v1 and asynchronous on v2 (submit, poll, read
-  output) in the session workspace; `opencode_git_diff` accepts `committed`/`branch`/`working` on
-  v2, with `git` mapped to `working`.
+- `opencode_shell` is asynchronous (submit, poll, read output) in the session workspace;
+  `opencode_git_diff` accepts `committed`/`branch`/`working`, with `git` mapped to `working`.
 
 ### Permissions & events
 
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh
-  approval cards; `allow`/`reject` answer deterministically (v2 replies `once`/`always`/`reject`).
+  approval cards; `allow`/`reject` answer deterministically (`once`/`always`/`reject`).
 - **Question bridging** — remote questions are forwarded to dsh's user-question UI for
-  tool-initiated runs (an agent is in scope); otherwise they are rejected. On v2 questions are
+  tool-initiated runs (an agent is in scope); otherwise they are rejected. Questions are
   forms with typed fields (string / number / integer / boolean / multiselect).
-- **Live events** — per-server SSE subscription (v1 `/global/event`, v2 `/api/event`) with reconnect; fast
+- **Live events** — per-server SSE subscription (`/api/event`) with reconnect; fast
   permission/question handling, live state, `GET /api/opencode-client/events` and `/status`.
 - **Polling fallback** — permission/question requests are answered while a delegated run is active:
   SSE events are handled immediately, with a 15 s polling fallback when the stream is unavailable.
@@ -321,16 +315,11 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
       - id: n100
         label: n100 opencode 2.x
         url: http://192.168.4.50:4096
-        apiVersion: auto            # auto (probe GET /api/info) | 1 | 2
+        apiVersion: auto            # auto (probe GET /api/info) | 2 (v1 is rejected)
         password: "<OPENCODE_SERVER_PASSWORD>"
         # directory: /home/yhuan/workspace   # default remote dir when the caller does not give one
         # agent: plan            # default OpenCode agent for delegation
         # model: deepseek/deepseek-chat      # default model "provider/model"; v2 also "provider/model#variant"
-      # OpenCode 1.18.x: password is optional (recommended when exposed over the network).
-      - id: m65
-        label: 4.65 opencode 1.18
-        url: http://192.168.4.65:4096
-        apiVersion: 1
     permission: ask              # ask (default, dsh approval card) | allow | reject
     question: reject             # reject (default) interactive questions or "ignore" them
     pathMap:                     # only when local and remote path layouts differ
@@ -342,11 +331,10 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
       failover: true             # try the next candidate when a start fails before publication
 ```
 
-`apiVersion: auto` (the default) asks `GET /api/info` once per server. If the probe is rejected
-with 401, the password is missing, or the endpoint does not answer with JSON, the server is
-treated as v1 and the reason is recorded on `server.versionProbe` (logged once) — on OpenCode 2
-the tools then fail with a 401 hint until `password` matches `OPENCODE_SERVER_PASSWORD`. Force
-`apiVersion: 1` or `2` to skip probing. For a v2 server, sanity-check with
+`apiVersion: auto` (the default) asks `GET /api/info` once per server. A 401 means the password is
+missing or wrong; any other probe failure is recorded on `server.versionProbe` (logged once) and
+surfaces as a clear error. A server that answers as v1 is rejected with
+`opencode.v1_unsupported`. Force `apiVersion: 2` to skip probing. Sanity-check with
 `curl -u opencode:$OPENCODE_SERVER_PASSWORD http://host:4096/api/info`.
 
 ### Register as a native subagent
@@ -418,7 +406,7 @@ generic completion. With multiple servers, `opencode-auto` routes each child (se
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) — measured survey of the 100 unused OpenCode 2.3.0 endpoints and the candidate deeper-integration roadmap (inbox/steer, revert checkpoints, worktrees, stats, PTY, reverse MCP)
 - [docs/subagent-seam.md](docs/subagent-seam.md) — dsh subagent provider contract
 - [docs/chat-ui-proposal.md](docs/chat-ui-proposal.md) — in-page remote-session chat proposal
-- [scripts/e2e-live.mjs](scripts/e2e-live.mjs) — live acceptance run against a real v1/v2 server (offline checks stay `npm test` / `npm run check`)
+- [scripts/e2e-live.mjs](scripts/e2e-live.mjs) — live acceptance run against real OpenCode 2 servers (offline checks stay `npm test` / `npm run check`)
 - [README.zh.md](README.zh.md) · [TODO.md](TODO.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## Ecosystem
@@ -436,47 +424,39 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 | Component | Version | Status |
 |---|---|---|
 | dsh | `>=0.2.1-rc.2` (verified against `0.2.2-rc.5`) | supported |
-| OpenCode 1.18.x (v1 API) | `1.18.10` / `1.18.31` / `1.18.33` | **frozen** (code kept, not extended, not field-verified) |
-| OpenCode 2.x (v2 API) | v2 `/api/*` + HTTP Basic auth (verified against `2.3.0`) | supported end to end; five documented version exceptions |
+| OpenCode 2.x (v2 API) | `/api/*` + HTTP Basic auth (verified against `2.4.2`; `2.3.0+` expected) | supported end to end |
+| OpenCode 1.x (v1 API) | any | **rejected** with `opencode.v1_unsupported` |
 
 The plugin follows independent semantic versioning and is **not published to npm** (install from
-git or a local path). **Current release: `0.7.2`** (tag `v0.7.2`); v2 support was completed end to
-end in `0.7.1` via [PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5), and `0.2.0` was
-the first release that read OpenCode 2 at all. One install still serves both API generations with
-`apiVersion: auto|1|2` per server — but **v1 is frozen** (see
-[COMPATIBILITY.md](COMPATIBILITY.md#v1-policy-frozen)); `0.1.x` is the v1-only line. The v2 probe
-and the five version exceptions are described in [Features](#opencode-118x-vs-2x); the measured
-gaps and the phased plan live in
+git or a local path). **Current tagged release: `0.7.2`** (tag `v0.7.2`). `master` is the
+**unreleased 1.0.0 line**: the v1 API is removed, and the transport now uses
+[`@opencode/client`](https://github.com/sst/opencode) **pinned to `2.4.2`** (one client per
+server; upgrades are deliberate, independent releases). The pin policy and the version matrix
+live in [COMPATIBILITY.md](COMPATIBILITY.md); the historical v1→v2 migration notes are kept in
 [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 
 ## Notes
 
 - The remote OpenCode server must be reachable from the dsh host; `opencode serve` binds
   `127.0.0.1` by default — bind `0.0.0.0` or put it behind an SSH tunnel. OpenCode 2 requires
-  `OPENCODE_SERVER_PASSWORD` on the serve process and the same value in the plugin `password`
-  (without it the probe falls back to v1 and tools fail with a 401 hint); for OpenCode 1.18.x it
-  is recommended.
+  `OPENCODE_SERVER_PASSWORD` on the serve process and the same value in the plugin `password`;
+  a mismatch fails the probe with a 401 hint.
 - Session continuation is done through the OpenCode HTTP API; native external subagents still
   execute once (matching Codex/Claude Code backends).
 - Interactive questions asked by the remote agent are forwarded to dsh's user-question UI when the
-  run was started by `opencode_subagent` (an agent is in scope); otherwise they are rejected. On
-  v2 the same bridge answers typed forms.
-- **Structured output is prompt-enforced, not `format=`-enforced**: **OpenCode 1.18.x** has an
-  upstream bug — after a prompt carrying `format: {type:"json_schema"}`, it persists a
-  `retryCount` field that makes `GET /session/{id}/message` return 400 (BadRequest), poisoning the
-  session. The plugin therefore appends a "return only JSON matching this schema" instruction and
-  validates the result locally (`schema` parameter), leaving the session readable.
+  run was started by `opencode_subagent` (an agent is in scope); otherwise they are rejected.
+  The same bridge answers typed forms.
 - **Permission cards need a tool-initiated run**: approval bridging uses the calling agent; a
   delegation started over the HTTP endpoint (no agent in scope) falls back to `allow`/`reject`
-  (v2: `once`/`always`/`reject`).
+  (`once`/`always`/`reject`).
 - **Multiple servers** are configured as an array and aggregated by the client (opencode itself has
-  no server-side federation); v1 and v2 servers can be mixed in one config.
+  no server-side federation); each server must expose the OpenCode 2 API.
 - Permission/question requests are answered while a delegated run is active: SSE events are handled
   immediately, with a 15s polling fallback when the stream is unavailable.
 - The plugin page shows `live` (SSE connected) and the number of currently running sessions.
-- **Both API generations are supported**: the version is probed or forced per server and requests
-  are routed accordingly — v1 paths are untouched, v2 requests carry the `/api` prefix plus Basic
-  auth. The remaining v2 gaps (`opencode_share`, `opencode_tools`) fail with an explicit "not
-  available on OpenCode 2" message rather than empty data; content search and session todos are
-  restored by v2-native fallbacks (see [Features](#opencode-118x-vs-2x) and
+- **OpenCode 2 transport**: requests go through `@opencode/client` (`2.4.2`), which owns paths,
+  Basic auth and response envelopes; `lib/oc-client.js` caches one client per server. The
+  remaining v2 gaps (`opencode_share`, `opencode_tools`) fail with an explicit "not available on
+  OpenCode 2" message rather than empty data; content search and session todos are restored with
+  v2-native fallbacks (see [Features](#opencode-2-api-notes) and
   [COMPATIBILITY.md](COMPATIBILITY.md)).
