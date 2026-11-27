@@ -1,3 +1,39 @@
+## 1.0.1 (unreleased) — [observe] 看板状态色
+
+### Fixed
+
+- **「刚完成 · 未查看」的卡片和「空闲」一模一样**：未查看的行本身 `status: idle`，而卡片颜色全部来自
+  `STATUS_META[status]`，于是它被画成灰条 + 灰点 + 灰字，卡片上还写着「空闲 · 完成于 3 分钟前」——
+  状态与语义自相矛盾，混在几百张空闲卡里根本看不出来。现在颜色挂在 `row.unread` 上：DSH 的
+  `--dsw-alias-state-done-primary`（浅色 violet-600 / 深色 violet-400）+ `color-mix` 的 9% 淡底、
+  45% 描边、3px 实心左条，第三行文案改成紫色加粗的「未查看」。**不能**改 `STATUS_META.idle`——
+  那会把整片空闲区一起染色。
+- **「需要你」只有一根 3px 琥珀条**：补琥珀 10% 淡底 + 45% 描边 + 琥珀加粗状态词，让它在块面上
+  仍是最高优先级（此前「未查看」有底有框，扫视时反而更抢眼）。
+- **浅色主题**：未查看描边/底色降到 28%/7%（45% 会被读成焦点框），琥珀状态词压暗到 60%
+  （4.56:1；DSH 的 amber-500 压在白系底上只有 2.15:1）。两处都走 CSS 变量，深色主题保持原比例。
+
+### Changed
+
+- **状态色不再硬编码 hex**：等待 / 运行中 / 后台 / 出错 / 未查看 / 空闲统一走
+  `--dsw-alias-state-{warn,success,business,error,done}-primary` 与 `--dsw-alias-label-tertiary`
+  （空闲用 label-tertiary 而不是 `state-idle-primary`——后者是填充色，浅色下当 3px 线条会消失）。
+  蓝 / 红 / 紫 / 灰随主题切换；amber / green 在 DSH 里两主题同值，浅色沿用宿主取值。左栏徽标、
+  完成 toast、服务器概览的运行/后台/待办/升级提示、机器 chip、空闲分组头、洞察「部分数据不可用」
+  同步收敛。图表色阶（steps 柱状、活跃度热力图）保持原样：那是数据可视化 ramp，不是状态语义色。
+- **`muted` 语义**：卡片详情行的降级灰改由 `meta.muted` 决定，不再靠 `meta.color === "#8a8a8a"`
+  这种字符串比较（换成 token 后它必然失效）。
+
+### Verification
+
+- **真机**（无头 Firefox + WebDriver BiDi 驱动真实 dsh-web，未重启服务）：深 / 浅两主题截图，
+  未查看卡 computed `borderTop` / `background` 为 `0.45/0.09`（深）与 `0.28/0.07`（浅），
+  `color-mix` 落到像素、console 0 error；「需要你」卡底色为琥珀 10%、状态词 `rgb(245,158,11)`、
+  字重 600。
+- **门禁**：`scripts/check.mjs` 新增三条防回退断言——状态色必须在 token 上（不允许出现
+  `color: "#hex"`）、未查看比例必须走 `--oc-unread-*` 变量且带浅色覆盖、琥珀文字必须走
+  `--oc-wait-ink`；131 测试全绿。
+
 ## 1.0.0 (2026-11-27) — [core] v1 下线 + client 迁移（breaking）
 
 > 本版本包含未单独发版的 0.8.0（观测可信度）与 0.9.0（洞察/活跃度）变更，见下方章节。
