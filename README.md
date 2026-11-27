@@ -424,6 +424,8 @@ generic completion. With multiple servers, `opencode-auto` routes each child (se
 - [docs/ARCHITECTURE.zh.md](docs/ARCHITECTURE.zh.md) — 中文架构（与 ARCHITECTURE.md 对应）
 - [docs/TOOLS.zh.md](docs/TOOLS.zh.md) — 中文工具总览：28 个 `opencode_*` 工具、参数、只读/可变
 - [COMPATIBILITY.md](COMPATIBILITY.md) — dsh / OpenCode compatibility matrix and versioning policy
+- [CONTRIBUTING.md](CONTRIBUTING.md) — dev setup, tests, commit/PR and release policy
+- [SECURITY.md](SECURITY.md) — supported versions and private vulnerability reporting
 - [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md) — measured OpenCode 2.3.0 gaps and the phased migration plan, implemented across 0.2.0–0.7.1
 - [docs/opencode-v2-deeper-integration.zh.md](docs/opencode-v2-deeper-integration.zh.md) — measured survey of the 100 unused OpenCode 2.3.0 endpoints and the candidate deeper-integration roadmap (inbox/steer, revert checkpoints, worktrees, stats, PTY, reverse MCP)
 - [docs/subagent-seam.md](docs/subagent-seam.md) — dsh subagent provider contract

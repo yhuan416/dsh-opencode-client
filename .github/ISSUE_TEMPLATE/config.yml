@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/yhuan416/dsh-opencode-client#readme
+    about: Install, configuration, tools and compatibility
+  - name: Security vulnerability
+    url: https://github.com/yhuan416/dsh-opencode-client/blob/master/SECURITY.md
+    about: Report privately; do not open a public issue

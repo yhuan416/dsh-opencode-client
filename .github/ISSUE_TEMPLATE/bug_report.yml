@@ -1,0 +1,92 @@
+name: Bug report
+description: Something in the board, insights, tools or subagent backend is broken
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please remove passwords, tokens and private hostnames before submitting.
+        For security issues, use SECURITY.md instead of a public issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the actual behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: From package.json or the plugin detail page.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: dsh-version
+    attributes:
+      label: dsh version
+      placeholder: "0.2.2-rc.5"
+    validations:
+      required: true
+
+  - type: input
+    id: opencode-version
+    attributes:
+      label: OpenCode server version
+      description: The version returned by GET /api/info.
+      placeholder: "2.4.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where does it happen?
+      options:
+        - Board / insights (Web UI)
+        - Settings / plugin detail
+        - Agent tools (opencode_*)
+        - Subagent provider / delegation
+        - Embedded OpenCode Web UI
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / probe output
+      description: Redact passwords, tokens and private hostnames.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I ran `npm run check` (or the failing part of it)
+        - label: I removed secrets and private hostnames from this report
+          required: true
