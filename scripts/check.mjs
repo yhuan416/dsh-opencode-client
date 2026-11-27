@@ -164,12 +164,22 @@ assert.match(clientSource, /console\.table\(snapshot\.longTasks\)/)
 // thread. Collapsed idle cards are capped (it used to render up to ~60), cards
 // have a fixed height, and the perf flag records slow scroll frames so a
 // re-measure needs no DevTools profile.
-assert.match(clientSource, /height: "100px"/)
+assert.match(clientSource, /height: "104px"/)
 // PR-F: cards no longer use content-visibility (each card entering the viewport
 // forced a layout in the scroll frame); the page scroller gets compositor hints.
 assert.doesNotMatch(clientSource, /containIntrinsicSize: "100px"/)
 assert.match(clientSource, /willChange: "scroll-position"/)
 assert.match(clientSource, /contain: "paint"/)
+
+// Card system (PR-G): one surface for every card/panel — session cards, remote
+// strips, KPI cards, insight panels, heatmap and the settings blocks all go
+// through cardSurface() so radius/border/background/padding cannot drift again.
+assert.match(clientSource, /function cardSurface\(extra\)/)
+assert.match(clientSource, /var CARD = \{/)
+assert.match(clientSource, /function installCardStyles\(\)/)
+assert.match(clientSource, /installCardStyles\(\);/)
+assert.match(clientSource, /className: "dsh-oc-card"/)
+assert.equal((clientSource.match(/cardSurface\(/g) || []).length >= 8, true, 'cardSurface must be used by every surface')
 assert.match(clientSource, /var IDLE_CARD_CAP = 12;/)
 assert.match(clientSource, /idleHidden > 0 \? "（还有 "/)
 assert.match(clientSource, /function perfWatchScroll\(\)/)
