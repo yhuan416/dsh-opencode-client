@@ -8,6 +8,13 @@
   `sse`（`state`/`attempts`/`connects`/`openedAt`；`connects > 1` 即重连过）。设置页每行显示
   「API v1 · 已冻结」、探测失败原因、重连次数；看板 server 卡对 v1 实例与重连显示提示。
   `opencode_board` 工具输出多一行 `health:`，模型也能看到哪台在漂移/重连。
+- **后台任务可见**：`lib/jobs.js` 读 v2 的 `GET /experimental/job?status=running`，按 `sessionID`
+  合并进登记表；会话已经 `idle`（`time.idle` 已写、`/session/active` 为空）但 job 仍在跑的，
+  状态为新的 **`background`**（优先级 `running` 之下、`idle` 之上）。看板新增「后台运行」分区、
+  server 卡计数、`opencode_board` 的 `background (N)` 段与 `opencode_progress` 的 background 行，
+  都带命令与已跑时长。实测 n100/e5：一条 `jira_weekly_report.py` 后台跑了 9+ 分钟，期间会话所有
+  常规信号都说空闲——这是唯一能看见它的信号。只有 OpenCode 的后台 job 机制可见；agent 里
+  `nohup … &` 直接脱离 job 的进程仍然看不见。v1 明确不支持（接口缺失时静默降级，不影响看板）。
 - **成本归因**：
   - `summarizeStats` 透出服务端权威的 per-model 归因（`models[]`：`model`/`steps`/`tokens`/`cost`，
     按成本降序、上限 10）；`opencode_usage` 工具每台 server 追加 `models:` 前三条。

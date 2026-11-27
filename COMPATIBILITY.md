@@ -70,8 +70,8 @@ oversized icon, injected syntax error) and fails on all four.
   exercised only by offline fixtures (`test/board.test.js`, `test/http.test.js`). Treat field
   behaviour on 1.18.x as unverified.
 - **New features land on v2 only** — `opencode_usage`, the board's "finished, not looked at"
-  partition and `POST /api/opencode-client/seen` all depend on v2-only data (`time.viewed`,
-  `POST /session/{id}/view`, `step.ended`).
+  partition, the `background` status and `POST /api/opencode-client/seen` all depend on v2-only
+  data (`time.viewed`, `POST /session/{id}/view`, `step.ended`, `/experimental/job`).
 - **Removal would be a breaking release**, announced in the CHANGELOG — not a silent drop. Nothing
   is scheduled; the frozen path costs nothing to keep but is not maintained either.
 

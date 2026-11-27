@@ -146,6 +146,7 @@ provider —— OpenCode 1.18.x（v1 API）与 OpenCode 2.x（v2 API）下工具
 | `opencode_find` 的 `kind=text` | 文本内容搜索 | **已补回**：v2 无内容搜索端点，改用异步 shell 跑工作区 `grep`（字面子串，最多 100 条） |
 | `opencode_session_info` 的 todo 列表 | todo 条目 | **已补回**：v2 移除了 `/session/{id}/todo`，改为从最后一次 `todowrite` 工具调用推导 |
 | `opencode_usage` | **不可用**（v1 没有 stats 端点） | **仅 v2**：`GET /experimental/session/stats` 聚合会话数/步数/token/成本/工具成功率，并含按模型归因与（宿主路由 `?group=directory`）按目录成本 |
+| 后台任务（看板/进度） | **不可用**（没有端点） | **仅 v2 · 实验性**：`GET /experimental/job` 列出活过回合的工作（如会话已 idle、脚本仍在跑）；显示为 `background` 状态 |
 
 v2 上插件还会替你吸收这些 API 差异：
 
@@ -249,6 +250,7 @@ v2 上插件还会替你吸收这些 API 差异：
 - **用量与归因（0.7.1 / 0.8.0）** — per-server 卡显示今日 token/成本，看板有「刚完成 · 未查看」分区，
   设置页显示近 7 天按模型/按目录归因（`reconciled` 会标出与 stats 总额不一致）。
 - **机群健康（0.8.0）** — 看板与设置页显示 API 版本漂移、探测失败原因、SSE 重连次数。
+- **后台任务（0.8.0）** — 回合结束但 shell 脚本仍在跑的会话显示为「后台运行」，带命令与已跑时长，不再看起来像空闲。
 - **入口** — 同一内嵌 UI 也可从左侧栏面板列与会话头的「OpenCode」按钮打开。
 
 ## 安装
