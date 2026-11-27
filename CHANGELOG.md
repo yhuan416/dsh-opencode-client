@@ -81,6 +81,13 @@
 
 ### Added
 
+- **空闲会话按目录分组**：看板「空闲」区从「按机器」改为「按（机器, directory）」分组，组头
+  显示目录 + 机器 + 条数；机器 chip 过滤继续生效，折叠/展开按目录各自保留 6 条上限。
+- **SSE 进度补种**：SSE 没有回放，连上前就在跑的会话现在会在 stream 打开后读取 `session/active`
+  与最近消息，补一次当前 tool（tool/name/callID/since），不会再一直空到下一次工具事件。
+- **回收小项**：`opencode_git_diff` 增 `untracked`（`files`/`folders`）与 `base`；
+  `opencode_find` 增 `kind=dir`（映射 `type=directory`）；`opencode_sessions` 增 `archived`
+  与 `cursor` 翻页（返回 `nextCursor`，不再受 500 条快照截断）。
 - **机群健康**：`/board` 的 `servers[]` 增 `probe`（版本探测结论与原因：`reason`/`at`/`detail`）与
   `sse`（`state`/`attempts`/`connects`/`openedAt`；`connects > 1` 即重连过）。设置页每行显示
   「API v1 · 已冻结」、探测失败原因、重连次数；看板 server 卡对 v1 实例与重连显示提示。

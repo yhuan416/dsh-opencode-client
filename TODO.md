@@ -199,9 +199,9 @@
 - [x] **成本归因**：`/api/opencode-client/usage` 增 `byModel` / `byDirectory`（窗口内 assistant 消息成本，与 stats 同口径；`reconciled` 守门）。初稿用会话累计成本 + `time.updated` 判活，实测虚高 5.1 倍，已改
 - [x] **后台任务可见**：`/experimental/job` 合并进登记表，新增 `background` 状态；看板「后台运行」分区、`opencode_board`/`opencode_progress` 同步（v2 only，接口缺失静默降级）
 - [x] **机群健康**：`/board` 的 `servers[]` 增 `probe`（版本/原因/时间/详情）与 `sse`（state/attempts/connects/openedAt）；设置页与看板卡展示
-- [ ] **空闲会话过滤/分组**（v0.6.0 遗留）：按 directory 分组 + 机器过滤
-- [ ] **SSE 补 progress**（v0.6.0 遗留）：连上前就在跑的会话，上线后补一次当前 tool
-- [ ] 回收小项：`opencode_git_diff` 增 `untracked`/`base`；`opencode_find` 增 `kind=dir`（v2 要映射成 `type=directory`，传 `dir` 会 400）；`opencode_sessions` 增 `archived` 并去掉 500 条截断（改 cursor 翻页）；~~`opencode_read_file` 截断提示~~（已实现：40k 处追加 `… (truncated)`）
+- [x] **空闲会话过滤/分组**：按 (机器, directory) 分组；机器 chip 过滤已有；折叠/展开按目录各自 6 条
+- [x] **SSE 补 progress**：stream 打开后读 `/session/active` + 最近消息，补一次当前 tool
+- [x] 回收小项：`opencode_git_diff` 增 `untracked`（files/folders）/`base`；`opencode_find` 增 `kind=dir`；`opencode_sessions` 增 `archived` + `cursor` 翻页（`nextCursor`）；~~`opencode_read_file` 截断提示~~（已实现）
 - 验收：每台 server 的版本/探测/重连与成本归因可见；`npm run check` 全绿
 
 ### 10.2 v0.9.0 —— [observe] 注意力与趋势（约 2–3 天）

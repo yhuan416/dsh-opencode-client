@@ -200,7 +200,8 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
 - **Discovery** — `GET /api/opencode-client/list` (server health, projects, sessions grouped by
   directory; the directory comes from `location.directory`).
 - **Session listing** — tool `opencode_sessions` + `GET /api/opencode-client/sessions`; rows include
-  the model (with `#variant`), agent, outcome and cost when the server reports them.
+  the model (with `#variant`), agent, outcome and cost when the server reports them. `archived=true`
+  lists archived sessions, and `cursor`/`nextCursor` page past the first 500-row snapshot.
 - **Session messages** — tool `opencode_messages` + `GET /api/opencode-client/messages` (text, tool
   and file parts; `content[]` text/reasoning/tool parts are normalized). Tool lines include the
   call input summary and the first output line; `type=` filters one message kind (server-side).
@@ -229,12 +230,13 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
 ### Workspace & git
 
 - **Workspace ops** — `opencode_shell`, `opencode_git_status`, `opencode_git_diff`,
-  `opencode_read_file`, `opencode_find` (`kind=file` searches paths; `kind=text` runs a workspace
-  grep fallback).
+  `opencode_read_file`, `opencode_find` (`kind=file` searches paths, `kind=dir` directories;
+  `kind=text` runs a workspace grep fallback).
 - These are deterministic direct calls (no remote model involved): verify what a remote agent
   changed, read a file, run a command, or search the workspace.
 - `opencode_shell` is asynchronous (submit, poll, read output) in the session workspace;
-  `opencode_git_diff` accepts `committed`/`branch`/`working`, with `git` mapped to `working`.
+  `opencode_git_diff` accepts `committed`/`branch`/`working` (with `git` mapped to `working`),
+  plus `untracked=files|folders` and `base=<ref>`.
 
 ### Permissions & events
 
@@ -252,7 +254,7 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
 
 - **Observation console (main panel, 0.6.0)** — the left-rail `OpenCode` entry opens a **card
   board**, not an embedded page: "needs you / running / error" sit on top across every remote,
-  idle sessions are grouped per remote, a remote filter chip keeps its selection, and a card opens
+  idle sessions are grouped per remote and directory, a remote filter chip keeps its selection, and a card opens
   that session in an overlay (Esc or the top bar closes; the overlay keeps a "new tab" escape).
   Backed by `GET /api/opencode-client/board`, polled every 5 s and paused while the page is hidden.
 - **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, session ids, active
@@ -266,7 +268,9 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   "finished, not looked at" zone, and the settings page shows a 7-day per-model / per-directory split
   (`reconciled` marks a mismatch with the stats total).
 - **Background work (0.8.0)** — a session whose turn ended but whose shell job is still running shows
-  as "background" with the command and elapsed time, instead of looking idle.
+  as "background" with the command and elapsed time, instead of looking idle. When the SSE stream
+  connects mid-run, the current tool is read once from `session/active` + the latest message so a
+  running card is not blank until the next event.
 - **Insights (0.9.0)** — the top of the board page shows a 7/30-day window: session counts, tokens,
   cost, cache hit rate, a daily **steps** chart, top models/projects, **MCP/custom tool** usage grouped
   by server (builtin shell/read/write are not shown) and **per-skill** load counts. All numbers are
