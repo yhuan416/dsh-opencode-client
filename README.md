@@ -274,10 +274,11 @@ On v2 the plugin also absorbs these API differences for you:
   (`reconciled` marks a mismatch with the stats total).
 - **Background work (0.8.0)** — a session whose turn ended but whose shell job is still running shows
   as "background" with the command and elapsed time, instead of looking idle.
-- **Insights (0.9.0)** — the top of the board page shows a 7-day window: session counts, tokens, cost,
-  cache hit rate, tool calls (with per-tool P50), a daily **steps** chart and top models/projects.
-  All numbers are window-scoped; the footnote states what OpenCode cannot provide (daily tokens/cost,
-  token composition, duration breakdown).
+- **Insights (0.9.0)** — the top of the board page shows a 7/30-day window: session counts, tokens,
+  cost, cache hit rate, a daily **steps** chart, top models/projects, **MCP/custom tool** usage grouped
+  by server (builtin shell/read/write are not shown) and **per-skill** load counts. All numbers are
+  window-scoped; the footnote states what OpenCode cannot provide (daily tokens/cost, token
+  composition, duration breakdown). Skill names come from a lazy message scan (`/insights/skills`).
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
   and SSE reconnect counts.
 - **Entry points** — the same embedded UI is reachable from the left sidebar panel column and from

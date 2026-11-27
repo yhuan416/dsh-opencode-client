@@ -69,10 +69,11 @@ const STATS = {
   cost: 7.5,
   tools: {
     mode: 'detail',
-    totals: { calls: 3, succeeded: 2, failed: 1, unfinished: 0 },
+    totals: { calls: 7, succeeded: 5, failed: 2, unfinished: 0 },
     usage: [
       { name: 'read', calls: 1, succeeded: 1, failed: 0, unfinished: 0, durationP50: 30 },
       { name: 'bash', calls: 2, succeeded: 1, failed: 1, unfinished: 0, durationP50: 12 },
+      { name: 'gitlab_list_merge_requests', calls: 4, succeeded: 3, failed: 1, unfinished: 0, durationP50: 80 },
     ],
   },
   activeDays: 1,
@@ -111,9 +112,13 @@ test('collectInsights aggregates window-scoped totals, activity fill and project
     assert.equal(total.cost, 7.5)
     assert.equal(total.archived, 1)
     assert.equal(total.quotedSessions, 1, 'only s1 carries a priced cost inside the window')
-    assert.equal(total.tools.calls, 3)
-    assert.deepEqual(total.tools.usage.map(function (row) { return [row.name, row.calls] }), [['bash', 2], ['read', 1]], 'usage sorted by calls')
-    assert.equal(total.tools.usage[0].durationP50, 12)
+    assert.equal(total.tools.calls, 7)
+    assert.deepEqual(total.tools.usage.map(function (row) { return [row.name, row.calls] }), [['gitlab_list_merge_requests', 4], ['bash', 2], ['read', 1]], 'usage sorted by calls')
+    assert.equal(total.tools.usage[0].durationP50, 80)
+    assert.equal(total.builtinCalls, 3, 'shell/bash/read are builtin, MCP names are split out')
+    assert.equal(total.mcp.calls, 4)
+    assert.deepEqual(total.mcp.families.map(function (family) { return [family.name, family.calls] }), [['gitlab', 4]])
+    assert.deepEqual(total.mcp.families[0].tools.map(function (tool) { return [tool.name, tool.calls, tool.failed] }), [['gitlab_list_merge_requests', 4, 1]])
     assert.equal(total.cacheHitRate, 900 / 1000)
     assert.equal(total.activity.length, 7, '7 calendar days, including today')
     assert.equal(total.activity.filter(function (day) { return day.steps > 0 }).length, 1)
@@ -160,9 +165,23 @@ test('stats summary and detail never share a cache slot', async function () {
     await collectStats(server, { from: from, tools: 'summary' })
     assert.equal(fake.hits('tools=summary'), 1, 'summary cached')
     const detail = await collectStats(server, { from: from, tools: 'detail' })
-    assert.equal(detail.tools.usage.length, 2, 'detail must not be served the summary cache entry')
+    assert.equal(detail.tools.usage.length, 3, 'detail must not be served the summary cache entry')
     await collectStats(server, { from: from, tools: 'detail' })
     assert.equal(fake.hits('tools=detail'), 1, 'detail cached separately')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('days selects a calendar window and drives the activity length', async function () {
+  const fake = await startFake(fakeHandlers())
+  try {
+    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const month = await collectInsights(servers, { now: NOW, days: 30 })
+    assert.equal(month.total.activity.length, 30)
+    assert.equal(new Date(month.from).getHours(), 0, 'window starts at local midnight')
+    const week = await collectInsights(servers, { now: NOW, days: 7 })
+    assert.equal(week.total.activity.length, 7)
   } finally {
     await fake.close()
   }

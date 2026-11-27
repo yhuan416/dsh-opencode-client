@@ -9,13 +9,15 @@
 **目标**
 
 - 看板页（`main` 槽，全宽）顶部直接展示洞察区，不做 tab；空闲会话列表压到页面底部
-- 7 天窗口内：会话/子代理、轮次/步数、Tokens、费用、缓存命中率、工具调用、活跃天数
-- 近 7 天 **steps** 柱状（缺日补 0）；模型分布；工具 Top8（含 P50）；项目分布（会话数）
+- 7/30 天窗口内：会话/子代理、轮次/步数、Tokens、费用、缓存命中率、工具调用、活跃天数
+- 近 7/30 天 **steps** 柱状（缺日补 0）；模型分布；**MCP/自定义工具**（内置工具不占版面）；
+  **技能加载**按名计数；项目分布（会话数）
 - 单台 server 失败不影响整页；服务端聚合 + 缓存，页面只渲染
 
 **非目标（v1 明确不做）**
 
-- 逐日 token/费用（OpenCode 只有 steps）、token 构成、耗时拆解、活跃时长、技能/命令明细
+- 逐日 token/费用（OpenCode 只有 steps）、token 构成、耗时拆解、活跃时长、命令明细
+- 技能明细的实时性：走懒加载消息扫描（10 分钟缓存），不进入 `/insights` 快路径
 - 时间范围切换（v1 固定 7 天，API 预留 `from`）
 - 新模型工具（模型侧继续用 `opencode_usage`）
 
@@ -39,7 +41,9 @@
 
 ## 3. 接口
 
-`GET /api/opencode-client/insights?from=&server=`
+`GET /api/opencode-client/insights?days=&server=`（`days` 1–30，默认 7；`from` 仍兼容）
+
+`GET /api/opencode-client/insights/skills?days=&server=`（懒加载；返回按技能名计数与 `truncated`）
 
 - `from`：毫秒时间戳，缺省 = 7 天前；最小 1 小时前；上限 30 天（超出按 30 天）
 - `server`：只统计单台，缺省全部
@@ -72,6 +76,8 @@
   - `collectStats(server, { from, to, tools: 'summary'|'detail' })`：新增 `tools`；**缓存键 = `tools 模式 + from 桶`**（否则 summary/detail 互串）
   - `summarizeStats`：`tools.usage[]` 归一化（name/calls/succeeded/failed/unfinished/durationP50，按 calls 降序）
   - `collectArchivedCount(server)`：`/session?archived=true` 翻页计数，缓存 5 分钟
+- `lib/skills.js`（新）：扫窗口内会话消息的 `skill` 工具 `input.id`（兼容旧 `input.name`），
+  250 会话 / 60 页每会话 / 1200 请求上限，10 分钟缓存，`truncated` 标记
 - `lib/insights.js`（新）
   - `collectInsights(servers, { from, serverId, now })`：并行每台；派生指标；聚合 total；5 分钟缓存（`server.insightsCache`）
   - 纯函数：`computeCacheHitRate`、`fillActivity`、`groupProjects`（便于单测）
@@ -110,6 +116,8 @@
 5. 归档计数（翻页/截断）
 6. 单台失败隔离（total 不含失败台）
 7. **stats summary/detail 缓存不串**（同 from 桶各取一次）
+8. MCP 拆分（内置白名单之外、按前缀归组）与 `days` 窗口
+9. 技能名聚合、旧 `input.name` 兼容、页数上限 `truncated`、缓存、v1 无请求
 
 ## 8. 发布
 

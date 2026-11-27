@@ -200,9 +200,10 @@
 
 目标：观测台**不吵、不丢、看得出趋势**。
 
-- [x] **洞察**：看板页顶部近 7 天洞察（概览卡/日 steps 柱状/模型/工具/项目），
+- [x] **洞察**：看板页顶部洞察（7/30 天切换）——概览卡/日 steps 柱状/模型/MCP 工具/技能/项目；
       `lib/insights.js` + `GET /api/opencode-client/insights`；窗口内口径、单台失败隔离、
-      stats `tools=detail` 缓存键含模式。不做逐日 token/cost（不可得）
+      stats `tools=detail` 缓存键含模式。MCP 按内置白名单之外拆分；技能名由
+      `lib/skills.js` 扫消息（独立懒加载 + 10 分钟缓存）得到。不做逐日 token/cost（不可得）
 
 - [ ] **提醒策略**：静默时段、每类事件去重窗口、按 server 静音（现在 toast 固定 8s 消失、无开关）
 - [ ] **未读批量处理**：一键把当前未查看全部标记已读（逐条点开之外的第二条路）
@@ -263,9 +264,9 @@
 
 ### 10.8 待裁：HTTP API 面（第三面）
 
-`lib/routes.js` 共 **37 条**宿主路由，其中：
+`lib/routes.js` 共 **38 条**宿主路由，其中：
 
-- 观测台在用 **8 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/insights`、`/servers`、`/servers/remove`
+- 观测台在用 **9 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/insights`、`/insights/skills`、`/servers`、`/servers/remove`
 - 其余 **29 条**在仓库内**没有调用方**（工具面直连 `lib/*`，e2e 直连 OpenCode）：`/abort`、`/agents`、`/children`、`/command`、`/commands`、`/delegate`、`/events`、`/file`、`/find`、`/fork`、`/git/*`、`/init`、`/mcp`、`/messages`、`/models`、`/progress`、`/prompt`、`/references`、`/search`、`/session`、`/session-info`、`/sessions`、`/share`、`/shell`、`/skills`、`/status`、`/summarize`、`/tools`
 
 它们等于「把工具能力再用 HTTP 说一遍」，是第二份实现与第二份测试负担。选项：

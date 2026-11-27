@@ -16,8 +16,18 @@
   （此前只有时间桶，summary 会污染 detail）；`tools=detail` 的 `usage[]` 归一化（calls/P50，
   跨 server 合并时 P50 不一致就给区间）；`activity[]` 进入 `summarizeStats`；
   新增 `collectArchivedCount`（`archived=true` 翻页计数，5 分钟缓存）。
-- **测试**：`test/insights.test.js` 4 项（窗口汇总/activity 补 0/项目计数、单台失败隔离、
-  summary/detail 缓存不串、纯函数）；合计 119 → 123。
+- **MCP / 自定义工具**：`tools=detail` 已包含 MCP 工具名，按「内置白名单之外」拆分并按前缀归组
+  （gitlab / jira / serial-hub / mining-* …），内置工具（shell/read/write…）不再占版面；
+  7 天窗口内两台 server 实测 0 次 MCP 调用，30 天为 3854 次（占比 3854/33267+3854）。
+- **技能加载明细**：新增 `GET /api/opencode-client/insights/skills`，扫消息取 `skill` 工具的
+  `state.input.id`（兼容旧数据的 `input.name`）按技能名计数；独立懒加载 + 10 分钟缓存，
+  扫描上限（250 会话 / 60 页每会话 / 1200 请求）并用 `truncated` 标记；实测 7 天 1.5s、
+  30 天 3.7s，与 stats 的 `skill` 总数一致（7 天 71、30 天 150）。
+- **7 / 30 天切换**：洞察区时间窗可切换（默认 7 天，选择记入 localStorage）；
+  MCP 在 7 天窗口为 0，切 30 天即可看到分布。
+- **测试**：`test/insights.test.js` 5 项 + `test/skills.test.js` 5 项（窗口汇总/activity 补 0/
+  项目计数、单台失败隔离、summary/detail 缓存不串、MCP 拆分、days 窗口、技能名聚合、
+  旧 `input.name` 兼容、页数上限 truncation、缓存、v1 不支持、路由）；合计 119 → 129。
 
 ### Notes
 
