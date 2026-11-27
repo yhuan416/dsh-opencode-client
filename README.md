@@ -96,7 +96,7 @@ flowchart LR
 
     subgraph PLUGIN["dsh-opencode-client plugin"]
         direction TB
-        CLIENT["client bundle<br/>plugin page · sidebar tab"]
+        CLIENT["client bundle<br/>board page · settings section"]
         ROUTES["routes<br/>/api/opencode-client/*"]
         TOOLS["tools<br/>28 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
@@ -120,8 +120,8 @@ flowchart LR
     CLIENT -.->|"iframe: native OpenCode UI"| N100
 ```
 
-The browser only talks to the **dsh origin** — `lib/client.js` renders the plugin page and the
-right-sidebar tab and embeds the native OpenCode UI in an iframe. `lib/routes.js`
+The browser only talks to the **dsh origin** — `lib/client.js` renders the board/plugin page and
+embeds the native OpenCode UI in an iframe when a session is opened. `lib/routes.js`
 (`/api/opencode-client/*`) and the model-facing `opencode_*` tools (`lib/tools.js`) make
 deterministic calls through `@opencode/client` (pinned `2.4.2`, one client per server);
 `lib/provider.js` (`opencode-<serverId>`) and `lib/session-run.js` drive delegated runs;
@@ -259,11 +259,10 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   Backed by `GET /api/opencode-client/board`, polled every 5 s and paused while the page is hidden.
 - **Plugin page** — "OpenCode Client" section: servers/workspaces/sessions, session ids, active
   tool, messages, create session.
-- **Embedded OpenCode UI** — register a right-sidebar tab (`kind: opencode`): server picker + iframe
-  of the real OpenCode Web UI, inside the current session page. Open it from a server's
-  "侧边栏打开" button or the right-sidebar add-tab guide; "全屏" overlay and "新标签" remain as
-  fallbacks. No reimplementation — the embedded page keeps streaming, tool cards, diffs and
-  permissions.
+- **Embedded OpenCode UI** — a server row's "打开" button opens the real OpenCode Web UI in a
+  fullscreen overlay; a board card opens that session in an in-panel iframe, with "全屏" and
+  "新标签" as escapes. No reimplementation — the embedded page keeps streaming, tool cards, diffs
+  and permissions.
 - **Usage & attribution (0.7.1 / 0.8.0)** — per-server cards show today's tokens/cost, the board has a
   "finished, not looked at" zone, and the settings page shows a 7-day per-model / per-directory split
   (`reconciled` marks a mismatch with the stats total).
@@ -285,8 +284,8 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   startup and then daily against the official update service; no badge when offline).
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
   and SSE reconnect counts.
-- **Entry points** — the same embedded UI is reachable from the left sidebar panel column and from
-  the session-header "OpenCode" button.
+- **Entry points** — the left sidebar `OpenCode` entry opens the board; server rows and board cards
+  open the embedded UI. There is no session-header button or right-sidebar tab anymore.
 
 ## Install (profile)
 

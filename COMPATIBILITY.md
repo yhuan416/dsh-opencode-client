@@ -33,8 +33,7 @@ dsh integration points used (each must exist for the plugin to load):
 | `dsh.client.platform: "web"`, exports `./client` | plugin page section in the Web UI |
 | exports `./locale/*.json`, `./icon` | Plugin Manager reads `meta.title` / `meta.description` and renders the icon without activating the plugin |
 | `dsh.client.inject` (`dsh-client-ui-chat`, `-conversation`, `-sidebar`, `-sidebar-right`, `-plugin-manager`) | activation order for the slots and client services below |
-| `ctx.slots.inject` / `ctx.slots.register` on `main`, `sidebar.panellist`, `sidebar.right.pane.tab(.title)`, `conversation.session.header.actions`, `shell.overlay`, `plugins.detail.section` | board page, rail icon + badge, right-pane session tab, header button, toasts, settings section |
-| `ctx.sidebarRightTabs.register`, `ctx.sidebarRight.openTab` | registers the `opencode` tab kind and opens it |
+| `ctx.slots.inject` / `ctx.slots.register` on `main`, `sidebar.panellist`, `shell.overlay`, `plugins.detail.section` | board page, rail icon + badge, toasts, settings section |
 | `pluginNavigation.openBundle(owner)` | the settings pill that jumps to this plugin's config page |
 | `ctx.configEditor.edit(entry, fn)` | writing the `servers` list back to the profile row |
 | host `apply(ctx, config)`, `ctx.effect`, `ctx.inject`, `ctx.logger` | plugin lifecycle |

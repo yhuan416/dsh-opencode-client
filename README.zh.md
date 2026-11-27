@@ -90,7 +90,7 @@ flowchart LR
 
     subgraph PLUGIN["dsh-opencode-client plugin"]
         direction TB
-        CLIENT["client bundle<br/>plugin page · sidebar tab"]
+        CLIENT["client bundle<br/>看板页 · 设置分区"]
         ROUTES["routes<br/>/api/opencode-client/*"]
         TOOLS["tools<br/>28 × opencode_*"]
         PROVIDER["provider<br/>opencode-&lt;serverId&gt;"]
@@ -114,7 +114,7 @@ flowchart LR
     CLIENT -.->|"iframe: native OpenCode UI"| N100
 ```
 
-浏览器只与 **dsh 同源**通信 —— `lib/client.js` 渲染插件页和右侧栏标签页，并用 iframe 嵌入
+浏览器只与 **dsh 同源**通信 —— `lib/client.js` 渲染看板/插件页，在打开会话时用 iframe 嵌入
 OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模型的 `opencode_*` 工具
 （`lib/tools.js`）通过 `@opencode/client`（锁定 `2.4.2`，每台 server 一个实例）发出确定性调用；
 `lib/provider.js`（`opencode-<serverId>`）和 `lib/session-run.js` 驱动委派运行；`lib/sse.js`
@@ -239,9 +239,8 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
   `GET /api/opencode-client/board`，5 秒轮询、页面不可见即停。
 - **插件页** — 「OpenCode Client」分区：服务器/工作区/会话、会话 id、当前工具、查看消息、
   新建会话。
-- **内嵌 OpenCode UI** — 注册右侧栏标签页（`kind: opencode`）：服务器选择 + 真实 OpenCode Web UI
-  的 iframe，直接在当前会话页面右侧打开。入口：服务器行「侧边栏打开」或右侧栏「+」里选
-  OpenCode；「全屏」浮层和「新标签」作为兜底。嵌入的是完整客户端（流式、工具卡片、diff、
+- **内嵌 OpenCode UI** — 服务器行「打开」按钮在浮层里打开真实 OpenCode Web UI；看板卡片在面板内用
+  iframe 打开该会话，「全屏」和「新标签」作为兜底。嵌入的是完整客户端（流式、工具卡片、diff、
   权限），无需重实现。
 - **用量与归因（0.7.1 / 0.8.0）** — per-server 卡显示今日 token/成本，看板有「刚完成 · 未查看」分区，
   设置页显示近 7 天按模型/按目录归因（`reconciled` 会标出与 stats 总额不一致）。
@@ -254,7 +253,8 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
   （逐日费用、token 构成、耗时拆解）。技能名来自懒加载的消息扫描（`/insights/skills`）；
   活跃度由 `/insights/activity` 提供（固定 30 天，会话/Token 二选一）。
 - **可升级提示** — 有新版时 server 卡片版本旁显示 `→ vX.Y.Z`（启动时查一次、之后每天一次；离线时不显示）。
-- **入口** — 同一内嵌 UI 也可从左侧栏面板列与会话头的「OpenCode」按钮打开。
+- **入口** — 左侧栏 `OpenCode` 入口打开看板；服务器行与看板卡片负责打开内嵌 UI。已去掉会话头
+  按钮与右侧栏标签页。
 
 ## 安装
 
