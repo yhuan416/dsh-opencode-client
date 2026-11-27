@@ -153,6 +153,13 @@ assert.match(clientSource, /"更新于 " \+ new Date\(at\)\.toLocaleTimeString\(
 assert.match(clientSource, /function perfMark\(name\)/)
 assert.match(clientSource, /__dshOcPerf/)
 assert.match(clientSource, /entryTypes: \["longtask"\]/)
+// PR-D: below-the-fold blocks (4 insight list panels, idle session list) are not
+// built until they approach the viewport, and the perf dump prints tables.
+assert.match(clientSource, /function LazyRender\(props\)/)
+assert.match(clientSource, /new IntersectionObserver\(/)
+assert.match(clientSource, /h\(LazyRender, \{ minHeight: "235px" \}/)
+assert.match(clientSource, /h\(LazyRender, \{ minHeight: \(34 \+ idleGroups\.length \* 280\)/)
+assert.match(clientSource, /console\.table\(snapshot\.longTasks\)/)
 assert.match(clientSource, /return boardSkeleton\(insightBlock\)/)
 assert.doesNotMatch(clientSource, /正在采集会话状态…/)
 
