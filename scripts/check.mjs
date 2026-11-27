@@ -84,6 +84,17 @@ assert.doesNotMatch(clientSource, /className: "dsh-oc-(?:top|panels)"[^}]*gridTe
 // set on the same tick it enters unseen, so the completion toast never fires.
 assert.match(clientSource, /payload\.needsMe \|\| \[\]\)\.concat\(payload\.unseen/)
 
+// About block: the Host owns version, repository and the GitHub release check.
+// The client must keep the route, the board chip, the settings block and the
+// version badge wired, and must not hardcode the version or repository itself.
+assert.match(clientSource, /\/api\/opencode-client\/about\?refresh=1/)
+assert.match(clientSource, /function aboutBlock\(/)
+assert.match(clientSource, /function aboutChip\(/)
+assert.match(clientSource, /data-opencode-about/)
+assert.match(clientSource, /plugins\.detail\.badge/)
+assert.doesNotMatch(clientSource, /github\.com\/yhuan416\/dsh-opencode-client/)
+assert.doesNotMatch(clientSource, /"version":\s*"1\.\d+\.\d+"/)
+
 // The model-facing board must surface the same partition, or finished-but-unread
 // sessions vanish from the agent's view entirely.
 const toolsSource = readFileSync(new URL('../lib/tools.js', import.meta.url), 'utf8')
