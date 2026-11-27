@@ -170,6 +170,38 @@ test('a listing raced by a deletion is served but not cached', async function ()
   }
 })
 
+test('createBoard prunes sessions the server listing dropped', async function () {
+  const { createBoard } = await import('../lib/board.js')
+  let sessions = [
+    { id: 'ses_a', title: 'a', directory: '/tmp', time: { updated: NOW - 1000 } },
+    { id: 'ses_b', title: 'b', directory: '/tmp', time: { updated: NOW - 500 } },
+  ]
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: sessions, cursor: { next: null } } },
+    '/api/session/active': function () { return { data: {} } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const server = servers[0]
+    const observation = createObservation()
+    const board = createBoard({ servers: servers, observation: observation })
+    await board.refreshServer(server)
+    await board.refreshServer(server)
+    assert.equal(board.snapshot().idleCount, 2)
+
+    sessions = sessions.filter(function (item) { return item.id !== 'ses_a' })
+    server.snapshot = undefined
+    await board.refreshServer(server)
+    const after = board.snapshot()
+    assert.equal(after.idleCount, 1)
+    assert.deepEqual(after.idle.map(function (row) { return row.sessionId }), ['ses_b'])
+  } finally {
+    await fake.close()
+  }
+})
+
 test('an unreachable server yields no pending and no throw', async function () {
   const servers = normalizeServers([{ id: 'dead', url: 'http://127.0.0.1:9' }])
   const observation = createObservation()
