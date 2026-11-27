@@ -476,6 +476,7 @@ test('POST /servers and /probe drive the config editor and a real probe', async 
   const configApi = {
     available: function () { return true },
     add: function (server) { calls.push(['add', server]); return Promise.resolve({ ok: true }) },
+    update: function (id, fields) { calls.push(['update', id, fields]); return Promise.resolve({ ok: true }) },
     remove: function (id) { calls.push(['remove', id]); return Promise.resolve({ ok: true }) },
   }
   const routes = createRoutes({
@@ -499,6 +500,46 @@ test('POST /servers and /probe drive the config editor and a real probe', async 
   const removed = await del.fetch({ url: '/api/opencode-client/servers/remove', json: function () { return Promise.resolve({ id: 'e5' }) } })
   assert.equal((await removed.json()).ok, true)
   assert.deepEqual(calls[1], ['remove', 'e5'])
+})
+
+test('POST /servers/update patches only the fields the form sent (password preserved)', async function () {
+  const { createRoutes } = await import('../lib/routes.js')
+  const { createObservation } = await import('../lib/observation.js')
+  const { normalizeServers } = await import('../lib/config.js')
+  const calls = []
+  const configApi = {
+    available: function () { return true },
+    add: function () { return Promise.resolve({ ok: true }) },
+    update: function (id, fields) { calls.push([id, fields]); return Promise.resolve({ ok: true }) },
+    remove: function () { return Promise.resolve({ ok: true }) },
+  }
+  const routes = createRoutes({
+    servers: [],
+    delegate: {},
+    observation: createObservation(),
+    board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function () { return { needsMe: [], running: [], idle: [], idleCount: 0, unknown: [] } }, serverInfo: function () { return undefined } },
+    config: configApi,
+    normalizeServers: normalizeServers,
+  })
+  const update = routes.find(function (route) { return route.path === '/api/opencode-client/servers/update' })
+  assert.ok(update, 'servers/update route is registered')
+
+  // Rename + normalized url; an empty password means "keep the stored one".
+  const renamed = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { label: 'e5 新名', url: 'http://192.168.4.65:4096/', password: '' } }) } })
+  assert.equal((await renamed.json()).ok, true)
+  assert.deepEqual(calls[0], ['e5', { label: 'e5 新名', url: 'http://192.168.4.65:4096' }])
+
+  // A new password is forwarded; no other field is invented.
+  const rekey = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { password: 'new-pw' } }) } })
+  assert.equal((await rekey.json()).ok, true)
+  assert.deepEqual(calls[1], ['e5', { password: 'new-pw' }])
+
+  // Empty patch / bad url are rejected before touching the config.
+  const empty = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { password: '' } }) } })
+  assert.equal((await empty.json()).ok, false)
+  const badUrl = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { url: 'ftp://nope' } }) } })
+  assert.equal((await badUrl.json()).ok, false)
+  assert.equal(calls.length, 2)
 })
 
 test('POST /probe reports the API generation of a live server', async function () {
