@@ -77,6 +77,24 @@
 - 局部刷新指示：卡片右上角小 spinner/「更新于 hh:mm」，数据不清空
 - 筛选（7/30、server）变化：保留旧数据 + loading 标记；`AbortController` 取消在途请求；
   仅刷新受影响卡片（activity 只随 server；insights/skills 随 days+server）
+- 占位符审计（全页）：见 4.2.1
+
+### 4.2.1 占位符审计（所有异步块首帧占好尺寸）
+
+原则：**异步块在数据到达前就按最终布局渲染**（loading / empty / error 三态同高），
+数据只替换内容、不改变盒子尺寸。为此收敛出两个原语：
+
+- `asyncSlot({ state, lines, lineHeight, loadingText, emptyText, errorText, children })`：
+  行列表 / 文本类块统一走它，三态占用同样的「行数 × 行高」；失败也不再静默塌缩。
+- `boardSkeleton(insightBlock)`：看板首帧。分组结构来自 `localStorage` 里缓存的**形状**
+  （`{sections, servers, idle}`，只有计数没有数据），因此首帧高度与 `/board` 到达后一致；
+  首次访问无缓存时退回默认形状。
+
+已覆盖：看板首帧（头部/机器筛选/洞察骨架/远端条/五类分组/空闲）、远端条每张卡片、
+设置页远端列表 / 今日用量 / 近 7 天归因、头部插件版本 chip。
+
+验收：把 `/board`、`/usage`、`/about` 人为延迟 2s，首帧与加载完成后同一元素的
+`getBoundingClientRect().height` 一致（专项断言见 `scripts/check.mjs` 占位符审计段）。
 
 ### 4.3 渲染拆分（memo 边界）
 

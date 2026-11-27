@@ -128,6 +128,17 @@ assert.match(clientSource, /insightSkeletonRows/)
 assert.match(clientSource, /insightBarsSkeleton/)
 assert.match(clientSource, /insightActivitySkeleton/)
 assert.doesNotMatch(clientSource, /insights === null \? null : insightSection/)
+// Placeholder audit: every async block keeps its final box before data lands, so
+// a late payload cannot grow the page (board first frame, settings list / usage /
+// attribution, About version chip, server strips).
+assert.match(clientSource, /function asyncSlot\(props\)/)
+assert.match(clientSource, /asyncSlot\(\{\s*state: usage === null \? "loading" : "ready"/)
+assert.match(clientSource, /asyncSlot\(\{\s*state: attribution === null \? "loading" : "ready"/)
+assert.match(clientSource, /function readBoardShape\(\)/)
+assert.match(clientSource, /function boardSkeletonSection\(title, count\)/)
+assert.match(clientSource, /function serverOverviewSkeleton\(count\)/)
+assert.match(clientSource, /return boardSkeleton\(insightBlock\)/)
+assert.doesNotMatch(clientSource, /正在采集会话状态…/)
 
 // Server side of the same work: SWR for the history scans, one refresh per
 // key, immutable past days, single-flight stats, and a startup warmer.
