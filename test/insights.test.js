@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 import { normalizeServers } from '../lib/config.js'
 import { collectStats } from '../lib/sessions.js'
-import { collectInsights, computeCacheHitRate, fillActivity, sessionFacts } from '../lib/insights.js'
+import { collectInsights, collectActivity, computeCacheHitRate, fillActivity, sessionFacts } from '../lib/insights.js'
 
 const NOW = new Date(2026, 10, 27, 12, 0, 0).getTime()
 const DAY = 86400000
@@ -201,4 +201,43 @@ test('helpers: cache hit rate, activity fill and windowed session facts', functi
   ] }, NOW - 2 * DAY)
   assert.deepEqual(facts.projects, [{ directory: '/work/alpha', sessions: 2 }, { directory: '(unattributed)', sessions: 1 }])
   assert.equal(facts.quotedSessions, 1)
+})
+
+test('collectActivity buckets sessions, tokens and steps per day and caches', async function () {
+  const fake = await startFake({
+    '/api/info': function () { return { version: '2.3.0' } },
+    '/api/experimental/session/stats': function (request) {
+      const url = new URL(request.url, 'http://localhost')
+      return { data: {
+        range: { from: Number(url.searchParams.get('from')), to: Number(url.searchParams.get('to')) },
+        sessions: 2,
+        subagents: 0,
+        prompts: 1,
+        steps: 3,
+        tokens: { input: 10, output: 5, reasoning: 1, cache: { read: 4, write: 0 } },
+        cost: 0.5,
+        tools: { mode: 'none' },
+        activeDays: 1,
+        streak: 1,
+        activity: [],
+        models: [],
+      } }
+    },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const result = await collectActivity(servers, { days: 3, now: NOW })
+    assert.equal(result.days, 3)
+    assert.equal(result.activity.length, 3)
+    assert.equal(result.partial, false, JSON.stringify(result.servers))
+    assert.equal(result.activity.reduce(function (sum, day) { return sum + day.sessions }, 0), 6)
+    assert.equal(result.activity.reduce(function (sum, day) { return sum + day.steps }, 0), 9)
+    assert.equal(result.activity.reduce(function (sum, day) { return sum + day.tokens }, 0), 60)
+    const calls = fake.requests.length
+    const cached = await collectActivity(servers, { days: 3, now: NOW })
+    assert.equal(cached.activity.length, 3)
+    assert.equal(fake.requests.length, calls, 'second read is cached')
+  } finally {
+    await fake.close()
+  }
 })

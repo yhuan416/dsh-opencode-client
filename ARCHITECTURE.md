@@ -32,7 +32,7 @@ dsh web host process
 │   ├── lib/sse.js               per-server SSE (/api/event); progress, idle listeners, events ring
 │   ├── lib/observation.js       (server, session) registry: running/pending/jobs/SSE merged into one status
 │   ├── lib/jobs.js              v2 background jobs (`/experimental/job`): work that outlives the turn
-│   ├── lib/insights.js          window-scoped fleet insights (stats + session counts) for the board's top area
+│   ├── lib/insights.js          windowed fleet insights + 30-day daily activity (sessions/tokens/steps)
 │   ├── lib/skills.js            per-skill counts: walks messages for `skill` input.id (lazy, cached)
 │   ├── lib/version.js          "is a newer OpenCode out?" via the official update service (1 h cache)
 │   ├── lib/board.js             shared refresher behind /board, /list row status and opencode_board

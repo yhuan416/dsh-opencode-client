@@ -272,12 +272,14 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   connects mid-run, the current tool is read once from `session/active` + the latest message so a
   running card is not blank until the next event.
 - **Insights (0.9.0)** — the top of the board page shows a 7/30-day window: session counts, tokens,
-  cost, cache hit rate, a daily **steps** chart, an **activity heatmap** (GitHub-style week columns;
-  7 days render as one week strip, 30 days as a month grid with labels), top models/projects,
-  **MCP/custom tool** usage grouped
-  by server (builtin shell/read/write are not shown) and **per-skill** load counts. All numbers are
-  window-scoped; the footnote states what OpenCode cannot provide (daily tokens/cost, token
-  composition, duration breakdown). Skill names come from a lazy message scan (`/insights/skills`).
+  cost, cache hit rate, a daily **steps** chart, plus a separate **30-day activity heatmap**
+  (GitHub-style week columns with month labels; switch between **sessions / tokens / steps**).
+  The heatmap uses one bounded per-day stats call per server, cached for 10 minutes. Top
+  models/projects, **MCP/custom tool** usage grouped by server (builtin shell/read/write are not
+  shown) and **per-skill** load counts stay on the 7/30-day window. The heatmap itself is fixed at
+  30 days; the footnote states what OpenCode cannot provide (daily cost, token composition,
+  duration breakdown). Skill names come from a lazy message scan (`/insights/skills`);
+  the activity heatmap is served by `/insights/activity` (30 days, sessions/tokens/steps).
 - **Upgrade hint** — each server card shows `→ vX.Y.Z` when a newer OpenCode is out (checked once at
   startup and then daily against the official update service; no badge when offline).
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
