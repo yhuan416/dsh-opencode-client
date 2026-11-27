@@ -9,6 +9,10 @@
   <a href="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml"><img alt="check" src="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml/badge.svg"></a>
 </p>
 
+<p align="center">
+  <a href="docs/assets/cover.png"><img src="docs/assets/cover.png" alt="OpenCode Client — 跨 server 看板、洞察与原生子代理后端" width="100%"></a>
+</p>
+
 > 中文 | [English](README.md)
 
 **OpenCode 机群的观测台，同时是 dsh 的原生子代理后端。**
@@ -24,8 +28,7 @@ dsh 原生 subagent provider（`opencode-<serverId>`）。
 > 在后续版本逐步推进。两者共用同一套传输与版本探测核心。分轨路线图见 `TODO.md` §10。
 
 **兼容性**：**仅支持 OpenCode 2.x**（`/api/*` + HTTP Basic 认证）。v1（1.18.x）在 0.7.2 冻结、
-`master` 上按下一个大版本（未发布的 1.0.0）移除；探测到 v1 会直接报「requires OpenCode 2.x」。
-`apiVersion: auto|2` 仍可用，
+**1.0.0 移除**；探测到 v1 会直接报「requires OpenCode 2.x」。`apiVersion: auto|2` 仍可用，
 `auto` 探测 `GET /api/info` 并记录失败原因。详见 [兼容性与版本](#兼容性与版本)。
 
 > **定位**：核心能力是把 OpenCode 注册为 dsh 的**原生 subagent 后端**
@@ -33,9 +36,19 @@ dsh 原生 subagent provider（`opencode-<serverId>`）。
 > `opencode_prompt`、shell/git/read/find、各类目录）。嵌入的 OpenCode Web UI 只是可选的完整
 > 功能入口，不替代 OpenCode 客户端。
 
+## 界面
+
+**看板** —— 一页看全所有 server：注意力、7/30 天洞察、30 天活跃度，以及下方空闲机群。
+
+![OpenCode Client 看板](docs/assets/board.png)
+
+**洞察** —— 概览卡、每日 steps 与活跃度热力图同一行。
+
+![OpenCode Client 洞察](docs/assets/insights.png)
+
 ## 目录
 
-- [快速开始](#快速开始) · [架构](#架构) · [功能](#功能)
+- [界面](#界面) · [快速开始](#快速开始) · [架构](#架构) · [功能](#功能)
 - [安装](#安装) · [配置](#配置) · [Subagent 接缝](#subagent-接缝)
 - [文档](#文档) · [生态](#生态) · [兼容性与版本](#兼容性与版本) · [说明与限制](#说明与限制)
 
@@ -127,8 +140,7 @@ OpenCode 原生 UI。`lib/routes.js`（`/api/opencode-client/*`）与面向模�
 ## 功能
 
 28 个面向模型的 `opencode_*` 工具、宿主 HTTP 路由，以及每台 server 一个原生 subagent
-provider。**OpenCode 2 是唯一支持代际**：v1 在 0.7.2 冻结，`master` 上按未发布的 1.0.0
-移除；探测到 v1 会在传输层直接报错（[政策](COMPATIBILITY.md#v1-policy-removed)）。
+provider。**OpenCode 2 是唯一支持代际**：v1 在 0.7.2 冻结，**1.0.0 移除**；探测到 v1 会在传输层直接报错（[政策](COMPATIBILITY.md#v1-policy-removed)）。
 
 ### OpenCode 2 API 说明
 
@@ -395,10 +407,11 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 | OpenCode 2.x（v2 API） | `/api/*` + HTTP Basic 认证（实测 `2.4.2`；预期 `2.3.0+`） | 端到端支持 |
 | OpenCode 1.x（v1 API） | 任意 | **拒绝**（`opencode.v1_unsupported`） |
 
-插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前 tag 版本 `0.7.2`**
-（tag `v0.7.2`）。`master` 是**未发布的 1.0.0 线**：v1 API 已移除，传输层改用
+插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前版本 `1.0.0`**
+（annotated tag `v1.0.0`）。该版本移除 v1 API，传输层改用
 [`@opencode/client`](https://github.com/sst/opencode) **锁定 `2.4.2`**（每台 server 一个实例；
-升级按兼容性独立发版）。版本矩阵与锁定策略见 [COMPATIBILITY.md](COMPATIBILITY.md)；历史
+升级按兼容性独立发版），并包含未单独发版的 0.8.0（观测可信度）与 0.9.0（洞察/活跃度）变更。
+SemVer 覆盖范围、版本矩阵与锁定策略见 [COMPATIBILITY.md](COMPATIBILITY.md)；历史
 v1→v2 迁移记录保留在 [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)。
 
 ## 说明与限制

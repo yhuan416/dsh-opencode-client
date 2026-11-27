@@ -130,4 +130,4 @@
 
 ## 9. 发布
 
-归入 **0.9.0 (unreleased) — [observe] 洞察**；CHANGELOG 新增一节，TODO §10.2 加一项，README 双语 UI 段、ARCHITECTURE 模块图同步。不阻塞 0.8.0 的预算护栏。
+归入 **0.9.0 (included in 1.0.0) — [observe] 洞察**；CHANGELOG 新增一节，TODO §10.2 加一项，README 双语 UI 段、ARCHITECTURE 模块图同步。不阻塞 0.8.0 的预算护栏。

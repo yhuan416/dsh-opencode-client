@@ -1,4 +1,6 @@
-## 1.0.0 (unreleased) — [core] v1 下线 + client 迁移（breaking）
+## 1.0.0 (2026-11-27) — [core] v1 下线 + client 迁移（breaking）
+
+> 本版本包含未单独发版的 0.8.0（观测可信度）与 0.9.0（洞察/活跃度）变更，见下方章节。
 
 ### Changed
 
@@ -17,7 +19,8 @@
 - **错误映射**：client 的 5xx 结构化错误会带上 `reason`/`status`，不再出现空错误文案；
   分页请求修正为「首页 `order=desc`，后续页只传 `cursor`」（`Cursor cannot be combined with
   order` 会让目录归因 partial、技能计数归零）。
-- **测试**：v1 用例删除或改为 v2 only；129 个测试全绿。
+- **测试**：v1 用例删除或改为 v2 only；131 个测试全绿（+ SSE 补种/activity）。
+- **仓库展示**：README 增加封面与真实看板/洞察截图（`docs/assets/`）。
 
 ### Verification
 
@@ -28,16 +31,17 @@
 
 - 将 OpenCode 升级到 2.4.x；把 1.x server 从插件配置中移除。
 - `apiVersion: 1` 配置会被当作 auto 并拒绝；改成 `auto` 或 `2`。
-- 未发 tag：`1.0.0` 这个号留给正式发布时再打。
+- 发布方式：git-only + annotated tag `v1.0.0`，不发布 npm。
 
-## 0.9.0 (unreleased) — [observe] 洞察
+## 0.9.0 (included in 1.0.0) — [observe] 洞察
 
 ### Added
 
 - **看板页顶部洞察区**：看板页（`main` 槽，全宽）最上方直接展示近 7 天洞察，不做 tab；
-  空闲会话列表压到页面底部（每组默认 6 个 + 展开更多）。区块含 8 张概览卡
-  （会话/子代理、已归档、轮次/步数、Tokens、缓存命中率、费用、工具调用、活跃天数）、
-  近 7 天 steps 柱状（缺日补 0）、模型 Top5、工具 Top8、项目 Top8，以及口径脚注。
+  空闲会话列表压到页面底部（每组默认 6 个 + 展开更多）。0.9.0 初版为 8 张概览卡；
+  1.0.0 收敛为 6 张（会话、Tokens、费用、缓存命中率、工具调用、活跃天数），与
+  steps 柱状图、30 天活跃度同排。近 7 天 steps 柱状（缺日补 0）、模型 Top5、工具 Top8、
+  项目 Top8，以及口径脚注。
 - **新路由** `GET /api/opencode-client/insights?from=&server=`：`lib/insights.js` 在服务端聚合，
   单台失败只让该台显示不可用（`supported:false`），整页仍 200；缓存沿用 stats（5 分钟）。
 - **数据口径**（全部窗口内，不用会话终生值）：会话/子代理 = `stats.sessions/subagents`；
@@ -68,7 +72,7 @@
   失败静默无徽标；`GET /api/opencode-client/upgrade`。
 - **测试**：`test/insights.test.js` 5 项 + `test/skills.test.js` 5 项（窗口汇总/activity 补 0/
   项目计数、单台失败隔离、summary/detail 缓存不串、MCP 拆分、days 窗口、技能名聚合、
-  旧 `input.name` 兼容、页数上限 truncation、缓存、v1 不支持、路由）；合计 119 → 133（另加 `test/version.test.js` 4 项：版本比较、失败降级、缓存、路由）。
+  旧 `input.name` 兼容、页数上限 truncation、缓存、v1 不支持、路由）；合计 119 → 133（另加 `test/version.test.js` 4 项）；1.0.0 删除 v1 用例后当前为 131。
 
 ### Notes
 
@@ -82,7 +86,7 @@
   需在 **v2 形态** `mcp.servers.<name>` 里写 `"protocol": "2026-07-28"`（v1 形态
   `mcp.<name>` 会静默丢掉该字段）；另注意重启后首次读取 model/skill/mcp 清单可能为空。
 
-## 0.8.0 (unreleased) — [observe] 可信度
+## 0.8.0 (included in 1.0.0) — [observe] 可信度
 
 按「一核两轨」的第一轨推进：先让看板说的事**对、全、能追到钱**。本切片只读、复用现有数据。
 

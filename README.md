@@ -9,6 +9,10 @@
   <a href="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml"><img alt="check" src="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml/badge.svg"></a>
 </p>
 
+<p align="center">
+  <a href="docs/assets/cover.png"><img src="docs/assets/cover.png" alt="OpenCode Client — cross-server board, insights and native subagent backend" width="100%"></a>
+</p>
+
 > English | [中文](README.zh.md)
 
 **An observation console for a fleet of OpenCode servers, plus a native dsh subagent backend.**
@@ -27,8 +31,8 @@ dsh subagent provider (`opencode-<serverId>`).
 > transport and version-probing core. See `TODO.md` §10 for the per-track roadmap.
 
 **Compatibility**: **OpenCode 2.x only** (`/api/*` + HTTP Basic auth). The v1 API (OpenCode
-1.18.x) was frozen in 0.7.2 and removed on `master` for the next major (unreleased 1.0.0) — a v1
-server now fails with a clear "requires OpenCode 2.x" error. `apiVersion: auto|2` is accepted;
+1.18.x) was frozen in 0.7.2 and removed in **1.0.0** — a v1 server now fails with a clear
+"requires OpenCode 2.x" error. `apiVersion: auto|2` is accepted;
 `auto` probes `GET /api/info` and records why a probe failed.
 See [Compatibility & versioning](#compatibility--versioning).
 
@@ -38,9 +42,20 @@ See [Compatibility & versioning](#compatibility--versioning).
 > Web UI is an optional convenience for full-fidelity work, not a replacement for the OpenCode
 > client.
 
+## Screenshots
+
+**Board** — one page across every server: attention, 7/30-day insights, a 30-day activity
+calendar, and the idle fleet below.
+
+![OpenCode Client board](docs/assets/board.png)
+
+**Insights** — cards, daily steps and the activity heatmap share one top row.
+
+![OpenCode Client insights](docs/assets/insights.png)
+
 ## Table of contents
 
-- [Quick start](#quick-start) · [Architecture](#architecture) · [Features](#features)
+- [Screenshots](#screenshots) · [Quick start](#quick-start) · [Architecture](#architecture) · [Features](#features)
 - [Install (profile)](#install-profile) · [Configuration](#configuration) · [Subagent seam](#subagent-seam)
 - [Documentation](#documentation) · [Ecosystem](#ecosystem) · [Compatibility & versioning](#compatibility--versioning) · [Notes](#notes)
 
@@ -136,8 +151,7 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
 
 28 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
 same tool names. **OpenCode 2 is the only supported generation**: v1 was frozen in 0.7.2 and
-removed on `master` for the unreleased 1.0.0; a v1 server is rejected at the transport with an
-actionable error ([policy](COMPATIBILITY.md#v1-policy-removed)).
+removed in **1.0.0**; a v1 server is rejected at the transport with an actionable error ([policy](COMPATIBILITY.md#v1-policy-removed)).
 
 ### OpenCode 2 API notes
 
@@ -436,12 +450,13 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 | OpenCode 1.x (v1 API) | any | **rejected** with `opencode.v1_unsupported` |
 
 The plugin follows independent semantic versioning and is **not published to npm** (install from
-git or a local path). **Current tagged release: `0.7.2`** (tag `v0.7.2`). `master` is the
-**unreleased 1.0.0 line**: the v1 API is removed, and the transport now uses
+git or a local path). **Current release: `1.0.0`** (annotated tag `v1.0.0`). This release removes
+the v1 API and moves the transport to
 [`@opencode/client`](https://github.com/sst/opencode) **pinned to `2.4.2`** (one client per
-server; upgrades are deliberate, independent releases). The pin policy and the version matrix
-live in [COMPATIBILITY.md](COMPATIBILITY.md); the historical v1→v2 migration notes are kept in
-[docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
+server; upgrades are deliberate, independent releases); it also includes the untagged 0.8.0
+(observation trust) and 0.9.0 (insights/activity) changes. The pin policy, SemVer scope and
+version matrix live in [COMPATIBILITY.md](COMPATIBILITY.md); historical v1→v2 migration notes
+are kept in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md).
 
 ## Notes
 
