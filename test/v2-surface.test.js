@@ -21,7 +21,7 @@ import {
 import { gitStatus, gitDiff, readRemoteFile, findFiles, findText, runShell } from '../lib/workspace.js'
 import { forkSession, summarize, sessionChildren, initSession } from '../lib/manage.js'
 import { ensureSession, sendSessionMessage, prepareTurn, modelRef } from '../lib/session-run.js'
-import { buildPrompt, captureTurnBaseline, extractAssistant, promptBody, v2PromptBody } from '../lib/delegate.js'
+import { buildPrompt, captureTurnBaseline, extractAssistant, v2PromptBody } from '../lib/delegate.js'
 import { createInteractions } from '../lib/interactions.js'
 
 const SESSION = {
@@ -564,9 +564,8 @@ test('v2 model refs: provider/model#variant parses and reaches Model.Ref only on
   assert.deepEqual(parseModel('p/m'), { providerID: 'p', modelID: 'm' })
   assert.deepEqual(parseModel({ providerID: 'p', modelID: 'm', variant: 'low' }), { providerID: 'p', modelID: 'm', variant: 'low' })
   assert.deepEqual(modelRef(parseModel('p/m#high')), { id: 'm', providerID: 'p', variant: 'high' })
-  // The v1 prompt body must not carry the v2-only variant field.
+  // v2 does not put the model in the prompt body (it is session state).
   const bodyModel = { providerID: 'p', modelID: 'm', variant: 'high' }
-  assert.deepEqual(promptBody({ id: 'v1', model: bodyModel }, 'hi').model, { providerID: 'p', modelID: 'm' })
   assert.equal(v2PromptBody({ id: 'v2', model: bodyModel }, 'hi').model, undefined)
 })
 
