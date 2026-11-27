@@ -216,8 +216,16 @@ test('concurrent refreshes share one listing request', async function () {
   try {
     const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
     const server = servers[0]
-    const [first, second] = await Promise.all([collectServer(server), collectServer(server)])
+    const seen = []
+    const [first, second] = await Promise.all([
+      collectServer(server, { onListing: function (listing) { seen.push(['first', listing.ids.length]) } }),
+      collectServer(server, { onListing: function (listing) { seen.push(['second', listing.ids.length]) } }),
+    ])
     assert.equal(first, second, 'both callers see the same snapshot')
+    // Both waiting refreshes must hear about the shared listing; a listener that
+    // joins mid-flight may not be dropped or the second board refresh loses its
+    // prune opportunity.
+    assert.deepEqual(seen.sort(), [['first', 1], ['second', 1]])
     const listings = fake.requests.filter(function (path) { return path === '/api/session' }).length
     assert.equal(listings, 1, 'concurrent refreshes must not fan out into duplicate list calls')
   } finally {
