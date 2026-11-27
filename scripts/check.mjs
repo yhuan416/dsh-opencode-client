@@ -187,6 +187,11 @@ assert.match(clientSource, /typeof props\.render === "function" \? props\.render
 // dropping the stored password, which never reaches the client.
 const indexSource = readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8')
 assert.match(indexSource, /update: function \(id, fields\) \{/)
+// Issue #56: a prompt failure used to surface as "promptFailureMessage is not
+// defined" because lib/run.js called the helper without importing it. Every file
+// that calls it must import it.
+const runSource = readFileSync(new URL('../lib/run.js', import.meta.url), 'utf8')
+assert.match(runSource, /import \{[^}]*promptFailureMessage[^}]*\} from '\.\/delegate\.js'/)
 const updateRouteSource = readFileSync(new URL('../lib/routes.js', import.meta.url), 'utf8')
 assert.match(clientSource, /function startEdit\(server\)/)
 assert.match(clientSource, /"\/api\/opencode-client\/servers\/update"/)

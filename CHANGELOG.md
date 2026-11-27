@@ -9,6 +9,11 @@
 
 ### Fixed
 
+- **委派 prompt 失败时不再报 `promptFailureMessage is not defined`**（[#56](https://github.com/yhuan416/dsh-opencode-client/issues/56)）：
+  `lib/run.js` 调用了 `delegate.js` 的 `promptFailureMessage` 却没导入，任何 prompt 阶段的失败
+  （例如远端不存在的 `directory` 触发 `LocationNotFoundError`）都会被这个 `ReferenceError` 顶掉，
+  看不到真实原因。现在正常抛出可诊断文案（提示 pathMap / 目录问题），并加静态断言防止再漏导入。
+
 - **插件设置区整块消失（远端增删改查没了）**：卡片系统把「今日用量 / 近 7 天归因」包进 `asyncSlot`
   时用了即时求值的 `children`，`/usage` 还没回来时字符串拼接就解引用 `null` 的字段，渲染抛错 →
   宿主把整个设置 section 卸载，底部的「添加远端」与远端列表一起消失。`asyncSlot` 现在支持惰性
