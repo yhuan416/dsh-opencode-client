@@ -264,9 +264,9 @@
 
 ### 10.8 待裁：HTTP API 面（第三面）
 
-`lib/routes.js` 共 **38 条**宿主路由，其中：
+`lib/routes.js` 共 **39 条**宿主路由，其中：
 
-- 观测台在用 **9 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/insights`、`/insights/skills`、`/servers`、`/servers/remove`
+- 观测台在用 **10 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/insights`、`/insights/skills`、`/upgrade`、`/servers`、`/servers/remove`
 - 其余 **29 条**在仓库内**没有调用方**（工具面直连 `lib/*`，e2e 直连 OpenCode）：`/abort`、`/agents`、`/children`、`/command`、`/commands`、`/delegate`、`/events`、`/file`、`/find`、`/fork`、`/git/*`、`/init`、`/mcp`、`/messages`、`/models`、`/progress`、`/prompt`、`/references`、`/search`、`/session`、`/session-info`、`/sessions`、`/share`、`/shell`、`/skills`、`/status`、`/summarize`、`/tools`
 
 它们等于「把工具能力再用 HTTP 说一遍」，是第二份实现与第二份测试负担。选项：

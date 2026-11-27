@@ -25,9 +25,13 @@
   30 天 3.7s，与 stats 的 `skill` 总数一致（7 天 71、30 天 150）。
 - **7 / 30 天切换**：洞察区时间窗可切换（默认 7 天，选择记入 localStorage）；
   MCP 在 7 天窗口为 0，切 30 天即可看到分布。
+- **可升级提示**：server 卡片版本旁显示 `→ v2.4.2`。本地 API 没有「查最新版本」端点——
+  `/api/info` 只有当前版本，`installation.update-available` 是易失 SSE（断线即丢），
+  因此查官方更新服务 `https://opencode.ai/update/api/latest/cli/npm`（`opencode upgrade` 同源），
+  1 小时缓存、失败静默无徽标；`GET /api/opencode-client/upgrade`。
 - **测试**：`test/insights.test.js` 5 项 + `test/skills.test.js` 5 项（窗口汇总/activity 补 0/
   项目计数、单台失败隔离、summary/detail 缓存不串、MCP 拆分、days 窗口、技能名聚合、
-  旧 `input.name` 兼容、页数上限 truncation、缓存、v1 不支持、路由）；合计 119 → 129。
+  旧 `input.name` 兼容、页数上限 truncation、缓存、v1 不支持、路由）；合计 119 → 133（另加 `test/version.test.js` 4 项：版本比较、失败降级、缓存、路由）。
 
 ### Notes
 

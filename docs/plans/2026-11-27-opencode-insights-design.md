@@ -105,7 +105,15 @@
 - 归档计数缓存 300s；会话列表来自 `collectServer`（10s 缓存），超 500 条时 `truncated:true` 并在脚注标注
 - v1 server：stats 不支持 → 该台 `supported:false`，不发额外请求
 
-## 7. 测试
+## 7. 附：可升级提示
+
+本地 API 没有「最新版本」查询端点：`/api/info` 只给当前版本，`installation.update-available`
+是易失 SSE（断线即丢，无回放）。因此 server 卡片的 `→ vX.Y.Z` 徽标由官方更新服务驱动
+（`https://opencode.ai/update/api/latest/cli/npm`，与 `opencode upgrade` 同源）：
+`lib/version.js` 1 小时缓存、5 秒超时、失败静默（不显示徽标）；
+`GET /api/opencode-client/upgrade` 只返回 `{ok, latest, checkedAt}`，客户端与各 server 版本比较。
+
+## 8. 测试
 
 `test/insights.test.js`（fake v2 server）：
 
@@ -119,6 +127,6 @@
 8. MCP 拆分（内置白名单之外、按前缀归组）与 `days` 窗口
 9. 技能名聚合、旧 `input.name` 兼容、页数上限 `truncated`、缓存、v1 无请求
 
-## 8. 发布
+## 9. 发布
 
 归入 **0.9.0 (unreleased) — [observe] 洞察**；CHANGELOG 新增一节，TODO §10.2 加一项，README 双语 UI 段、ARCHITECTURE 模块图同步。不阻塞 0.8.0 的预算护栏。
