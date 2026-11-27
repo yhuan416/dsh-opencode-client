@@ -13,6 +13,16 @@
   路径安装打开 GitHub 发布页并显示本机 `git pull --ff-only` 命令。
 - `plugins.detail.badge`：插件详情页标题旁显示「可更新 vY」标签（仅本插件页面）。
 
+### Changed
+
+- **无主会话的提问默认改为「挂起等待」**：没有 dsh run 的会话（例如你在 OpenCode TUI / Web 里
+  自己开的）提问，以前默认被 dismiss（`question: reject`），远端 agent 收到的是 "The user
+  dismissed this question"，看板「需要你」/ 通知 / 侧栏 badge 永远看不到它——这与通知功能的
+  目的相反。现在默认 `question: ignore`：请求保持挂起，进入看板「需要你」并触发通知，你到
+  会话里回答后由 SSE `form.replied` / pending 快照自动清卡；无人值守部署仍可显式配
+  `question: reject` 恢复自动 dismiss。委派运行（有 owning run）转发 dsh 提问/审批卡的路径不变，
+  权限审批默认 `ask` 也不变。
+
 ### Notes
 
 - 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。

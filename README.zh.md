@@ -237,8 +237,9 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
 - **权限审批** — `permission: ask`（默认）把远端权限请求转成 dsh 审批卡；`allow`/`reject`
   确定性应答（回复 `once`/`always`/`reject`）。
 - **提问桥接** — 工具发起的运行（有 agent 在作用域）会把远端提问转发到 dsh 用户提问 UI；
-  否则自动拒绝。提问是带类型字段（string / number / integer / boolean / multiselect）的
-  form。
+  没有 dsh run 的会话（例如你自己在 OpenCode TUI / Web 里开的）提问默认**挂起**，进入看板
+  「需要你」并触发通知，等你到会话里回答；`question: reject` 供无人值守部署显式跳过（直接
+  dismiss）。提问是带类型字段（string / number / integer / boolean / multiselect）的 form。
 - **实时** — 每台 server 常驻 SSE（`/api/event`），带重连；权限/提问快速应答、
   `GET /api/opencode-client/events`、`/status`、`live`/`running` 状态。
 - **轮询兜底** — 委派运行期间权限/提问会被应答：SSE 事件立即处理，流不可用时有 15s 轮询兜底。
@@ -317,7 +318,7 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
         # agent: plan            # 委派默认 agent
         # model: deepseek/deepseek-chat      # 默认模型 "provider/model"
     permission: ask              # ask（默认，审批卡）| allow | reject
-    question: reject             # reject（默认）| ignore
+    question: ignore             # ignore（默认：挂起 + 看板「需要你」+ 通知）| reject（无人值守时直接 dismiss）
     pathMap:                     # 本地/远端路径布局不同时
       - { from: /home/yhuan, to: /home/yhuan }
     routing:                     # 多 server 的子代理派发（servers > 1 时默认开启）
@@ -431,7 +432,8 @@ v1→v2 迁移记录保留在 [docs/opencode-v2-migration.zh.md](docs/opencode-v
   插件 `password` 填同一个值；不一致时探测以 401 提示失败。
 - 会话续用通过 OpenCode HTTP API；原生外部子代理仍是一次性执行（与 Codex/Claude Code 后端一致）。
 - 远端 agent 的交互式提问，在运行由 `opencode_subagent` 发起（有 agent 在作用域）时转发到 dsh
-  用户提问 UI；否则自动拒绝。同一桥接会应答带类型的 form。
+  用户提问 UI；没有 dsh run 时默认挂起并进入看板「需要你」/ 通知，等你到会话里回答
+  （`question: reject` 可改成无人值守时直接 dismiss）。同一桥接会应答带类型的 form。
 - 权限卡需要**工具发起的委派**（有 live agent）；HTTP 直接调用回落 allow/reject
   （`once`/`always`/`reject`）。
 - 多 server 由客户端聚合（OpenCode 服务端没有联邦 API）；每台 server 都必须提供 OpenCode 2 API。

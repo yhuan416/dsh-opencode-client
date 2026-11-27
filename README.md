@@ -257,7 +257,10 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh
   approval cards; `allow`/`reject` answer deterministically (`once`/`always`/`reject`).
 - **Question bridging** — remote questions are forwarded to dsh's user-question UI for
-  tool-initiated runs (an agent is in scope); otherwise they are rejected. Questions are
+  tool-initiated runs (an agent is in scope). A session dsh did not start (for example one you
+  opened in the OpenCode TUI/Web) keeps its question **pending** by default: it shows up in the
+  board's "needs you" row, triggers the attention notification, and waits for you to answer in the
+  session; `question: reject` opts an unattended deployment into dismissing it. Questions are
   forms with typed fields (string / number / integer / boolean / multiselect).
 - **Live events** — per-server SSE subscription (`/api/event`) with reconnect; fast
   permission/question handling, live state, `GET /api/opencode-client/events` and `/status`.
@@ -353,7 +356,7 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
         # agent: plan            # default OpenCode agent for delegation
         # model: deepseek/deepseek-chat      # default model "provider/model"; v2 also "provider/model#variant"
     permission: ask              # ask (default, dsh approval card) | allow | reject
-    question: reject             # reject (default) interactive questions or "ignore" them
+    question: ignore             # ignore (default: keep pending on the board + notify) | reject (dismiss, unattended)
     pathMap:                     # only when local and remote path layouts differ
       - { from: /home/yhuan, to: /home/yhuan }
     routing:                     # multi-server subagent dispatch (default: on when servers > 1)
@@ -480,8 +483,9 @@ are kept in [docs/opencode-v2-migration.zh.md](docs/opencode-v2-migration.zh.md)
 - Session continuation is done through the OpenCode HTTP API; native external subagents still
   execute once (matching Codex/Claude Code backends).
 - Interactive questions asked by the remote agent are forwarded to dsh's user-question UI when the
-  run was started by `opencode_subagent` (an agent is in scope); otherwise they are rejected.
-  The same bridge answers typed forms.
+  run was started by `opencode_subagent` (an agent is in scope); without a dsh run they stay
+  pending on the board's "needs you" row until you answer in the session (`question: reject`
+  dismisses them instead, for unattended deployments). The same bridge answers typed forms.
 - **Permission cards need a tool-initiated run**: approval bridging uses the calling agent; a
   delegation started over the HTTP endpoint (no agent in scope) falls back to `allow`/`reject`
   (`once`/`always`/`reject`).
