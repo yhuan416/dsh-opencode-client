@@ -30,13 +30,15 @@ dsh web host process
 │   ├── lib/provider.js          native dsh subagent provider (external backend)
 │   ├── lib/interactions.js      remote permission/form → dsh approval / userQuestions
 │   ├── lib/sse.js               per-server SSE (/api/event); progress, idle listeners, events ring
-│   ├── lib/observation.js       (server, session) registry: running/pending/jobs/SSE merged into one status
+│   ├── lib/observation.js       (server, session) registry: running/pending/jobs/SSE merged into one status;
+│   │                            a fresh session listing prunes rows deleted while the stream was down
 │   ├── lib/jobs.js              v2 background jobs (`/experimental/job`): work that outlives the turn
 │   ├── lib/insights.js          windowed fleet insights + 30-day daily activity (sessions/tokens/steps)
 │   ├── lib/skills.js            per-skill counts: walks messages for `skill` input.id (lazy, cached)
 │   ├── lib/version.js          "is a newer OpenCode out?" via the official update service (1 h cache)
 │   ├── lib/about.js             own version/repository + GitHub release check (About block, 24 h cache)
 │   ├── lib/board.js             shared refresher behind /board, /list row status and opencode_board
+│   │                            (fresh listing → observation.retain)
 │   ├── lib/routes.js            /api/opencode-client/* host HTTP routes
 │   └── lib/tools.js             28 model-facing opencode_* tools
 └── lib/client.js                browser bundle: "OpenCode Client" plugin-page section
