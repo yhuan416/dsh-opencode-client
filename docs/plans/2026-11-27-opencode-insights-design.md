@@ -110,7 +110,8 @@
 本地 API 没有「最新版本」查询端点：`/api/info` 只给当前版本，`installation.update-available`
 是易失 SSE（断线即丢，无回放）。因此 server 卡片的 `→ vX.Y.Z` 徽标由官方更新服务驱动
 （`https://opencode.ai/update/api/latest/cli/npm`，与 `opencode upgrade` 同源）：
-`lib/version.js` 1 小时缓存、5 秒超时、失败静默（不显示徽标）；
+`lib/version.js` 启动时查一次、之后每天一次（成功缓存 24 小时、失败 1 小时重试）、
+5 秒超时、失败静默（不显示徽标）；
 `GET /api/opencode-client/upgrade` 只返回 `{ok, latest, checkedAt}`，客户端与各 server 版本比较。
 
 ## 8. 测试

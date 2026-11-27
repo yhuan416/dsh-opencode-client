@@ -279,8 +279,8 @@ On v2 the plugin also absorbs these API differences for you:
   by server (builtin shell/read/write are not shown) and **per-skill** load counts. All numbers are
   window-scoped; the footnote states what OpenCode cannot provide (daily tokens/cost, token
   composition, duration breakdown). Skill names come from a lazy message scan (`/insights/skills`).
-- **Upgrade hint** — each server card shows `→ vX.Y.Z` when a newer OpenCode is out (checked hourly
-  against the official update service; no badge when offline).
+- **Upgrade hint** — each server card shows `→ vX.Y.Z` when a newer OpenCode is out (checked once at
+  startup and then daily against the official update service; no badge when offline).
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
   and SSE reconnect counts.
 - **Entry points** — the same embedded UI is reachable from the left sidebar panel column and from

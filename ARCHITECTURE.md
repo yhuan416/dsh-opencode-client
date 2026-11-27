@@ -59,7 +59,7 @@ remote machines
 | Management | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` | `manage.js` |
 | Insights (board top area) | no stats endpoint → unsupported | windowed aggregates from `/experimental/session/stats` (tools=detail) + session counts; daily series is steps-only | `insights.js` |
 | Skill usage | no data | walks session messages for `skill` calls and their `input.id` (lazy endpoint, 10-min cache, `truncated` flag) | `skills.js` |
-| Upgrade hint | version only (`/api/info`) | latest release from the official update service (the local API has no check endpoint); 1 h cache, failures hide the badge | `version.js` |
+| Upgrade hint | version only (`/api/info`) | latest release from the official update service (the local API has no check endpoint); startup + daily, 24 h cache, failures hide the badge | `version.js` |
 | Background jobs | no endpoint | `/experimental/job` (experimental) lists running jobs; the board shows their session as `background` even though `time.idle` is set | `jobs.js`, `observation.js` |
 | v1 only | share, tool ids, text find, session todos | no endpoint: explicit error or visible hint, never silent empty data | `sessions.js`, `catalog.js`, `workspace.js` |
 
