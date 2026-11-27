@@ -1,13 +1,16 @@
 # Compatibility
 
 This plugin follows **independent semantic versioning** (it does not mirror the dsh release train)
-and is **not published to npm**; install it from git or a local path. **Current release: `1.0.1`**
-(2026-11-27, annotated tag `v1.0.1`): the board's status colours are dsh theme tokens now, and
-finished-but-unread sessions get a card of their own, plus repository/marketplace metadata.
+and is **not published to npm**; install it from git or a local path. **Current release: `1.1.0`**
+(2026-11-27, annotated tag `v1.1.0`): the plugin shows its own version / repository / update check
+(the host's built-in version section only renders for registry installs), unowned questions stay
+pending instead of being dismissed, deleted sessions leave the board, and the insights layout uses
+container queries (folding in `1.0.2`).
 Release line: `0.2.0` first read OpenCode 2, `0.7.1`
 completed v2 end to end ([PR #5](https://github.com/yhuan416/dsh-opencode-client/pull/5)),
 `0.7.2` fixed the manifest/exports and added the CI gates. `1.0.0` removes v1, pins
-`@opencode/client@2.4.2`, and includes the untagged 0.8.0/0.9.0 observation changes.
+`@opencode/client@2.4.2`, and includes the untagged 0.8.0/0.9.0 observation changes. `1.1.0` adds
+the plugin's own version/update check and the question/board fixes.
 
 ## dsh compatibility
 
