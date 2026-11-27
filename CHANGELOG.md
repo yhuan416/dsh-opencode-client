@@ -2,6 +2,11 @@
 
 ### Added
 
+- **权限请求可观测（[#57](https://github.com/yhuan416/dsh-opencode-client/issues/57)）**：权限桥接以前会自己答复
+  大部分请求（宿主审批卡 / 配置的 mode / 无主会话挂起），从外部完全看不出「远端没问」还是「问了被静默批准」。
+  新增 `lib/permissions.js`：按 server 记录请求次数与答复方式（用户批准 / 自动放行 / 拒绝 / 挂起，附最近
+  20 条 action + resources），`/board` 的 server 对象新增 `permissions` 字段，看板远端卡在健康行显示
+  「权限 N · 自动 M」（有自动放行时用告警色）；`ask` 模式下无审批卡可用而自动放行时会打 warn 日志。
 - **已有远端可以在界面上修改**：设置区每行新增「编辑」——可改显示名（label）、地址（url）与新密码，
   留空的字段保持不变（尤其是密码：它从不回传到客户端，`POST /servers` 是整条替换，直接用它改名会把
   密码丢掉）。新增 `POST /api/opencode-client/servers/update`（按 id 合并 patch，url 强制 http(s)），
