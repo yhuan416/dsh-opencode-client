@@ -51,6 +51,21 @@ assert.match(clientSource, /boardSection\("刚完成 · 未查看"/)
 assert.match(clientSource, /function markSeen\(serverId, sessionId, idle\)/)
 assert.match(clientSource, /\/api\/opencode-client\/seen/)
 assert.match(clientSource, /function boardRunLine\(row\)/)
+// Unread rows are `status: idle`, so a card that follows `status` alone turns
+// grey and disappears among the idle ones; the violet "done" token + tint is
+// what keeps the section visible.
+assert.match(clientSource, /--dsw-alias-state-done-primary/)
+// The unread tint ratios are theme-split via CSS variables: a hardcoded 45%
+// border reads as a focus ring on the light theme.
+assert.match(clientSource, /--oc-unread-border/)
+assert.match(clientSource, /body:not\(\[data-ds-dark-theme\]\) \.dsh-oc-card-unread/)
+// Amber text on the light theme's amber tint is 2:1, so the "needs you" word
+// takes the same variable route and is darkened there.
+assert.match(clientSource, /--oc-wait-ink/)
+// The whole status palette must stay on host tokens: a literal escapes the light
+// theme and quietly drifts from the badges/chips around it (the fallbacks inside
+// `var(...)` are fine — they only apply where the host token is missing).
+assert.doesNotMatch(clientSource, /(?:color|background|border[A-Za-z]*): "#[0-9a-f]{6}"/)
 // The watcher polls `unseen`; without it a just-finished row leaves the polled
 // set on the same tick it enters unseen, so the completion toast never fires.
 assert.match(clientSource, /payload\.needsMe \|\| \[\]\)\.concat\(payload\.unseen/)
