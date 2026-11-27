@@ -99,8 +99,11 @@
 
 ### Still to do in this version
 
-预算/成本护栏（阈值提醒，只提醒不阻断）、空闲会话过滤/分组、SSE 补 progress、以及回收小项
+空闲会话过滤/分组、SSE 补 progress、以及回收小项
 （`git_diff` untracked/base、`find kind=dir`、`sessions` archived、`read_file` 截断提示）。
+
+> 2026-11-27 决策：**预算/成本护栏不做**——订阅/未报价模型 `cost=0` 会让阈值失真，
+> 7/30 天洞察已覆盖成本可见，且「只提醒不阻断」收益低；已移入 TODO §10.6。
 
 ## 0.7.2 (2026-11-26) — 清单与门禁
 
