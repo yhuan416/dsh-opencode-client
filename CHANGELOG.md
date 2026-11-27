@@ -1,4 +1,4 @@
-## 1.1.2 (unreleased) — [observe] 卡片系统统一（观测台 + 设置页）
+## 1.1.2 (2026-11-28) — [observe] 卡片系统统一、远端可编辑、权限诊断
 
 ### Added
 
@@ -39,6 +39,16 @@
   骨架卡同步为 104px，首帧与真实卡片同高。
 - **设置页信息块收进卡片**：远端列表变成一个带分隔线的卡片，今日用量 / 近 7 天归因合到同一张信息卡，
   关于块也放进卡片（去掉它自己的顶部分隔线），页面标题与元信息字号对齐卡片系统。
+
+### Verification
+
+- `npm run check`：**179 项测试** + manifest gate（语法、manifest、单元、路由、客户端渲染冒烟）全绿。
+- 客户端：新增 `test/client-render.test.js` —— 用 stub React/DOM 在 vm 里加载真实 client bundle，渲染插件
+  注册的 5 个界面（数据仍在加载的初始状态），设置区必须含「添加远端 / 测试连接 / 保存」、看板必须是首帧骨架。
+- 服务端：`POST /servers/update` 覆盖改名 + url 规范化、只改密码、空 patch 拒绝、`ftp://` 拒绝；
+  `lib/permissions.js` 计数器/环形明细与 `/board.permissions` 字段均有单测。
+- 运行时（本机 dsh-web，两台 OpenCode 2.4.2）：暖后 `/board` 2–4ms；卡片系统、设置区 CRUD、远端编辑、
+  权限 chip 均在线上 bundle 校验通过（`cardSurface` / `startEdit` / `servers/update` / `lib/permissions.js`）。
 
 ## 1.1.1 (2026-11-28) — [observe] 观测台渐进填充、统一轮询、占位与滚动优化
 

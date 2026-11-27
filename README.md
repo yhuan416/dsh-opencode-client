@@ -477,7 +477,11 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 | OpenCode 1.x (v1 API) | any | **rejected** with `opencode.v1_unsupported` |
 
 The plugin follows independent semantic versioning and is **not published to npm** (install from
-git or a local path). **Current release: `1.1.1`** (annotated tag `v1.1.1`): the observe page fills
+git or a local path). **Current release: `1.1.2`** (annotated tag `v1.1.2`): the observe page and settings share one card
+system, remotes are editable in the UI (label / url / password, never echoing the password), and
+permission requests are observable (counts, answer source, recent actions, "权限 N · 自动 M" chip);
+it also fixes the settings section going blank and the `promptFailureMessage` ReferenceError.
+Previous line, `1.1.1`: the observe page fills
 in progressively instead of mounting after `/insights`, every poll runs on one client scheduler
 (board, insights, activity, skills, usage), async blocks reserve their final height on the first
 frame, and the host serves those reads through SWR + a startup warm-up (cold `/insights` ~9s → warm
