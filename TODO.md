@@ -373,12 +373,15 @@ PR 序列：#57–#63（统一调度 / 渐进填充 / SWR+预热 / board store /
 未做（推迟）：Phase 2 的逐组件 memo 拆分、`?timing=1`、e2e 预热分层断言；
 工具页 / 列表页的占位符审计（下一批）。
 
-### 1.1.2 批次（进行中）
+### 1.1.2 批次（已收尾）
 
 - [x] 卡片系统统一：`cardSurface()` 覆盖会话卡 / 远端条 / KPI 卡 / 洞察面板 / 热力图 / 设置页三块；
       `.dsh-oc-card` hover + focus-visible；会话卡 104px 等高；设置页信息块收进卡片。
 - [x] 工具页 / 列表页的占位符审计：插件在这些页面只贡献「OpenCode Client」设置区与「可更新」徽标，
       均已走 `asyncSlot` / 卡片系统；新增 `test/client-render.test.js` 覆盖 5 个注册界面的渲染
       （数据加载中状态），并修掉设置区因 `asyncSlot` 即时求值而整块消失的回归。
+- [x] 已有远端可编辑（改名 / 改地址 / 改密码；`POST /servers/update` 合并 patch，密码不回传）。
+- [x] #56 `promptFailureMessage` 漏导入；#57 权限请求诊断（计数 / 答复来源 / 最近明细 / 看板 chip）。
+- [x] 文档：README / README.zh 权限语义与诊断、ARCHITECTURE `lib/permissions.js` 数据流。
 - [x] README/ARCHITECTURE 同步（客户端 scheduler、board store、`lib/swr.js`/`lib/warm.js` 数据流、
       `dsh-oc-perf` 埋点；见 README「观测台性能与数据流」与 ARCHITECTURE「Observe page data flow」）

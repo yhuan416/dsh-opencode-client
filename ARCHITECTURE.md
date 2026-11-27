@@ -112,6 +112,10 @@ lib/insights.js keeps per-(server,day) activity aggregates (past days for the pr
 lifetime, today 60s); lib/sessions.js single-flights collectStats per server.
 ```
 
+`lib/interactions.js` answers permission requests (host approval card, configured mode, or pending
+for sessions dsh did not start) and records each one through `lib/permissions.js`; `/board` exposes
+that per server as `permissions` for the board's diagnosis chip.
+
 Debug: `localStorage.setItem("dsh-oc-perf", "1")` + reload exposes `window.__dshOcPerf`
 (`marks`, `longTasks`, `slowFrames`, `dump()`); off by default.
 
