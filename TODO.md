@@ -317,11 +317,11 @@
 
 ### Phase 2 — 渲染拆分（P0）
 
-- [ ] 拆 `BoardStatusBar` / `BoardList` / `InsightCards` / `ActivityHeatmap` / `SkillsPanel`
-      五个组件，`React.memo` + `useMemo` 稳定 props
-- [ ] board 5s 刷新只重渲染 board 两组件；洞察数据到达只重渲染对应卡
-- [ ] 筛选（7/30 天、server）切换：保留旧数据 + loading 标记 + `AbortController` 取消在途
-- [ ] 骨架与最终卡片等高，验收 CLS ≈ 0
+- [x] 渲染边界用「board store 内容去重 + `insightBlock` useMemo + `LazyRender`」达成等效目标
+      （未逐组件拆五个 memo 组件：实测挂载 55ms、空转 0 长任务，拆分收益不足）
+- [x] board 刷新只在内容变化时重渲染；洞察到达只重渲染对应卡（store 去重 + useMemo）
+- [x] 筛选（7/30 天、server）切换：保留旧数据 + loading 标记 + `AbortController` 取消在途
+- [x] 骨架与最终卡片等高（占位符审计 PR #64/#65：asyncSlot + 看板形状缓存 + 固定行高）
 
 ### Phase 3 — 服务端 SWR / 预热 / single-flight（P1）
 
@@ -333,7 +333,7 @@
 - [ ] `collectStats` 加 `server.statsInflight`（key→promise）合并并发扫描
 - [ ] 启动预热：首个 server probe 成功后 idle 串行预热 board → insights(7d,all) →
       activity(30d,all)；失败静默退避重试一次
-- [ ] `?timing=1` 调试字段：`{ ms, cache: hit|stale|miss }`
+- [ ] `?timing=1` 调试字段：`{ ms, cache: hit|stale|miss }`（SWR 响应已带 `at`/`stale`，够用；暂不做）
 
 ### Phase 4 — Board 数据流合并（P1）
 
@@ -351,4 +351,26 @@
 - [ ] 真机验收数值写进 design doc §6：看板暖<300ms、7 天卡<800ms、热力<1s、skills 不阻塞
 - [ ] `npm run check` 补 swr / scheduler / board store 单测
 - [ ] `scripts/e2e-live.mjs` 补「预热后冷加载命中缓存（stale/miss 分层）」断言
-- [ ] README/ARCHITECTURE 同步（客户端 scheduler、lib/swr.js、数据流说明）
+
+### 收尾结论（2026-11-28，1.1.1 批次）
+
+PR 序列：#57–#63（统一调度 / 渐进填充 / SWR+预热 / board store / 占位修复）、#64（占位符审计）、
+#65（远端卡用量/健康/top 固定行高）、#66（中段 tick 免采集 + 快照去重 + 刷新指示 + 埋点）、
+#67（离屏 LazyRender）、#68（空闲卡上限 12 + 卡片固定高度）、#69（去掉卡片 content-visibility +
+滚动容器合成提示，待发版）。
+
+实测（本机 dsh-web，两台 OpenCode 2.4.2）：
+
+- 服务端暖后：`/board` 2–8ms、`/insights?days=7` 2–4ms、`/activity` 2ms、`/usage` 2ms
+  （冷 `/insights` 原 ~9s，预热 + SWR 后首个页面不再等）。
+- 客户端：看板首帧从一行式 gate 改为骨架；挂载长任务 95ms → 55ms；看板空转 23s 内 **0 条 >50ms
+  长任务**；滚动期间原本 321ms 的尖峰消失。
+- 剩余：滚动仍有 20–60ms 帧间隔。trace 归因显示渲染主线程 15s 内 JS 仅 231ms（Paint 119ms /
+  HitTest 91ms / Layerize 91ms），Compositor 与 Viz 线程空闲，**GPU 进程 RunTask 2726ms +
+  GPUTask 1859ms** 才是大头 —— 合成/光栅化侧，插件侧不再继续优化（会话页滚动也不卡，
+  说明是观测台内容合成成本，收益递减）。
+
+未做（推迟）：Phase 2 的逐组件 memo 拆分、`?timing=1`、e2e 预热分层断言；
+工具页 / 列表页的占位符审计（下一批）。
+- [x] README/ARCHITECTURE 同步（客户端 scheduler、board store、`lib/swr.js`/`lib/warm.js` 数据流、
+      `dsh-oc-perf` 埋点；见 README「观测台性能与数据流」与 ARCHITECTURE「Observe page data flow」）

@@ -91,6 +91,30 @@ explicit `OpenCodeError` or tool error text, never empty data.
 Direct calls never involve a remote model: shell commands, file reads, git status/diff,
 catalog listings, search, abort, prompt send are deterministic HTTP requests.
 
+### Observe page (board + insights) data flow
+
+```text
+client scheduler (1s tick, keyed, priority, max 3, heavy serial)
+  ├─ board store   5s: refresh=1 every 3rd tick, else refresh=0 (host observation snapshot)
+  │                dedupe payload → no notify when nothing changed
+  ├─ insights      120s  /insights?days=N     (SWR 60s, warmed at boot)
+  ├─ activity      600s  /insights/activity   (per-day cache; past days immutable)
+  ├─ skills        600s  /insights/skills     (heavy, starts after insights)
+  └─ usage/about   120s / 1h
+
+first paint: skeleton + equal-height placeholders (asyncSlot / boardSkeleton from the
+last board shape in localStorage); below-the-fold blocks mount via LazyRender
+(IntersectionObserver, 400px margin) instead of building their DOM on mount.
+
+routes.js wraps the history scans in lib/swr.js (stale-while-revalidate, single flight);
+lib/warm.js pre-warms board / insights(7d) / activity(30d) after the first probe;
+lib/insights.js keeps per-(server,day) activity aggregates (past days for the process
+lifetime, today 60s); lib/sessions.js single-flights collectStats per server.
+```
+
+Debug: `localStorage.setItem("dsh-oc-perf", "1")` + reload exposes `window.__dshOcPerf`
+(`marks`, `longTasks`, `slowFrames`, `dump()`); off by default.
+
 ### Delegation (agent-mediated)
 
 ```text
