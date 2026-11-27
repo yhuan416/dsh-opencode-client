@@ -74,10 +74,10 @@ function createStream() {
   })
 }
 
-test('v1: subscribes /global/event and maps the v1 sequence to idle completion', async function () {
+test('v2: subscribes /api/event and maps the execution/tool sequence to completion', async function () {
   let stream
   const fake = await startServer(function (request, response) {
-    if (request.url === '/global/event') {
+    if (request.url === '/api/event') {
       openSse(response)
       stream = response
       return
@@ -85,20 +85,20 @@ test('v1: subscribes /global/event and maps the v1 sequence to idle completion',
     replyJson(response, 404, { _tag: 'NotFoundError' })
   })
   const events = createStream()
-  const server = makeServer({ id: 'v1', url: fake.url, apiVersion: '1' })
+  const server = makeServer({ id: 'v2', url: fake.url, apiVersion: '2' })
   let dispose
   try {
     dispose = events.subscribeEvents(server)
     await waitFor(function () { return server.sse.state === 'open' && stream !== undefined })
-    assert.equal(server.sse.target, '/global/event')
+    assert.equal(server.sse.target, '/api/event')
 
     const idle = new Promise(function (resolve) { events.subscribeIdle(server, SES, resolve) })
-    writeEvent(stream, { type: 'message.part.updated', properties: { sessionID: SES, part: { type: 'tool', tool: 'bash', callID: 'call_1', state: { status: 'running' } } } })
-    writeEvent(stream, { type: 'message.part.delta', properties: { sessionID: SES, delta: 'hello ' } })
-    writeEvent(stream, { type: 'message.part.updated', properties: { sessionID: SES, part: { type: 'tool', tool: 'bash', callID: 'call_1', state: { status: 'completed', output: 'hello world' } } } })
-    writeEvent(stream, { type: 'session.status', properties: { sessionID: SES, status: { type: 'idle' } } })
+    writeEvent(stream, { id: 'e1', created: 1, type: 'session.tool.called', data: { sessionID: SES, id: 'call_1', name: 'bash', input: {} } })
+    writeEvent(stream, { id: 'e2', created: 2, type: 'session.text.delta', data: { sessionID: SES, delta: 'hello ' } })
+    writeEvent(stream, { id: 'e3', created: 3, type: 'session.tool.success', data: { sessionID: SES, id: 'call_1', name: 'bash', content: [{ type: 'text', text: 'hello world' }] } })
+    writeEvent(stream, { id: 'e4', created: 4, type: 'session.execution.succeeded', data: { sessionID: SES } })
 
-    assert.equal(await idle, 'idle')
+    assert.equal(await idle, 'succeeded')
     const progress = server.progress.get(SES)
     assert.equal(progress.status, 'idle')
     assert.equal(progress.tool, 'bash')
@@ -107,7 +107,7 @@ test('v1: subscribes /global/event and maps the v1 sequence to idle completion',
     assert.ok(kinds.indexOf('tool.started') >= 0)
     assert.ok(kinds.indexOf('text.delta') >= 0)
     assert.ok(kinds.indexOf('tool.finished') >= 0)
-    assert.ok(kinds.indexOf('session.status') >= 0)
+    assert.ok(kinds.indexOf('run.finished') >= 0)
   } finally {
     if (dispose !== undefined) dispose()
     await fake.close()
@@ -275,13 +275,13 @@ test('v2: permission and form events reach the interaction bridge', async functi
   }
 })
 
-test('v1: onEvent feeds the observation registry before the state switch', async function () {
+test('v2: onEvent feeds the observation registry before the state switch', async function () {
   const { createObservation } = await import('../lib/observation.js')
   const observation = createObservation()
   const fake = await startServer(function (request, response) {
-    if (request.url === '/global/event') {
+    if (request.url === '/api/event') {
       openSse(response)
-      writeEvent(response, { type: 'permission.asked', properties: { id: 'perm_9', sessionID: 'ses_x', permission: 'bash', patterns: ['git push'] } })
+      writeEvent(response, { id: 'e1', created: 1, type: 'permission.asked', data: { id: 'perm_9', sessionID: 'ses_x', action: 'bash', resources: ['git push'] } })
       return
     }
     replyJson(response, 404, {})
@@ -293,7 +293,7 @@ test('v1: onEvent feeds the observation registry before the state switch', async
       handleQuestion: function () {},
       onEvent: function (server, event) { observation.observeEvent(server.id, event) },
     })
-    const dispose = stream.subscribeEvents(makeServer({ id: 'v1', url: fake.url }))
+    const dispose = stream.subscribeEvents(makeServer({ id: 'v2', url: fake.url, apiVersion: '2' }))
     const waiting = await waitFor(function () {
       const board = observation.board()
       return board.needsMe.length > 0 ? board.needsMe[0] : undefined
