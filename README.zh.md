@@ -409,8 +409,9 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 | OpenCode 2.x（v2 API） | `/api/*` + HTTP Basic 认证（实测 `2.4.2`；预期 `2.3.0+`） | 端到端支持 |
 | OpenCode 1.x（v1 API） | 任意 | **拒绝**（`opencode.v1_unsupported`） |
 
-插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前版本 `1.0.0`**
-（annotated tag `v1.0.0`）。该版本移除 v1 API，传输层改用
+插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前版本 `1.0.1`**
+（annotated tag `v1.0.1`）：看板状态色改由 dsh 主题 token 驱动，「刚完成 · 未查看」的会话
+不再和空闲卡混同；另含仓库展示与市场投稿元数据。`1.0.0` 线移除 v1 API，传输层改用
 [`@opencode/client`](https://github.com/sst/opencode) **锁定 `2.4.2`**（每台 server 一个实例；
 升级按兼容性独立发版），并包含未单独发版的 0.8.0（观测可信度）与 0.9.0（洞察/活跃度）变更。
 SemVer 覆盖范围、版本矩阵与锁定策略见 [COMPATIBILITY.md](COMPATIBILITY.md)；历史
