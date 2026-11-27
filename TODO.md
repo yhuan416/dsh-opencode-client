@@ -3,10 +3,9 @@
 > dsh 作为 OpenCode server 的客户端：会话列表/读取/继续、委派、原生 subagent、SSE 实时、多 server 聚合。
 > 本文档只记录"还没做/要做"的内容；已完成能力见 README，架构见 ARCHITECTURE.md。
 >
-> **当前里程碑：v1.0.0（2026-11-27，tag `v1.0.0`）** —— v1 已从传输层移除，
-> `@opencode/client` 锁定 `2.4.2` 并按模块迁移完成（sessions / catalog / workspace / delegate /
-> interactions / manage / skills / insights）；包含未单独发版的 0.8.0/0.9.0 观测变更。
-> 后续迭代只剩 delegate 轨（§10.3/10.4）与若干待裁项。
+> **当前里程碑：v1.1.0（2026-11-27，tag `v1.1.0`）** —— 插件自身版本/更新检查、无主提问挂起、
+> 看板删除残留与洞察布局修复已发布；`@opencode/client` 锁定 `2.4.2`。
+> 后续：观测台性能与数据流（§11）、delegate 轨（§10.3/10.4）与若干待裁项。
 
 ## 0.1 v0.2.0 新增（OpenCode v2 端到端）
 
@@ -293,3 +292,59 @@
 
 - 每版：`npm run check`（`node --check` → 客户端/观测断言 → 清单门禁 → 100+ 测试）+ README/TOOLS/COMPATIBILITY/CHANGELOG 同步 + annotated tag + 真机重启验证（**仅 v2**）。
 - 永不支持（seam/上游限制）：`opencode_share`、`opencode_tools`、agent-team teammate、外部 `send_message`/`prepareContinuable`。
+
+
+## 11. 观测台性能与数据流（2026-11-28 计划，v1.1.x）
+
+> 设计：[docs/plans/2026-11-28-opencode-observe-performance-design.md](docs/plans/2026-11-28-opencode-observe-performance-design.md)
+> 现象：冷加载卡顿、控件刷新节奏不一致、30 天活动表有延迟感；实测后端单点不慢（30 天热力
+> 冷加载仅 ~60ms），问题在客户端请求编排/渲染 gating/无 SWR 预热。方向：渐进填充 + 统一调度
+> + 渲染拆分 + 服务端 SWR/预热 + board 数据流合并。
+
+### Phase 1 — 客户端骨架与调度（P0）
+
+- [ ] 新增客户端 `scheduler` 单例：1s tick、任务注册（key/interval/priority/visibleOnly）、
+      同 key in-flight 去重、并发上限（普通 3 / 重任务 1）
+- [ ] 统一 `visibilitychange`：恢复时只对「已到期」任务补刷一次（300ms 抖动 + 串行），
+      移除各 effect 自带的监听
+- [ ] 洞察区去掉 `insights === null ? null` 整体 gate：布局与骨架立即渲染
+- [ ] 每张洞察卡独立 loading/数据 slice；局部「更新中/更新于 hh:mm」指示；固定 min-height
+- [ ] 首屏请求分层：P0 board、P1 insights+activity 立即；P2 usage/about/upgrade
+      `requestIdleCallback` 延迟；P3 skills 等 insights 到达后再排
+- [ ] toast watcher 与 BoardPage 的 `/board` 轮询共享 in-flight（先止血，Phase 4 再全量 store）
+
+### Phase 2 — 渲染拆分（P0）
+
+- [ ] 拆 `BoardStatusBar` / `BoardList` / `InsightCards` / `ActivityHeatmap` / `SkillsPanel`
+      五个组件，`React.memo` + `useMemo` 稳定 props
+- [ ] board 5s 刷新只重渲染 board 两组件；洞察数据到达只重渲染对应卡
+- [ ] 筛选（7/30 天、server）切换：保留旧数据 + loading 标记 + `AbortController` 取消在途
+- [ ] 骨架与最终卡片等高，验收 CLS ≈ 0
+
+### Phase 3 — 服务端 SWR / 预热 / single-flight（P1）
+
+- [ ] 新增 `lib/swr.js` 内存 SWR（`{value, at, stale}`，过期先返回旧值后台刷新，单飞）+ 单测
+- [ ] `/insights` 接入 SWR（key: days+server，TTL 60s）
+- [ ] `/insights/activity`：历史天 stats 进程内永久缓存、今天 60s；按天 key
+- [ ] `/insights/skills` 补 SWR（TTL 600s，重任务并发 1）
+- [ ] `/usage` 接入 SWR（TTL 60s；`from=0` 全历史不走 SWR）
+- [ ] `collectStats` 加 `server.statsInflight`（key→promise）合并并发扫描
+- [ ] 启动预热：首个 server probe 成功后 idle 串行预热 board → insights(7d,all) →
+      activity(30d,all)；失败静默退避重试一次
+- [ ] `?timing=1` 调试字段：`{ ms, cache: hit|stale|miss }`
+
+### Phase 4 — Board 数据流合并（P1）
+
+- [ ] 新增客户端 board store（仿 about store）：BoardPage / toast watcher / 设置页共享
+      `{ value, at, inflight, listeners }`
+- [ ] 轮询分级：页面可见 5s `refresh=1`；仅后台 toast 15s；中间 tick `refresh=0` 用服务端缓存
+- [ ] 设置页改为复用 board store（去掉自己的 15s 轮询）
+- [ ] （后续 v1.2 候选）board 改 SSE 事件驱动 + 兜底轮询
+
+### Phase 5 — 度量与回归（贯穿）
+
+- [ ] 客户端 `performance.mark`：first-paint / board-ready / insights-core / activity / skills / idle
+- [ ] 真机验收数值写进 design doc §6：看板暖<300ms、7 天卡<800ms、热力<1s、skills 不阻塞
+- [ ] `npm run check` 补 swr / scheduler / board store 单测
+- [ ] `scripts/e2e-live.mjs` 补「预热后冷加载命中缓存（stale/miss 分层）」断言
+- [ ] README/ARCHITECTURE 同步（客户端 scheduler、lib/swr.js、数据流说明）
