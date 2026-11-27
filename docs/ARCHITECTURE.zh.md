@@ -32,6 +32,9 @@ dsh web 宿主进程
 │   ├── lib/observation.js       (server, session) 登记表：running/待办/后台任务/SSE/未读合并成一份状态
 │   │                            （未读不自己记：取 OpenCode 的 time.idle > time.viewed）
 │   ├── lib/jobs.js              v2 后台任务（`/experimental/job`）：活过回合的工作（脚本还在跑、会话已 idle）
+│   ├── lib/insights.js          看板顶部洞察（7/30 天）：stats + 会话计数的窗口内聚合
+│   ├── lib/skills.js            技能加载明细：扫消息取 skill 的 input.id（懒加载、缓存）
+│   ├── lib/version.js          是否有新版：查官方更新服务（启动 + 每天一次，24 小时缓存，失败不显示）
 │   ├── lib/board.js             /board、/list 行内状态与 opencode_board 共用的刷新器
 │   ├── lib/routes.js            /api/opencode-client/* 宿主 HTTP 路由
 │   └── lib/tools.js             28 个面向模型的 opencode_* 工具

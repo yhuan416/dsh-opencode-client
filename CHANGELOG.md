@@ -1,3 +1,44 @@
+## 0.9.0 (unreleased) — [observe] 洞察
+
+### Added
+
+- **看板页顶部洞察区**：看板页（`main` 槽，全宽）最上方直接展示近 7 天洞察，不做 tab；
+  空闲会话列表压到页面底部（每组默认 6 个 + 展开更多）。区块含 8 张概览卡
+  （会话/子代理、已归档、轮次/步数、Tokens、缓存命中率、费用、工具调用、活跃天数）、
+  近 7 天 steps 柱状（缺日补 0）、模型 Top5、工具 Top8、项目 Top8，以及口径脚注。
+- **新路由** `GET /api/opencode-client/insights?from=&server=`：`lib/insights.js` 在服务端聚合，
+  单台失败只让该台显示不可用（`supported:false`），整页仍 200；缓存沿用 stats（5 分钟）。
+- **数据口径**（全部窗口内，不用会话终生值）：会话/子代理 = `stats.sessions/subagents`；
+  Tokens = `stats.tokens` 四类；缓存命中率 = `cache.read/(input+read)`；费用 = `stats.cost`
+  并附「有报价会话数」；日图只能画 **steps**（OpenCode 无逐日 token/cost）；项目分布 =
+  窗口内 `time.busy` 会话按项目 worktree 计数（`/` 归「未归属」）。
+- **stats 扩展**：`collectStats` 支持 `tools: 'summary'|'detail'`，**缓存键并入模式**
+  （此前只有时间桶，summary 会污染 detail）；`tools=detail` 的 `usage[]` 归一化（calls/P50，
+  跨 server 合并时 P50 不一致就给区间）；`activity[]` 进入 `summarizeStats`；
+  新增 `collectArchivedCount`（`archived=true` 翻页计数，5 分钟缓存）。
+- **MCP / 自定义工具**：`tools=detail` 已包含 MCP 工具名，按「内置白名单之外」拆分并按前缀归组
+  （gitlab / jira / serial-hub / mining-* …），内置工具（shell/read/write…）不再占版面；
+  7 天窗口内两台 server 实测 0 次 MCP 调用，30 天为 3854 次（占比 3854/33267+3854）。
+- **技能加载明细**：新增 `GET /api/opencode-client/insights/skills`，扫消息取 `skill` 工具的
+  `state.input.id`（兼容旧数据的 `input.name`）按技能名计数；独立懒加载 + 10 分钟缓存，
+  扫描上限（250 会话 / 60 页每会话 / 1200 请求）并用 `truncated` 标记；实测 7 天 1.5s、
+  30 天 3.7s，与 stats 的 `skill` 总数一致（7 天 71、30 天 150）。
+- **7 / 30 天切换**：洞察区时间窗可切换（默认 7 天，选择记入 localStorage）；
+  MCP 在 7 天窗口为 0，切 30 天即可看到分布。
+- **可升级提示**：server 卡片版本旁显示 `→ v2.4.2`。本地 API 没有「查最新版本」端点——
+  `/api/info` 只有当前版本，`installation.update-available` 是易失 SSE（断线即丢），
+  因此查官方更新服务 `https://opencode.ai/update/api/latest/cli/npm`（`opencode upgrade` 同源），
+  **启动时查一次、之后每天一次**（服务端成功缓存 24 小时、失败 1 小时后重试），
+  失败静默无徽标；`GET /api/opencode-client/upgrade`。
+- **测试**：`test/insights.test.js` 5 项 + `test/skills.test.js` 5 项（窗口汇总/activity 补 0/
+  项目计数、单台失败隔离、summary/detail 缓存不串、MCP 拆分、days 窗口、技能名聚合、
+  旧 `input.name` 兼容、页数上限 truncation、缓存、v1 不支持、路由）；合计 119 → 133（另加 `test/version.test.js` 4 项：版本比较、失败降级、缓存、路由）。
+
+### Notes
+
+- 明确不做（数据不可得，不伪造）：逐日 token/费用、token 构成、耗时拆解、活跃时长、
+  技能/命令明细。脚注已写明「费用仅含报价模型 · 日图仅 steps」。
+
 ## 0.8.0 (unreleased) — [observe] 可信度
 
 按「一核两轨」的第一轨推进：先让看板说的事**对、全、能追到钱**。本切片只读、复用现有数据。
