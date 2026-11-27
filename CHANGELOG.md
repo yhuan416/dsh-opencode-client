@@ -1,20 +1,31 @@
-## 1.0.0 (unreleased) — [core] v1 下线（breaking）
+## 1.0.0 (unreleased) — [core] v1 下线 + client 迁移（breaking）
 
 ### Changed
 
-- **OpenCode 1.x 不再支持**：探测为 v1（含 401、缺密码、不可达、`/api/info` 缺失）时，
-  所有请求以 `opencode.v1_unsupported` 失败，并提示「requires OpenCode 2.x」；
-  `apiVersion: 1` 视为 auto 并被拒绝。
-- `apiPath` 始终指向 `/api/*`；sessions 的 v1 分支（v1 消息、`/session/status`、`/abort`、
-  `/share`、`/todo`、`/view`、stats/归档回退）已删除。
-- 依赖固定 `@opencode/client@2.4.2`（无 `^`/`~`）；CI 增加精确版本门禁。
-- 测试迁移到 v2 fixture，新增「v1 被拒绝」用例；132 个测试全绿。
+- **OpenCode 1.x 不再支持**：探测为 v1（含 `/api/info` 缺失）时，所有请求以
+  `opencode.v1_unsupported` 失败，并提示「requires OpenCode 2.x」；`apiVersion: 1` 视为 auto
+  并被拒绝。
+- **v1 死分支全部清理**：sessions / jobs / skills / catalog / workspace / delegate / manage /
+  interactions / session-run / events / sse / routes / tools 的 v1 映射与回退删除；`apiPath`
+  始终指向 `/api/*`。
+- **传输迁移到 `@opencode/client@2.4.2`（精确锁定）**：新增 `lib/oc-client.js`，每台 server
+  缓存一个 client；sessions / catalog / workspace / delegate / session-run / interactions /
+  manage / skills 全部走 client。CI 禁止 `^`/`~`/`*`。
+- **错误映射**：client 的 5xx 结构化错误会带上 `reason`/`status`，不再出现空错误文案；
+  分页请求修正为「首页 `order=desc`，后续页只传 `cursor`」（`Cursor cannot be combined with
+  order` 会让目录归因 partial、技能计数归零）。
+- **测试**：v1 用例删除或改为 v2 only；129 个测试全绿。
+
+### Verification
+
+- 真机 e5 / n100（OpenCode 2.4.2）：目录归因与 stats **delta=0、partial=false**；技能 7 天
+  72 次 / 30 天 151 次；部署自检 usage / board / insights / MCP+skills / upgrade 全 **PASS**。
 
 ### Migration
 
 - 将 OpenCode 升级到 2.4.x；把 1.x server 从插件配置中移除。
-- 剩余模块（catalog/workspace/delegate/manage/interactions/session-run/routes/tools、
-  v1 事件映射）中的死分支在后续提交清理；运行路径已不再触达。
+- `apiVersion: 1` 配置会被当作 auto 并拒绝；改成 `auto` 或 `2`。
+- 未发 tag：`1.0.0` 这个号留给正式发布时再打。
 
 ## 0.9.0 (unreleased) — [observe] 洞察
 

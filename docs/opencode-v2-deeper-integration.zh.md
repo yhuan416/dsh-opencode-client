@@ -1,6 +1,6 @@
 # OpenCode v2 深度整合机会（2.3.0 实测）
 
-> 状态：**调研 + 实测**（2026-11-20；基线已随 0.7.1/0.7.2 前移——工具数 26 → 28，`opencode_usage` 已落地、未读分区已上线、v1 已冻结）。基线：`dsh-opencode-client` 0.2.0 已把 26 个工具在 v2 上跑通，共接入 **39 / 139** 个 OpenAPI path；本文盘点剩余 **100 个**未接入端点里值得做、且实测确认可行的整合方向。
+> 状态：**调研 + 实测**（2026-11-20；基线已随 0.7.1/0.7.2 前移——工具数 26 → 28，`opencode_usage` 已落地、未读分区已上线、v1 已移除（未发布的 1.0.0））。基线：`dsh-opencode-client` 0.2.0 已把 26 个工具在 v2 上跑通，共接入 **39 / 139** 个 OpenAPI path；本文盘点剩余 **100 个**未接入端点里值得做、且实测确认可行的整合方向。
 >
 > 关联：[docs/opencode-v2-migration.zh.md](opencode-v2-migration.zh.md)（v2 兼容迁移）、[COMPATIBILITY.md](../COMPATIBILITY.md)（支持矩阵）。
 

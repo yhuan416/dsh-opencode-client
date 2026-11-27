@@ -76,7 +76,7 @@
 
 - `opencode_subagent_n100` / `opencode_subagent_m65` 启动后分别返回 `NATIVE_PROVIDER_N100_OK` / `NATIVE_PROVIDER_M65_OK`（异步启动 + 结算通知正常）；
 - 远端 child session：父会话用 `task` 派生 `ses_e07ac7d25…`（`parentID` 正确、agent=general、succeeded），`opencode_children` 正确列出；
-- 更早的 seam 直测（1.18.31）：`capabilities` 全 false、`activeRuns.agent is parent: true`、`result.stopReason=completed`、`dispose` 幂等、abort 路径 0.0s 结算。
+- 历史 seam 直测（OpenCode 1.18.31，v1 已移除）：`capabilities` 全 false、`activeRuns.agent is parent: true`、`result.stopReason=completed`、`dispose` 幂等、abort 路径 0.0s 结算。
 
 ---
 
