@@ -67,6 +67,19 @@ assert.match(clientSource, /--dsh-oc-wait-ink/)
 // theme and quietly drifts from the badges/chips around it (the fallbacks inside
 // `var(...)` are fine — they only apply where the host token is missing).
 assert.doesNotMatch(clientSource, /(?:color|background|border[A-Za-z]*): "#[0-9a-f]{6}"/)
+// Insights layout: the page lives in the host's main slot, so its width comes
+// from the sidebar, not the viewport. A viewport @media breakpoint can never
+// fire there, and the old 360/420/300 minima overflowed the panel (clipped
+// heatmap + a page-wide horizontal scrollbar). The grid must stay on a
+// container query, and the column counts must live in the stylesheet — an
+// inline gridTemplateColumns would beat the @container rule.
+assert.match(clientSource, /\.dsh-oc-insight\{container-type:inline-size\}/)
+assert.match(clientSource, /@container \(max-width:1099px\)/)
+assert.match(clientSource, /@container \(max-width:839px\)/)
+assert.match(clientSource, /@container \(max-width:719px\)/)
+assert.doesNotMatch(clientSource, /@media\s*\(max-width/)
+assert.doesNotMatch(clientSource, /className: "dsh-oc-(?:top|panels)"[^}]*gridTemplateColumns/)
+
 // The watcher polls `unseen`; without it a just-finished row leaves the polled
 // set on the same tick it enters unseen, so the completion toast never fires.
 assert.match(clientSource, /payload\.needsMe \|\| \[\]\)\.concat\(payload\.unseen/)
