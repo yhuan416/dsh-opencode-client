@@ -215,11 +215,7 @@
 - [x] **活跃度热力图**：固定 30 天、独立于 7/30 窗口；`/insights/activity` 按日 stats 聚合
       会话/Token，前端二选一（默认 Token）；与 6 张卡、steps 柱状图同排；首算约 1.9s，10 分钟缓存
 
-- [ ] **未读批量处理**：一键把当前未查看全部标记已读（逐条点开之外的第二条路）
-- [ ] **趋势**：用 stats 的 `from`/`to` 区间画 7 日成本/token 走势（**服务端聚合，不落盘**，符合观测层不持久化的约定）
-- [ ] **徽标口径**：可切换「只看待处理」/「待处理+未查看」（现在固定相加）
-- [ ] **看板信息密度**：空态/加载态、超长标题折行、按 server/项目折叠记忆
-- 验收：能配置提醒噪音、能一眼看出今天比昨天贵在哪台；不新增磁盘状态
+- 其余观察台打磨（未读批量、7 日趋势、徽标口径、看板密度）暂不做，见 §10.6
 
 ### 10.3 v0.10.0 —— [delegate] 可编排（约 4–6 天）
 
@@ -259,6 +255,7 @@
 | 调度桥（远端 `experimental.schedules`） | 无人值守委派，收益/风险未论证；若要做，先给出「可见、可暂停」的设计 |
 | 预算/成本护栏（日预算阈值提醒） | 订阅/未报价模型 `cost=0` 会让阈值失真；7/30 天洞察已能看成本；「只提醒不阻断」收益低、维护成本高（2026-11-27 决定不做） |
 | 提醒策略（静默时段 / 去重窗口 / 按 server 静音 / 铃铛菜单） | 现有 toast（固定 8s、最多 3 条）+ badge 已够用；DSH 也没有可复用的通知服务，自建策略层收益低（2026-11-27 决定暂不做，等真正觉得吵再上） |
+| 观察台打磨（未读批量、7 日趋势、徽标口径、看板密度） | 当前看板与徽标够用，先不加交互复杂度；等实际使用中明确觉得缺再回头做（2026-11-27 决定暂不做） |
 | 聊天页 / 聚合工作台 / LLM 桥接 | 0.6.0 定位已明确排除 |
 
 ### 10.7 历史残项台账
@@ -277,9 +274,9 @@
 
 ### 10.8 待裁：HTTP API 面（第三面）
 
-`lib/routes.js` 共 **39 条**宿主路由，其中：
+`lib/routes.js` 共 **40 条**宿主路由，其中：
 
-- 观测台在用 **10 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/insights`、`/insights/skills`、`/upgrade`、`/servers`、`/servers/remove`
+- 观测台在用 **11 条**：`/board`、`/list`、`/probe`、`/seen`、`/usage`、`/insights`、`/insights/activity`、`/insights/skills`、`/upgrade`、`/servers`、`/servers/remove`
 - 其余 **29 条**在仓库内**没有调用方**（工具面直连 `lib/*`，e2e 直连 OpenCode）：`/abort`、`/agents`、`/children`、`/command`、`/commands`、`/delegate`、`/events`、`/file`、`/find`、`/fork`、`/git/*`、`/init`、`/mcp`、`/messages`、`/models`、`/progress`、`/prompt`、`/references`、`/search`、`/session`、`/session-info`、`/sessions`、`/share`、`/shell`、`/skills`、`/status`、`/summarize`、`/tools`
 
 它们等于「把工具能力再用 HTTP 说一遍」，是第二份实现与第二份测试负担。选项：
