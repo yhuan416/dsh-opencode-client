@@ -58,10 +58,15 @@ test('repositoryWebUrl normalizes every manifest form', function () {
   assert.equal(repositoryWebUrl(''), undefined)
   assert.equal(repositoryWebUrl(undefined), undefined)
   assert.equal(repositoryWebUrl('not a url'), undefined)
+  // A fragment, query or trailing slash must not leak into the API slug.
+  assert.equal(repositoryWebUrl('https://github.com/a/b.git#main'), 'https://github.com/a/b')
+  assert.equal(repositoryWebUrl('https://github.com/a/b/?tab=readme'), 'https://github.com/a/b')
+  assert.equal(repositoryWebUrl('https://github.com/a/b/'), 'https://github.com/a/b')
 })
 
 test('githubSlug only resolves github.com URLs', function () {
   assert.equal(githubSlug('https://github.com/yhuan416/dsh-opencode-client'), 'yhuan416/dsh-opencode-client')
+  assert.equal(githubSlug('https://github.com/yhuan416/dsh-opencode-client.git'), 'yhuan416/dsh-opencode-client')
   assert.equal(githubSlug('https://gitlab.com/owner/repo'), undefined)
   assert.equal(githubSlug(undefined), undefined)
 })
@@ -73,6 +78,8 @@ test('parseRelease normalizes the tag and keeps the release facts', function () 
     publishedAt: '2026-11-27T11:18:37Z',
   })
   assert.equal(parseRelease({ tag_name: 'v1.2.0-rc.1' }).version, '1.2.0-rc.1')
+  // Build metadata never affects precedence; compareVersions() cannot order it.
+  assert.equal(parseRelease({ tag_name: 'v1.2.4+build.5' }).version, '1.2.4')
   assert.equal(parseRelease({ name: '1.2.0' }).version, '1.2.0')
   assert.equal(parseRelease({ tag_name: 'nightly' }), undefined)
   assert.equal(parseRelease(null), undefined)
@@ -120,7 +127,14 @@ test('fetchLatestRelease degrades instead of throwing', async function () {
     fetchImpl: fakeFetch({ '/releases/latest': new Error('getaddrinfo ENOTFOUND api.github.com') }),
   })
   assert.equal(offline.ok, false)
-  assert.match(offline.error, /ENOTFOUND/)
+  assert.match(offline.error, /无法连接/)
+
+  const limited = await fetchLatestRelease({
+    repository: 'https://github.com/yhuan416/dsh-opencode-client',
+    fetchImpl: fakeFetch({ '/releases/latest': jsonResponse(403, {}) }),
+  })
+  assert.equal(limited.ok, false)
+  assert.match(limited.error, /限流/)
 
   const noGithub = await fetchLatestRelease({ repository: 'https://gitlab.com/owner/repo', fetchImpl: function () { throw new Error('must not run') } })
   assert.equal(noGithub.ok, false)
@@ -234,4 +248,72 @@ test('the about route reports its absence instead of failing the profile', async
   const response = await route.fetch(new Request('http://127.0.0.1:3080/api/opencode-client/about'), {})
   assert.equal(response.status, 503)
   assert.equal((await response.json()).ok, false)
+})
+
+test('latestRelease joins concurrent cold lookups into one request', async function () {
+  resetLatestReleaseCache()
+  const fetchImpl = fakeFetch({ '/releases/latest': jsonResponse(200, RELEASE) })
+  const options = { repository: 'https://github.com/yhuan416/dsh-opencode-client', fetchImpl: fetchImpl }
+  const values = await Promise.all([latestRelease(options), latestRelease(options)])
+  assert.equal(fetchImpl.calls.length, 1, 'two concurrent callers must share one GitHub request')
+  assert.equal(values[0].ok, true)
+  assert.equal(values[1].ok, true)
+  resetLatestReleaseCache()
+})
+
+test('latestRelease force bypasses the cache and keeps the last known version on failure', async function () {
+  resetLatestReleaseCache()
+  let fail = false
+  const fetchImpl = function () {
+    return Promise.resolve(fail ? jsonResponse(503, {}) : jsonResponse(200, RELEASE))
+  }
+  const options = { repository: 'https://github.com/yhuan416/dsh-opencode-client', fetchImpl: fetchImpl }
+  const first = await latestRelease(options)
+  assert.equal(first.ok, true)
+  assert.equal(first.version, '1.2.0')
+  assert.equal(await latestRelease(options), first, 'the fresh cache answers without a request')
+  fail = true
+  const failed = await latestRelease(Object.assign({}, options, { force: true }))
+  assert.equal(failed.ok, false)
+  assert.equal(failed.stale, true)
+  assert.equal(failed.version, '1.2.0', 'the last known version survives an outage')
+  resetLatestReleaseCache()
+})
+
+test('latestState keeps a stale version and rejects an unreadable check', function () {
+  const stale = latestState('1.0.1', { ok: false, version: '1.2.0', stale: true, error: '无法连接 GitHub（网络问题）', checkedAt: 4 })
+  assert.equal(stale.status, 'unavailable')
+  assert.equal(stale.version, '1.2.0')
+  assert.equal(stale.stale, true)
+  assert.equal(stale.error, '无法连接 GitHub（网络问题）')
+
+  const unreadable = latestState('1.0.1', { ok: true, checkedAt: 5 })
+  assert.equal(unreadable.status, 'unavailable')
+  assert.match(unreadable.error, /无法检查更新/)
+  assert.equal(unreadable.version, undefined)
+})
+
+test('createAbout forwards refresh as force and tolerates a broken install lookup', async function () {
+  const requests = []
+  const about = createAbout({
+    packageInfo: { name: 'dsh-opencode-client', version: '1.0.1', repository: 'https://github.com/yhuan416/dsh-opencode-client' },
+    releaseSource: function (request) {
+      requests.push(request)
+      return Promise.resolve({ ok: true, version: '1.0.1', checkedAt: 11 })
+    },
+    manager: function () { return { listBundles: function () { return Promise.reject(new Error('profile locked')) } } },
+  })
+  const payload = await about({ refresh: true })
+  assert.deepEqual(requests, [{ repository: 'https://github.com/yhuan416/dsh-opencode-client', force: true }])
+  assert.equal(payload.install, undefined)
+  assert.equal(payload.latest.status, 'latest')
+
+  const odd = createAbout({
+    packageInfo: { name: 'dsh-opencode-client', version: '1.0.1', repository: 'https://github.com/yhuan416' },
+    releaseSource: function () { return Promise.resolve({ ok: false, error: '网络问题', checkedAt: 3 }) },
+    manager: function () { return { listBundles: function () { return Promise.resolve('not an array') } } },
+  })
+  const second = await odd()
+  assert.equal(second.install, undefined)
+  assert.equal(second.latest.status, 'unavailable')
 })
