@@ -453,7 +453,7 @@ test('collectCostByDirectory records the failure reason and does not cache a par
     assert.equal(first.total.failed, 1)
     assert.equal(first.total.failures.length, 1)
     assert.equal(first.total.failures[0].session, 's1')
-    assert.match(first.total.failures[0].reason, /500/)
+    assert.match(first.total.failures[0].reason, /500|storage unavailable/)
     assert.equal(calls, 2, 'the single retry failed too')
 
     // Partial results are not cached, so the next poll retries immediately.

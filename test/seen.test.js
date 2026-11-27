@@ -21,8 +21,10 @@ function startServer(routes) {
       request.on('end', function () {
         requests.push({ method: request.method, path: path, body: body })
         const handler = routes[path]
-        response.writeHead(handler === undefined ? 404 : 200, { 'content-type': 'application/json' })
-        response.end(JSON.stringify(handler === undefined ? {} : handler(request, body)))
+        const result = handler === undefined ? {} : handler(request, body)
+        const status = result !== null && typeof result === 'object' && typeof result.__status === 'number' ? result.__status : (handler === undefined ? 404 : 200)
+        response.writeHead(status, { 'content-type': 'application/json' })
+        response.end(status === 204 ? '' : JSON.stringify(result))
       })
     })
     server.listen(0, '127.0.0.1', function () {
@@ -50,7 +52,7 @@ function boardStub(observation) {
 test('POST /seen marks the session viewed on the remote with the row idle', async function () {
   const fake = await startServer({
     '/api/info': function () { return { version: '2.3.0' } },
-    '/api/session/ses_1/view': function () { return {} },
+    '/api/session/ses_1/view': function () { return { __status: 204 } },
   })
   try {
     const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
@@ -82,7 +84,7 @@ test('POST /seen marks the session viewed on the remote with the row idle', asyn
 test('POST /seen prefers an explicit idle and refuses to guess one', async function () {
   const fake = await startServer({
     '/api/info': function () { return { version: '2.3.0' } },
-    '/api/session/ses_2/view': function () { return {} },
+    '/api/session/ses_2/view': function () { return { __status: 204 } },
   })
   try {
     const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
