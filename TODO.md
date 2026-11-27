@@ -211,7 +211,9 @@
 - [x] **洞察**：看板页顶部洞察（7/30 天切换）——概览卡/日 steps 柱状/模型/MCP 工具/技能/项目；
       `lib/insights.js` + `GET /api/opencode-client/insights`；窗口内口径、单台失败隔离、
       stats `tools=detail` 缓存键含模式。MCP 按内置白名单之外拆分；技能名由
-      `lib/skills.js` 扫消息（独立懒加载 + 10 分钟缓存）得到。不做逐日 token/cost（不可得）
+      `lib/skills.js` 扫消息（独立懒加载 + 10 分钟缓存）得到。
+- [x] **活跃度热力图**：固定 30 天、独立于 7/30 窗口；`/insights/activity` 按日 stats 聚合
+      会话/Token/Steps，前端三选一切换；30 天首算约 1.9s，10 分钟缓存
 
 - [ ] **提醒策略**：静默时段、每类事件去重窗口、按 server 静音（现在 toast 固定 8s 消失、无开关）
 - [ ] **未读批量处理**：一键把当前未查看全部标记已读（逐条点开之外的第二条路）
