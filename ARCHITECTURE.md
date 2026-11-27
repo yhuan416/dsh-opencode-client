@@ -32,6 +32,7 @@ dsh web host process
 │   ├── lib/sse.js               per-server SSE (v1 /global/event, v2 /api/event); progress, idle listeners, events ring
 │   ├── lib/observation.js       (server, session) registry: running/pending/jobs/SSE merged into one status
 │   ├── lib/jobs.js              v2 background jobs (`/experimental/job`): work that outlives the turn
+│   ├── lib/insights.js          window-scoped fleet insights (stats + session counts) for the board's top area
 │   ├── lib/board.js             shared refresher behind /board, /list row status and opencode_board
 │   ├── lib/routes.js            /api/opencode-client/* host HTTP routes
 │   └── lib/tools.js             28 model-facing opencode_* tools
@@ -54,6 +55,7 @@ remote machines
 | Interactions | global `/permission`, `/question` + `/reply` / `/reject`, driven by SSE events | session-scoped `/session/{sid}/permission/{rid}/reply {decision}`, `/session/{sid}/form` + `/reply {answer}` / `DELETE`; SSE events, with run-scoped polling as the fallback | `interactions.js` |
 | Workspace | synchronous `/session/{id}/shell`, `/vcs/*`, `/file/content`, `/find/file`, `/find` | async `/shell` → `/shell/{id}` → `/shell/{id}/output`, `/vcs/*` (`mode=working` / `branch` / `committed`), raw `/fs/read/*`, `/fs/find` (files only) | `workspace.js` |
 | Management | `/fork {messageID}`, `/summarize`, `/init`, `/children` | `/fork {before}`, `/compact`, built-in `init` command, `/session?parentID=` | `manage.js` |
+| Insights (board top area) | no stats endpoint → unsupported | windowed aggregates from `/experimental/session/stats` (tools=detail) + session counts; daily series is steps-only | `insights.js` |
 | Background jobs | no endpoint | `/experimental/job` (experimental) lists running jobs; the board shows their session as `background` even though `time.idle` is set | `jobs.js`, `observation.js` |
 | v1 only | share, tool ids, text find, session todos | no endpoint: explicit error or visible hint, never silent empty data | `sessions.js`, `catalog.js`, `workspace.js` |
 

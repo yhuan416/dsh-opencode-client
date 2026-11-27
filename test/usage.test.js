@@ -85,7 +85,7 @@ test('collectStats normalizes a v2 stats payload', async function () {
     assert.equal(usage.steps, 46072)
     assert.equal(usage.cost, STATS.cost)
     assert.deepEqual(usage.tokens, { input: 713293301, output: 12779134, reasoning: 19027199, cacheRead: 16662285424, cacheWrite: 0 })
-    assert.deepEqual(usage.tools, { calls: 49504, succeeded: 49043, failed: 461 })
+    assert.deepEqual(usage.tools, { calls: 49504, succeeded: 49043, failed: 461, unfinished: 0 })
     assert.equal(usage.activeDays, 60)
     assert.equal(usage.streak, 12)
   } finally {

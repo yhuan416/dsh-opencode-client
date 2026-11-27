@@ -1,3 +1,29 @@
+## 0.9.0 (unreleased) — [observe] 洞察
+
+### Added
+
+- **看板页顶部洞察区**：看板页（`main` 槽，全宽）最上方直接展示近 7 天洞察，不做 tab；
+  空闲会话列表压到页面底部（每组默认 6 个 + 展开更多）。区块含 8 张概览卡
+  （会话/子代理、已归档、轮次/步数、Tokens、缓存命中率、费用、工具调用、活跃天数）、
+  近 7 天 steps 柱状（缺日补 0）、模型 Top5、工具 Top8、项目 Top8，以及口径脚注。
+- **新路由** `GET /api/opencode-client/insights?from=&server=`：`lib/insights.js` 在服务端聚合，
+  单台失败只让该台显示不可用（`supported:false`），整页仍 200；缓存沿用 stats（5 分钟）。
+- **数据口径**（全部窗口内，不用会话终生值）：会话/子代理 = `stats.sessions/subagents`；
+  Tokens = `stats.tokens` 四类；缓存命中率 = `cache.read/(input+read)`；费用 = `stats.cost`
+  并附「有报价会话数」；日图只能画 **steps**（OpenCode 无逐日 token/cost）；项目分布 =
+  窗口内 `time.busy` 会话按项目 worktree 计数（`/` 归「未归属」）。
+- **stats 扩展**：`collectStats` 支持 `tools: 'summary'|'detail'`，**缓存键并入模式**
+  （此前只有时间桶，summary 会污染 detail）；`tools=detail` 的 `usage[]` 归一化（calls/P50，
+  跨 server 合并时 P50 不一致就给区间）；`activity[]` 进入 `summarizeStats`；
+  新增 `collectArchivedCount`（`archived=true` 翻页计数，5 分钟缓存）。
+- **测试**：`test/insights.test.js` 4 项（窗口汇总/activity 补 0/项目计数、单台失败隔离、
+  summary/detail 缓存不串、纯函数）；合计 119 → 123。
+
+### Notes
+
+- 明确不做（数据不可得，不伪造）：逐日 token/费用、token 构成、耗时拆解、活跃时长、
+  技能/命令明细。脚注已写明「费用仅含报价模型 · 日图仅 steps」。
+
 ## 0.8.0 (unreleased) — [observe] 可信度
 
 按「一核两轨」的第一轨推进：先让看板说的事**对、全、能追到钱**。本切片只读、复用现有数据。
