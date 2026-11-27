@@ -2,7 +2,7 @@
 /** Offline smoke checks for the plugin modules (no network, no dsh runtime). */
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
-import { readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import * as entry from '../lib/index.js'
@@ -128,6 +128,19 @@ assert.match(clientSource, /insightSkeletonRows/)
 assert.match(clientSource, /insightBarsSkeleton/)
 assert.match(clientSource, /insightActivitySkeleton/)
 assert.doesNotMatch(clientSource, /insights === null \? null : insightSection/)
+
+// Server side of the same work: SWR for the history scans, one refresh per
+// key, immutable past days, single-flight stats, and a startup warmer.
+const routesSource = readFileSync(new URL('../lib/routes.js', import.meta.url), 'utf8')
+assert.match(routesSource, /swrCache\.serve\(/)
+const sessionsSource = readFileSync(new URL('../lib/sessions.js', import.meta.url), 'utf8')
+assert.match(sessionsSource, /statsInflight/)
+const insightsSource = readFileSync(new URL('../lib/insights.js', import.meta.url), 'utf8')
+assert.match(insightsSource, /dailyActivityCache/)
+assert.ok(existsSync(new URL('../lib/warm.js', import.meta.url)), 'lib/warm.js must exist')
+const warmSource = readFileSync(new URL('../lib/warm.js', import.meta.url), 'utf8')
+assert.match(warmSource, /export function scheduleWarm\(/)
+
 
 
 // The model-facing board must surface the same partition, or finished-but-unread

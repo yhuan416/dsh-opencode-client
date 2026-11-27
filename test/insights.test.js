@@ -9,7 +9,7 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 import { normalizeServers } from '../lib/config.js'
 import { collectStats } from '../lib/sessions.js'
-import { collectInsights, collectActivity, computeCacheHitRate, fillActivity, sessionFacts } from '../lib/insights.js'
+import { collectInsights, collectActivity, computeCacheHitRate, fillActivity, sessionFacts, resetActivityDailyCache } from '../lib/insights.js'
 
 const NOW = new Date(2026, 10, 27, 12, 0, 0).getTime()
 const DAY = 86400000
@@ -98,6 +98,38 @@ function fakeHandlers(overrides) {
     },
   }, overrides)
 }
+
+test('a past activity day is scanned once, even across different windows', async function () {
+  resetActivityDailyCache()
+  const fake = await startFake({
+    '/api/info': function () { return { version: '2.3.0' } },
+    '/api/experimental/session/stats': function (request) {
+      const url = new URL(request.url, 'http://localhost')
+      return { data: {
+        range: { from: Number(url.searchParams.get('from')), to: Number(url.searchParams.get('to')) },
+        sessions: 1, subagents: 0, prompts: 1, steps: 1,
+        tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } },
+        cost: 0, tools: { mode: 'none' }, activeDays: 1, streak: 1, activity: [], models: [],
+      } }
+    },
+  })
+  try {
+    // Different server id: `activityCache` is keyed by day+server, and this test
+    // must not leave a result behind for the sibling window test below.
+    const servers = normalizeServers([{ id: 'e5-daily', url: fake.url, password: 'pw' }])
+    const first = await collectActivity(servers, { days: 4, now: NOW })
+    assert.equal(first.partial, false)
+    const scanned = fake.requests.length
+    // A different window (and a cleared stats bucket cache) must still reuse the
+    // immutable per-day aggregates: no new history scans for days already seen.
+    for (const server of servers) server.statsCache.clear()
+    await collectActivity(servers, { days: 2, now: NOW })
+    assert.equal(fake.requests.length, scanned, 'no rescan for days already aggregated')
+  } finally {
+    resetActivityDailyCache()
+    await fake.close()
+  }
+})
 
 test('collectInsights aggregates window-scoped totals, activity fill and project counts', async function () {
   const fake = await startFake(fakeHandlers())
