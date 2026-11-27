@@ -29,8 +29,9 @@ dsh web 宿主进程
 │   ├── lib/interactions.js      远端 permission/question → dsh approval / userQuestions
 │   │                            （v1 全局 / v2 会话作用域 + 表单）
 │   ├── lib/sse.js               每台 server 的 SSE（v1 /global/event、v2 /api/event）；progress、idle 监听、events 环形缓冲
-│   ├── lib/observation.js       (server, session) 登记表：running/待办/SSE/未读合并成一份状态
+│   ├── lib/observation.js       (server, session) 登记表：running/待办/后台任务/SSE/未读合并成一份状态
 │   │                            （未读不自己记：取 OpenCode 的 time.idle > time.viewed）
+│   ├── lib/jobs.js              v2 后台任务（`/experimental/job`）：活过回合的工作（脚本还在跑、会话已 idle）
 │   ├── lib/board.js             /board、/list 行内状态与 opencode_board 共用的刷新器
 │   ├── lib/routes.js            /api/opencode-client/* 宿主 HTTP 路由
 │   └── lib/tools.js             28 个面向模型的 opencode_* 工具
