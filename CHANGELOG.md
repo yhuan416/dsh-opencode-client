@@ -26,7 +26,11 @@
     >max($0.01, 1%) 即为 false），以及每台的 `directories`。**对账用未截断的目录总额**，展示列表的
     top-10 截断不会让机群误报“不一致”。v1 没有 stats/per-message cost，直接跳过目录拉取，不发无用请求。
   - 设置页新增「近 7 天归因」：模型与目录各取前三，`byDirectoryPartial` / `reconciled=false` 时追加
-    「（部分）」「（与总成本不一致）」提示；看板 server 卡显示 `top: <模型> $x.xx`。
+    「（部分 · N 个会话未读到）」「（与总成本不一致）」提示；看板 server 卡显示 `top: <模型> $x.xx`。
+  - **抗抖动**：单会话读取失败自动**重试一次**（`total.retried`）；仍失败则在
+    `total.byDirectoryFailures` 记录 `{server,session,reason}`（最多 5 条，`/usage` 每台也有
+    `directoryFailures`）。**不完整结果不进缓存**：各一次瞬时失败曾让 $27.39 缺失、且被 600 s
+    缓存挂在设置页约 10 分钟；现在下一次 240 s 轮询就会自愈。
 - **测试**：`test/usage.test.js` 加 6 项（窗口内消息成本与目录回退、上限 `partial`、compaction 排除、
   请求预算、v1 拒绝近似、未截断对账），并把 `/usage` 用例改为断言 `kind`/`reconciled`；
   `test/board.test.js` 加 1 项（`probe`/`sse` 健康字段）；合计 104 → 110。
