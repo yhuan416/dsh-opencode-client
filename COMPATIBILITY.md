@@ -112,6 +112,27 @@ with `apiVersion: 1|2`.
 - **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`,
   `2.4.2` (Linux x64, live servers; measured 2026-11-18, v2 surface completed 2026-11-20,
   2.4.2 added 2026-11-27 — `npm run e2e` 10/10 on two 2.4.2 servers).
+
+### Upstream client pinning (2026-11-27)
+
+`@opencode/client` is a generated client released in lockstep with OpenCode core
+(`2.4.2` ↔ core `2.4.2`, stable every 0–7 days). This plugin deliberately does
+**not** track that cadence:
+
+- the dependency is pinned to an **exact version** (`2.4.2`, no `^`/`~`), and
+  `scripts/check-manifest.mjs` fails the build if the range or the lockfile drifts;
+- the plugin version (`0.9.x`, `1.0.x`, …) is independent of the OpenCode version;
+- upgrades happen **only** when (a) a server version we must support breaks a
+  field/endpoint we read, or (b) a feature needs a newer client — each upgrade is
+  a deliberate PR with `npm run check`, live `npm run e2e`, and an update to this
+  section;
+- newer OpenCode versions are best-effort: additive fields are ignored, but we do
+  not promise a version we have not run against. A runtime version probe already
+  reports the server version on the board.
+
+This trades new upstream capabilities for stability: the observation console
+prefers a known-good client over chasing weekly releases.
+
 - v1 remains the baseline for existing installs: all 26 `opencode_*` tools keep their names and
   v1 behaviour. `COMPATIBILITY` is aggregated across servers, so one profile can mix v1 and v2.
 - Transport failures are never degraded into "0 results": 401, HTML/SPA bodies, non-JSON bodies,
