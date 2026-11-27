@@ -272,7 +272,9 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   connects mid-run, the current tool is read once from `session/active` + the latest message so a
   running card is not blank until the next event.
 - **Insights (0.9.0)** — the top of the board page shows a 7/30-day window: session counts, tokens,
-  cost, cache hit rate, a daily **steps** chart, top models/projects, **MCP/custom tool** usage grouped
+  cost, cache hit rate, a daily **steps** chart, an **activity heatmap** (GitHub-style week columns;
+  7 days render as one week strip, 30 days as a month grid with labels), top models/projects,
+  **MCP/custom tool** usage grouped
   by server (builtin shell/read/write are not shown) and **per-skill** load counts. All numbers are
   window-scoped; the footnote states what OpenCode cannot provide (daily tokens/cost, token
   composition, duration breakdown). Skill names come from a lazy message scan (`/insights/skills`).

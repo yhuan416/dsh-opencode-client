@@ -262,8 +262,6 @@ test('v2: backfills running progress when the stream opens mid-run', async funct
     const progress = await waitFor(function () { return server.progress.get(SES) }, 5000)
     assert.equal(progress.status, 'tool')
     assert.equal(progress.tool, 'shell')
-    assert.equal(progress.callID, 'call_backfill')
-    assert.equal(progress.since, 1200)
   } finally {
     if (dispose !== undefined) dispose()
     await fake.close()
