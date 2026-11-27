@@ -167,6 +167,8 @@
 
 - **v2 为支持目标，v1 冻结（0.7.2）**：同一版本仍能读两代（按 `/api/info` 探测），但 v1 只保留现状、不再扩展、不再实机验证；v2 缺失能力（share/todo/tool ids/文本搜索）明确报错而不是伪造。
 - **v2 语义跟随上游**：prompt 改 `{text,files}`、agent/model 走会话状态、完成看 `session.execution.*`、权限 `decision`、提问变表单、shell 异步；不做 v1→v2 翻译 shim。
+- **v1 下线（1.0.0，2026-11-27）**：传输层探测到 v1 直接 `opencode.v1_unsupported`；
+  `apiVersion: 1` 视为 auto。sessions/jobs/skills 的 v1 分支已删，其余模块的死分支后续清理。
 - **上游 client 锁版本（2026-11-27）**：`@opencode/client` 固定精确版本（现 `2.4.2`），插件版本独立；**只在遇到兼容性问题或需要新端点时**才升级，每次升级单独 PR + `npm run check` + 真机 e2e + 更新 COMPATIBILITY。CI 门禁禁止 `^`/`~`/`*`，防止浮动把上游 churn 带进运行中的插件。
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
@@ -236,7 +238,7 @@
 
 ### 10.5 v1.0.0 —— 承诺（条件驱动，不排期）
 
-- [ ] v1 去留定案（长期冻结 or 删除；删除作为 breaking 版本，清单见 §10.7）
+- [x] v1 去留定案：**删除**（1.0.0 breaking）；运行路径已拒绝 v1，剩余死分支清理见 §10.7
 - [ ] `COMPATIBILITY.md` 写明 SemVer 覆盖范围：**工具名 / HTTP 路由 / config 结构**；dsh 宿主契约不在承诺内
 - [ ] 发布方式定稿（当前 git-only，不发布 npm）
 
@@ -263,7 +265,7 @@
 | 同源代理（iframe 免登录） | ⬜ 入口体验，低优先（不做也能用，需手动登录） |
 | routing per-server `directory` 是否进模板默认 | 待决策 |
 | workflow backend 是否默认开 | 待决策（会显著放大远端调用与成本） |
-| v1 删除 | 待决策；清单：12 个 lib 文件的 92 处分派点、2 个 v1-only 工具、3 个测试夹具、8 份文档 |
+| v1 删除 | 进行中：传输层拒绝 + sessions/jobs/skills 已清；catalog/workspace/delegate/manage/interactions/session-run/routes/tools/事件映射的死分支待清（实测 12 文件 69 处 `apiVersionOf`，非 92） |
 
 ### 10.8 待裁：HTTP API 面（第三面）
 

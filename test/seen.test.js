@@ -108,9 +108,12 @@ test('POST /seen prefers an explicit idle and refuses to guess one', async funct
 test('markSessionViewed reports v1 as unsupported without touching it', async function () {
   const fake = await startServer({ '/api/info': function () { return { version: '2.3.0' } } })
   try {
-    // No password: the probe treats it as v1, which has no read marker at all.
+    // No password: the probe resolves v1, which this plugin now rejects.
     const server = normalizeServers([{ id: 'old', url: fake.url }])[0]
-    assert.deepEqual(await markSessionViewed(server, 'ses_1', IDLE), { supported: false, ok: false })
+    const result = await markSessionViewed(server, 'ses_1', IDLE)
+    assert.equal(result.supported, false)
+    assert.equal(result.ok, false)
+    assert.match(result.error, /v1_unsupported|requires OpenCode 2/)
     assert.equal(fake.views().length, 0)
   } finally {
     await fake.close()

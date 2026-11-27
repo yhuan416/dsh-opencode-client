@@ -1,3 +1,21 @@
+## 1.0.0 (unreleased) — [core] v1 下线（breaking）
+
+### Changed
+
+- **OpenCode 1.x 不再支持**：探测为 v1（含 401、缺密码、不可达、`/api/info` 缺失）时，
+  所有请求以 `opencode.v1_unsupported` 失败，并提示「requires OpenCode 2.x」；
+  `apiVersion: 1` 视为 auto 并被拒绝。
+- `apiPath` 始终指向 `/api/*`；sessions 的 v1 分支（v1 消息、`/session/status`、`/abort`、
+  `/share`、`/todo`、`/view`、stats/归档回退）已删除。
+- 依赖固定 `@opencode/client@2.4.2`（无 `^`/`~`）；CI 增加精确版本门禁。
+- 测试迁移到 v2 fixture，新增「v1 被拒绝」用例；132 个测试全绿。
+
+### Migration
+
+- 将 OpenCode 升级到 2.4.x；把 1.x server 从插件配置中移除。
+- 剩余模块（catalog/workspace/delegate/manage/interactions/session-run/routes/tools、
+  v1 事件映射）中的死分支在后续提交清理；运行路径已不再触达。
+
 ## 0.9.0 (unreleased) — [observe] 洞察
 
 ### Added
