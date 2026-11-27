@@ -109,8 +109,9 @@ with `apiVersion: 1|2`.
 | Session todos | `/session/{id}/todo` | no endpoint; derived from the last `todowrite` tool call (`state.input.todos`) |
 | Model variants | none | `/api/model` `variants[]` (reasoning-effort ids) surfaced by `opencode_models`; selectable as `provider/model#variant` (v2 `Model.Ref.variant`) |
 
-- **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`
-  (Linux x64, live server; measured 2026-11-18, v2 surface completed 2026-11-20).
+- **Verified against**: OpenCode `1.18.10`, `1.18.31`, `1.18.33` (v1) and OpenCode `2.3.0`,
+  `2.4.2` (Linux x64, live servers; measured 2026-11-18, v2 surface completed 2026-11-20,
+  2.4.2 added 2026-11-27 — `npm run e2e` 10/10 on two 2.4.2 servers).
 - v1 remains the baseline for existing installs: all 26 `opencode_*` tools keep their names and
   v1 behaviour. `COMPATIBILITY` is aggregated across servers, so one profile can mix v1 and v2.
 - Transport failures are never degraded into "0 results": 401, HTML/SPA bodies, non-JSON bodies,
@@ -129,6 +130,36 @@ with `apiVersion: 1|2`.
   follows `cursor.next` so long sessions are not truncated at the server page size.
 - The live acceptance run for both generations is `npm run e2e` (`scripts/e2e-live.mjs`) with
   `OPC_LIVE_URL` / `OPC_LIVE_PASSWORD` / `OPC_LIVE_DIR` and optional `OPC_LIVE_INTERACTIONS=1`.
+
+### 2.4.x deltas (2.3.0 → 2.4.2, measured 2026-11-27)
+
+Compared from the two servers' own `GET /openapi.json` (170 → 188 operations, 515 → 556 schemas):
+
+- **Removed**: only `/api/experimental/schedule*` (6 operations, replaced by
+  `/api/experimental/automation*`). This plugin never used schedules, so nothing to migrate.
+- **Added**: `POST /api/experimental/job/{id}/cancel`, video (`/api/experimental/generate/video`),
+  blob, machine and push endpoints, `GET /api/experimental/skill/{skillID}/file/*`.
+- **Nothing this plugin reads was removed.** `V2Event` grew 100 → 102 members
+  (`experimental.job.updated`, `experimental.push.updated`); the event schemas mapped by
+  `lib/events.js` (`session.text|tool|step|execution|idle.*`) are byte-identical.
+- **Additions only** on payloads we parse: `Job.Kind`/`Job.Info` gain `video` and `codemode`
+  (unknown kinds flow through the board as-is), `Model.Type` gains `video`,
+  `Agent.Info.instructions`, `Model.Info.experimental`, `Skill.Info.content.description`,
+  `Session.Inbox.Delivery` (steer/queue) — all optional.
+- **MCP protocol default changed `legacy` → `auto`** (2.4.0). A stdio server that only serves the
+  `2026-07-28` revision can now fail: the discovery probe is answered too late (`Received a
+  response for an unknown message ID` in the server log), opencode falls back to the legacy
+  `initialize`, and such a server rejects it. Fix per server: put it under `mcp.servers.<name>`
+  (v2 shape) and set `"protocol": "2026-07-28"`. The legacy v1 `mcp.<name>` shape **silently drops**
+  the `protocol` field during normalisation, so setting it there has no effect.
+- **First catalog read after a restart can be empty/partial** (2.4.0 restored asynchronous plugin
+  loading). `model`/`provider`/`skill`/`mcp` answer with whatever has loaded; subsequent reads are
+  complete. Never cache the first snapshot — re-read, or refresh on the matching `*.updated` event.
+- **Shell timeout moved to the background** (2.3.1): a command still running at its timeout is no
+  longer killed, it becomes a background job (visible via `/api/experimental/job`). This plugin's
+  `opencode_shell` contract is unchanged.
+- Structured-output and tool-name changes (`experimental_image_generate` → `generate_image`) only
+  affect permission allow-lists on the server, not this client.
 
 Subagent dispatch:
 
