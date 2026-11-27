@@ -16,7 +16,7 @@ import { collectModels, collectCommands, collectSkills, collectToolIds, collectR
 import { runShell, gitStatus, gitDiff, readRemoteFile, findFiles, findText } from '../lib/workspace.js'
 import { forkSession, summarize, initSession, sessionChildren } from '../lib/manage.js'
 import { abortSession, collectPending } from '../lib/sessions.js'
-import { createObservation, observationKey, OBSERVATION_STATUSES } from '../lib/observation.js'
+import { createObservation, observationKey, describePending, OBSERVATION_STATUSES } from '../lib/observation.js'
 
 // Client bundle smoke: the helpers the card click depends on must exist (a
 // refactor once deleted boardSessionUrl and clicks died silently).
@@ -132,6 +132,32 @@ assert.equal(observationSmoke.rows('s1')[0].status, 'running')
 observationSmoke.markPending('s1', 'ses_1', { kind: 'permission', requestId: 'r1', detail: 'bash' })
 assert.equal(observationSmoke.board().needsMe.length, 1)
 assert.equal(observationSmoke.board().running.length, 0)
+
+// A session deleted while the stream was down must leave the board: a fresh
+// (authoritative) listing prunes it, and `session.deleted` invalidates the cached
+// listing so the next refresh cannot observe the dead row back.
+const staleSmoke = createObservation({ now: function () { return 1000 } })
+staleSmoke.observeIdentity('s1', { id: 'ses_gone', title: 'gone' })
+staleSmoke.observeRunning('s1', new Set(), true)
+assert.equal(staleSmoke.board().idleCount, 1)
+assert.equal(staleSmoke.retain('s1', []), 1)
+assert.equal(staleSmoke.board().idleCount, 0)
+assert.equal(staleSmoke.retain('s1', []), 0)
+// Newest-first truncated page: only a missing row that would necessarily have
+// been listed (newer than the page floor) proves deletion. The safety gate must
+// stay a behavior, not a source-string accident.
+const truncatedSmoke = createObservation({ now: function () { return 1000 } })
+truncatedSmoke.observeIdentity('s1', { id: 'ses_off_page', title: 'page 2', updatedAt: 100 })
+truncatedSmoke.observeIdentity('s1', { id: 'ses_deleted_recent', title: 'deleted', updatedAt: 900 })
+truncatedSmoke.observeRunning('s1', new Set(), true)
+assert.equal(truncatedSmoke.retain('s1', [], { pageFloorUpdatedAt: 500 }), 1)
+assert.equal(truncatedSmoke.board().idleCount, 1)
+assert.equal(truncatedSmoke.board().idle[0].sessionId, 'ses_off_page')
+assert.equal(truncatedSmoke.retain('s1', [], { pageFloorUpdatedAt: 500 }), 0, 'off-page row is kept')
+assert.equal(
+  describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', type: 'string', description: '继续吗？' }] } }),
+  'form: 继续吗？',
+)
 
 // Unread comes from OpenCode's own markers: idle > viewed, and a viewed session
 // returns to idle instead of lingering in `unseen`.

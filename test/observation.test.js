@@ -145,6 +145,93 @@ test('describePending keeps permission and form readable', function () {
   assert.equal(describePending('permission', { action: 'bash', resources: ['a', 'b'] }), 'bash (a, b)')
   assert.equal(describePending('permission', {}), 'permission')
   assert.equal(describePending('form', { form: { questions: [{ text: 'which branch?' }] } }), 'form: which branch?')
+  // v2 forms carry the question in fields[].description; title is just the dock
+  // header ("Questions") and must not be preferred over the real text.
+  assert.equal(
+    describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', title: '继续吗', type: 'string', description: 'state-test：是否继续？' }] } }),
+    'form: state-test：是否继续？',
+  )
+  assert.equal(describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', title: '继续吗', type: 'string' }] } }), 'form: 继续吗')
+  assert.equal(describePending('form', { form: { title: 'Questions', fields: [] } }), 'form: Questions')
+  // Hidden fields and headers must not shadow the real question.
+  assert.equal(
+    describePending('form', { form: { title: 'Questions', fields: [
+      { key: 'q0', type: 'string', hidden: true, description: 'internal hidden text' },
+      { key: 'q1', type: 'string', title: 'Short header' },
+      { key: 'q2', type: 'string', description: 'real question' },
+    ] } }),
+    'form: real question',
+  )
+})
+
+test('retain drops rows missing from a fresh listing but keeps listed and newer ones', function () {
+  const observation = createObservation()
+  observation.observeIdentity('n100', { id: 'ses_live', title: 'live' })
+  observation.observeIdentity('n100', { id: 'ses_gone', title: 'deleted while the stream was down' })
+  observation.observeIdentity('e5', { id: 'ses_other', title: 'other server' })
+  observation.observeRunning('n100', new Set(), true)
+  observation.observeRunning('e5', new Set(), true)
+  // A deletion event was missed: the stale row is still on the board.
+  assert.equal(observation.board().idleCount, 3)
+  const removed = observation.retain('n100', ['ses_live'])
+  assert.equal(removed, 1)
+  const board = observation.board()
+  assert.equal(board.idleCount, 2)
+  assert.deepEqual(board.idle.map(function (row) { return row.sessionId }).sort(), ['ses_live', 'ses_other'])
+  assert.equal(observation.retain('n100', ['ses_live']), 0, 'idempotent')
+})
+
+test('retain protects sessions the event stream announced after the request started', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  observation.observeIdentity('n100', { id: 'ses_old', title: 'listed before' })
+  c.advance(1000)
+  const since = c.now()
+  // A session created after the list request started: the listing cannot know it
+  // yet, so pruning it would fight the event stream.
+  c.advance(1000)
+  observation.observeEvent('n100', { kind: 'session.created', sessionId: 'ses_new', at: 9999, data: {} })
+  observation.observeRunning('n100', new Set(), true)
+  assert.equal(observation.retain('n100', [], { since: since }), 1)
+  const rows = observation.rows('n100')
+  assert.deepEqual(rows.map(function (row) { return row.sessionId }), ['ses_new'])
+  // Without the protection the same row would go.
+  assert.equal(observation.retain('n100', [], {}), 1)
+})
+
+test('retain on a truncated page only prunes rows that would have been listed', function () {
+  const observation = createObservation()
+  // Newest-first page with floor 500: a row newer than the floor would
+  // necessarily be on the page, so a missing one proves deletion; an older row
+  // may simply be on page 2 and must be kept.
+  observation.observeIdentity('n100', { id: 'ses_off_page', title: 'old, still exists', updatedAt: 100 })
+  observation.observeIdentity('n100', { id: 'ses_deleted_recent', title: 'deleted after activity', updatedAt: 900 })
+  observation.observeIdentity('n100', { id: 'ses_floor_tie', title: 'tie at the floor', updatedAt: 500 })
+  observation.observeRunning('n100', new Set(), true)
+  assert.equal(observation.retain('n100', [], { pageFloorUpdatedAt: 500 }), 1)
+  assert.deepEqual(observation.board().idle.map(function (row) { return row.sessionId }).sort(), ['ses_floor_tie', 'ses_off_page'])
+  assert.equal(observation.retain('n100', [], { pageFloorUpdatedAt: 500 }), 0, 'idempotent')
+})
+
+test('retain never drops a row with live evidence', function () {
+  const observation = createObservation()
+  observation.observeIdentity('n100', { id: 'ses_pending' })
+  observation.markPending('n100', 'ses_pending', { kind: 'form', requestId: 'f1', detail: 'form: x' })
+  observation.observeIdentity('n100', { id: 'ses_running' })
+  observation.observeRunning('n100', new Set(['ses_running']), true)
+  observation.observeIdentity('n100', { id: 'ses_job' })
+  observation.observeJobs('n100', [{ sessionID: 'ses_job', id: 'job_1', kind: 'shell', title: 'build', startedAt: 1 }])
+  assert.equal(observation.retain('n100', [], {}), 0)
+  assert.equal(observation.rows('n100').length, 3)
+})
+
+test('retain compares local observation time, not the remote wire clock', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  observation.observeIdentity('n100', { id: 'ses_remote' })
+  // The server's clock is far ahead of ours; that must not protect the row.
+  observation.observeEvent('n100', { kind: 'session.created', sessionId: 'ses_remote', at: 999999, data: {} })
+  assert.equal(observation.retain('n100', [], { since: 2000 }), 1)
 })
 test('finished-but-unread stays out of idle until viewed', function () {
   const c = clock()

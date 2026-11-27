@@ -25,11 +25,28 @@
 
 ### Notes
 
+- **共享 OpenCode server 是共享状态**：同一 server 上的其它 dsh/OpenCode 客户端也能抢答
+  form/权限请求；`question` 策略在各客户端保持一致，否则旧 `question: reject` 客户端会把
+  本机挂起的问题先 dismiss 掉（README 已补充说明）。
 - 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。
 - 没有 `pluginManager` 服务（无 profile 启动）时省略安装来源，「更新」退化为发布页链接。
 
 ### Fixed
 
+- **删除会话后看板残留行**：远端会话被删除（或在插件未连着 SSE 时被删）后，行仍留在看板
+  「空闲」里、`idleCount` 不降，直到插件重载。根因两条：SSE `session.deleted` 先 forget、下一轮
+  刷新又用 10s 的旧快照把行 observe 回来；以及插件没连着 SSE 时根本收不到删除事件。
+  现在：`session.deleted` 会让该 server 的会话快照失效（含 epoch，防止在途旧请求把快照写回）；
+  `collectServer` 对同一 server 做 single-flight，避免并发刷新里「慢的旧列表后到」覆盖新状态；
+  每次权威列表快照都会 `retain` 一次，把列表里已不存在的行清掉——只要还有 pending/running/后台任务证据
+  的行就保留，列表请求开始后由 SSE 证明还活着的新会话受保护；会话数超过单页上限（500）时，
+  只有「缺失且 `updatedAt` 晚于本页最旧一条」才允许裁剪（这种行若存在必然在本页，缺失即已删除），
+  更旧的行可能只是翻到第 2 页，保留。一次可疑的空列表（此前有行、突然返回空）也不会立刻清空看板。
+- **「等待回答」卡只显示 `form: Questions`**：v2 form 的问题正文在 `fields[].description`，
+  以前只取 `title`（dock 头，固定是 "Questions"），卡片上看不出在问什么。根因是同一段文案在
+  三个地方各写了一份（observation / interactions / pending 快照），后写的覆盖先写的；现在抽成
+  `lib/pending-text.js` 单一实现，三处都调它，并过滤隐藏字段、优先真正的 question 文本。
+  权限卡的文案也接了同一个 helper（不再是 interactions 独有的 `OpenCode bash (…)` 前缀）。
 - **看板卡片行尾的 OpenCode `finish` 原始英文**：以前除 `stop` 外会原样拼上 `error` /
   `tool-calls` / `length` / `aborted`（用户在「未查看」卡上看到「… · error」不知所以）。现在收敛为
   中文 `出错` / `中断` / `超出长度` / `被拦截`，`stop` 与 `tool-calls` 不显示；真正的失败 outcome
