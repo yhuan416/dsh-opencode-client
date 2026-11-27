@@ -160,6 +160,16 @@ assert.match(clientSource, /new IntersectionObserver\(/)
 assert.match(clientSource, /h\(LazyRender, \{ minHeight: "235px" \}/)
 assert.match(clientSource, /h\(LazyRender, \{ minHeight: \(34 \+ idleGroups\.length \* 280\)/)
 assert.match(clientSource, /console\.table\(snapshot\.longTasks\)/)
+// PR-E: scrolling the board was the one interaction left that blocked the main
+// thread. Cards now have a fixed height and skip layout/paint while offscreen,
+// collapsed idle cards are capped (it used to render up to ~60), and the perf
+// flag records slow scroll frames so a re-measure needs no DevTools profile.
+assert.match(clientSource, /containIntrinsicSize: "100px"/)
+assert.match(clientSource, /contentVisibility: "auto"/)
+assert.match(clientSource, /var IDLE_CARD_CAP = 12;/)
+assert.match(clientSource, /idleHidden > 0 \? "（还有 "/)
+assert.match(clientSource, /function perfWatchScroll\(\)/)
+assert.match(clientSource, /slowFrames: perfSlowFrames\.slice\(\)/)
 assert.match(clientSource, /return boardSkeleton\(insightBlock\)/)
 assert.doesNotMatch(clientSource, /正在采集会话状态…/)
 
