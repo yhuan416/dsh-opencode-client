@@ -59,5 +59,8 @@
     "check": "node scripts/check.mjs && node scripts/check-manifest.mjs && node --test",
     "e2e": "node scripts/e2e-live.mjs",
     "manifest": "node scripts/check-manifest.mjs"
+  },
+  "dependencies": {
+    "@opencode/client": "2.4.2"
   }
 }
