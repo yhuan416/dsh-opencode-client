@@ -167,6 +167,7 @@
 
 - **v2 为支持目标，v1 冻结（0.7.2）**：同一版本仍能读两代（按 `/api/info` 探测），但 v1 只保留现状、不再扩展、不再实机验证；v2 缺失能力（share/todo/tool ids/文本搜索）明确报错而不是伪造。
 - **v2 语义跟随上游**：prompt 改 `{text,files}`、agent/model 走会话状态、完成看 `session.execution.*`、权限 `decision`、提问变表单、shell 异步；不做 v1→v2 翻译 shim。
+- **上游 client 锁版本（2026-11-27）**：`@opencode/client` 固定精确版本（现 `2.4.2`），插件版本独立；**只在遇到兼容性问题或需要新端点时**才升级，每次升级单独 PR + `npm run check` + 真机 e2e + 更新 COMPATIBILITY。CI 门禁禁止 `^`/`~`/`*`，防止浮动把上游 churn 带进运行中的插件。
 - **结构化输出暂用 prompt 约束**：上游 format bug；本地校验 required 字段。
 - **多 server 客户端聚合**：server 无联邦 API。
 - **权限默认 `ask`**：工具发起的委派走 dsh 审批卡；无 agent 的 HTTP 调用回落到 allow。

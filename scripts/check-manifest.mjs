@@ -34,6 +34,21 @@ assert.equal(
   'engines.dsh declares the compatible dsh range; plugin_manager refuses packages without it',
 )
 
+// ------------------------------------------------------- pinned upstream client
+// The generated client follows OpenCode core releases; a range would silently
+// pull a different API surface into a running installation. Upgrades are a
+// deliberate PR (see COMPATIBILITY.md), so the gate refuses `^`/`~`/`*`.
+const OPENCODE_CLIENT = '@opencode/client'
+const pinnedClient = manifest.dependencies?.[OPENCODE_CLIENT]
+assert.equal(typeof pinnedClient, 'string', OPENCODE_CLIENT + ' must be a pinned dependency')
+assert.match(pinnedClient, /^\d+\.\d+\.\d+$/, OPENCODE_CLIENT + ' must be an exact version (no ^/~/*)')
+const lockfile = JSON.parse(read('package-lock.json'))
+assert.equal(
+  lockfile.packages?.['node_modules/' + OPENCODE_CLIENT]?.version,
+  pinnedClient,
+  'package-lock.json must resolve ' + OPENCODE_CLIENT + ' to the pinned version',
+)
+
 // ------------------------------------------------------- bundle declarations
 assert.equal(manifest.dsh?.manifestVersion, 1, 'dsh.manifestVersion must be the declared format 1')
 assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'dsh.bundle.patch must point at the patch file')
