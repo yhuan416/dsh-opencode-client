@@ -35,6 +35,7 @@ dsh web host process
 │   ├── lib/insights.js          windowed fleet insights + 30-day daily activity (sessions/tokens/steps)
 │   ├── lib/skills.js            per-skill counts: walks messages for `skill` input.id (lazy, cached)
 │   ├── lib/version.js          "is a newer OpenCode out?" via the official update service (1 h cache)
+│   ├── lib/about.js             own version/repository + GitHub release check (About block, 24 h cache)
 │   ├── lib/board.js             shared refresher behind /board, /list row status and opencode_board
 │   ├── lib/routes.js            /api/opencode-client/* host HTTP routes
 │   └── lib/tools.js             28 model-facing opencode_* tools

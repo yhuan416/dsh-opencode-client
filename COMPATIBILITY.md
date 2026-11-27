@@ -213,7 +213,7 @@ Covered by the 1.x compatibility promise:
 - `opencode_*` tool names and their documented parameters / return shape.
 - The config structure: `servers` (`id`/`url`/`password`/`directory`/`agent`/`model`/`apiVersion`),
   `permission`, `question`, `pathMap`, `routing`.
-- The host routes the bundled UI actually calls: `/api/opencode-client/board`, `/list`, `/probe`,
+- The host routes the bundled UI actually calls: `/api/opencode-client/board`, `/about`, `/list`, `/probe`,
   `/seen`, `/usage`, `/insights`, `/insights/activity`, `/insights/skills`, `/upgrade`, `/servers`,
   `/servers/remove`.
 

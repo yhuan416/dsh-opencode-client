@@ -301,9 +301,11 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   settings section ends with an About block: version, repository link, latest / update-available /
   unavailable check, last-checked time and 重新检查. Version and repository come from this package's
   `package.json`; the newest release comes from GitHub Releases (cached 24 h in the Host, retried
-  after 1 h on failure; offline only degrades the check area). 更新 hands registry installations to
-  DSH's own update flow, and opens the release page plus the local `git pull --ff-only` command for a
-  path-linked checkout.
+  after 1 h on failure; the board chip, settings block and detail badge share one load, so a cold
+  start spends one GitHub request). Offline / rate-limited checks degrade only the check area and
+  keep the last known version. 更新 hands registry installations to DSH's own update flow; a
+  path-linked checkout opens the release page and shows a copyable `git -C <dir> pull --ff-only`;
+  git installs (plugin market) update through the release page / market.
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
   and SSE reconnect counts.
 - **Entry points** — the left sidebar `OpenCode` entry opens the board; server rows and board cards

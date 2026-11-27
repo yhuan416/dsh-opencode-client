@@ -17,6 +17,29 @@
 
 - 检查是只读的：不写配置、不替用户执行 git 命令、不下载插件。
 - 没有 `pluginManager` 服务（无 profile 启动）时省略安装来源，「更新」退化为发布页链接。
+
+### Fixed（合入后 review 修订）
+
+- **「读取中」吞掉失败**：`/about` 404/500/断网时卡片永远停在「正在读取版本信息…」；现在
+  加载中 / 已加载 / 失败三态分开，失败显示「无法读取版本信息」，「重新检查」失败也在块内回写一行提示。
+- **同一数据两套状态**：看板 chip、设置区块、详情页「可更新」标签各自 fetch，详情页冷加载打两次
+  `/about`，点「重新检查」只刷新当前块；改为客户端单 store（一次加载、共享刷新）。
+- **冷启动重复消耗 GitHub 匿名配额**：宿主没有 in-flight 合并，并发的两次 `/about` 会打两次 GitHub；
+  现在并发请求共享同一个 Promise，`refresh=1` 跳过缓存但仍并入在途请求（实测并发 1 次请求）。
+- **断网丢掉「可更新」提示**：失败现在保留上次成功检查的 `version`/`url` 并标 `stale`，
+  页面显示「无法检查更新 · 上次已知 vX」而不是把提示区清空。
+- **浅色主题 warn 文字对比度 ~2:1**：chip 与「可更新到 vY」改用 `color-mix` 加深（与看板「需要你」
+  同一处理），色点继续用填充色。
+- **更新入口与文案**：registry 安装在设置区不再放一个点了没反应的「更新」按钮（DSH 自己的「版本」区
+  就在页面上方），路径安装显示可选中复制的 `git -C … pull --ff-only`，chip/按钮 title 与实际行为一致。
+- **错误文案与边角**：限流（403/429）、网络错误、不可解析响应都转成中文原因；仓库 URL 用 `URL` 归一化
+  （`.git`、`#fragment`、尾斜杠）；build metadata（`+sha`）在版本比较前剥掉，避免漏更新；
+  「上次检查于」跨天时显示日期。
+- **顺手修掉既有 bug**：设置页（`OpenCodePanel`）里 `setLatestOpenCode` 未定义，
+  `/api/opencode-client/upgrade` 请求每轮抛 ReferenceError 并被 `.catch` 吞掉——是死代码，已删除。
+- 文档：设计文档、`COMPATIBILITY.md` 路由清单（补 `/about`）、`ARCHITECTURE.md` 模块树（补
+  `lib/about.js`）、README 双语同步。
+
 ## 1.0.2 (unreleased) — [observe] 洞察布局按容器宽度自适应
 
 ### Fixed

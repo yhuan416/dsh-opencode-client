@@ -87,13 +87,27 @@ assert.match(clientSource, /payload\.needsMe \|\| \[\]\)\.concat\(payload\.unsee
 // About block: the Host owns version, repository and the GitHub release check.
 // The client must keep the route, the board chip, the settings block and the
 // version badge wired, and must not hardcode the version or repository itself.
-assert.match(clientSource, /\/api\/opencode-client\/about\?refresh=1/)
+assert.match(clientSource, /fetch\("\/api\/opencode-client\/about" \+ \(force \? "\?refresh=1" : ""\)/)
 assert.match(clientSource, /function aboutBlock\(/)
 assert.match(clientSource, /function aboutChip\(/)
 assert.match(clientSource, /data-opencode-about/)
 assert.match(clientSource, /plugins\.detail\.badge/)
 assert.doesNotMatch(clientSource, /github\.com\/yhuan416\/dsh-opencode-client/)
 assert.doesNotMatch(clientSource, /"version":\s*"1\.\d+\.\d+"/)
+// One store feeds the chip, the settings block and the badge: per-component
+// fetches re-hit GitHub and leave the other surfaces stale after a recheck.
+assert.match(clientSource, /var aboutStore = \{/)
+assert.match(clientSource, /aboutStore\.listeners/)
+// Load failure must be visible, not indistinguishable from "still loading".
+assert.match(clientSource, /无法读取版本信息/)
+// Warn text needs the light-theme darkening (amber-500 on white is ~2:1); the
+// fill token stays for the dot.
+assert.match(clientSource, /var ABOUT_WARN_INK = "color-mix\(in srgb, var\(--dsw-alias-state-warn-primary/)
+// A path-linked checkout gets a copyable update command instead of a silent button.
+assert.match(clientSource, /"git -C " \+ localPath \+ " pull --ff-only"/)
+// The settings page used to call an undefined setLatestOpenCode in a swallowed
+// /upgrade request; the About work removed that dead fetch.
+assert.doesNotMatch(clientSource, /setLatestOpenCode\(payload\.latest\);[\s\S]{0,400}setInterval\(loadUpgrade, 86400000\)/)
 
 // The model-facing board must surface the same partition, or finished-but-unread
 // sessions vanish from the agent's view entirely.

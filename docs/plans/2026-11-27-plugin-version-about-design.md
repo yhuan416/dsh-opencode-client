@@ -62,16 +62,16 @@ listsVersions = pkg.update === 'registry'          // versions.tsx
   "ok": true,
   "plugin": {
     "name": "dsh-opencode-client",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "repository": "https://github.com/yhuan416/dsh-opencode-client",
     "license": "MIT"
   },
   "install": { "source": "file:/home/yhuan/workspace/gitlab/dsh-opencode-client", "update": null },
   "latest": {
     "status": "latest",            // latest | update-available | unavailable
-    "version": "1.0.0",
-    "url": "https://github.com/yhuan416/dsh-opencode-client/releases/tag/v1.0.0",
-    "publishedAt": "2026-11-27T11:18:37Z",
+    "version": "1.0.1",
+    "url": "https://github.com/yhuan416/dsh-opencode-client/releases/tag/v1.0.1",
+    "publishedAt": "2026-11-27T13:11:04Z",
     "checkedAt": 1764260000000,
     "error": "…"                   // 仅 status=unavailable
   }
@@ -85,9 +85,12 @@ listsVersions = pkg.update === 'registry'          // versions.tsx
 - **安装信息**：`ctx.get('pluginManager')?.listBundles()` 找自己 → `{ source, update }`；
   服务不存在时省略 `install`，不阻塞其余字段。
 - **最新版本**：`GET …/releases/latest`（`accept: application/vnd.github+json`、
-  `user-agent: dsh-opencode-client`）；无 release（404）回退 `/tags?per_page=1`；
+  `user-agent: dsh-opencode-client`）；无 release（404）回退 `/tags?per_page=100` 并取最高 semver；
   用 `compareVersions(latest, current)` 判定 `update-available`；成功缓存 24h、失败 1h。
-- **降级**：网络/解析失败 → `status: 'unavailable'` + `error`，HTTP 仍 200（前端好渲染）。
+  并发冷查询共享同一个 in-flight 请求，`refresh=1` 跳过缓存但仍并入在途请求；
+  build metadata（`+sha`）在比较前剥掉（compareVersions 无法排序它）。
+- **降级**：网络/解析/限流失败 → `status: 'unavailable'` + 中文 `error`，HTTP 仍 200（前端好渲染）；
+  上次成功过的检查会把 `version`/`url` 带进降级结果并标 `stale: true`，更新提示不因断网消失。
 - 依赖注入与 `versionSource` 同款：`createRoutes({ aboutSource })`，测试可注入 fake fetch。
 
 ## 5. 客户端：两块 UI
@@ -109,23 +112,32 @@ listsVersions = pkg.update === 'registry'          // versions.tsx
           ⚠ 无法连接 GitHub · 重试                    [重新检查]
 ```
 
-- 数据获取：挂载时 `GET /about` 一次；「重新检查」→ `GET /about?refresh=1`；
-  不接看板的 15s 轮询，避免额外流量。
+- 数据获取：模块级单一 store 供三个挂面共享（看板 chip / 设置区块 / 详情页 badge）——页面首次挂载 `GET /about` 一次，
+  后续挂载复用；「重新检查」→ `GET /about?refresh=1`，所有挂面同时刷新；不接看板的 15s 轮询。
+- 状态：加载中 / 已加载 / 失败三态分开；失败显示「无法读取版本信息」而不是永远「读取中」；
+  重新检查失败在块内回写一行提示，旧结果不冒充新结果。
 - 样式只用 `--dsw-alias-*` 主题 token，手写控件（不引 `dsh-client-ui-primitives`，遵循 DSH practices）；
-  配色沿用现有 `TONE`（成功/警告/错误）。
+  状态色沿用现有 `TONE`，但 warn **文字**用 `color-mix(… 60%, label-primary)` 加深——amber-500 填充色在浅色主题只有 ~2:1，
+  与看板「需要你」标签同一处理（色点仍用填充色）。
 - 可选低成本增强（建议同批）：`plugins.detail.badge` 在插件标题旁加「可更新」标签。
 
 ## 6. 「更新」动作（已定：引导式 A）
 
-- 若 `install.update === 'registry'`（或 DSH 侧确有更新目标）：按钮 → `pluginNavigation.openBundle('dsh-opencode-client')`，
-  跳到 DSH 插件页用原生更新流程（本插件已用该服务实现「插件设置」跳转）。
-- 否则（含当前 `file:` 安装）：按钮 → 新标签打开发布页；
-  并在设置区显示本机更新命令（`git -C <插件目录> pull --ff-only`，只展示/可复制，不执行）。
+- 若 `install.update === 'registry'`：看板 chip 点击 → `pluginNavigation.openBundle('dsh-opencode-client')`，
+  跳到 DSH 插件页用原生更新流程；设置区不再重复放「更新」按钮（DSH 自己的「版本」区就在页面上方），只留一行提示。
+- 否则（`file:`/`link:` 路径安装）：按钮 → 新标签打开发布页；设置区显示可选中复制的
+  `git -C <插件目录> pull --ff-only`（只展示，不执行）。
+- `git` 源安装（插件市场常见形态）：同「否则」——按钮打开发布页，更新由 DSH 插件市场 / 重新安装完成。
+- 不实现宿主 `git pull`、不调用插件管理器 `updateBundle` 远程方法（权限与失败面都不可控）。
 - 不实现宿主 `git pull`、不调用插件管理器 `updateBundle` 远程方法（权限与失败面都不可控）。
 
 ## 7. 错误与边界
 
-- GitHub 限流/网络失败：`unavailable` 降级 + 保留上次成功的 `version/url`（有缓存时），页面不空。
+- GitHub 限流（403/429）/网络失败/返回内容无法解析：`unavailable` 降级 + 中文原因，HTTP 仍 200；
+  上次成功过的检查保留 `version/url` 并标 `stale: true`，更新提示与发布页链接不因断网消失。
+- 并发：客户端共享一次加载，宿主合并 in-flight 请求（冷启动 2 个挂面也只打一次 GitHub）；
+  `refresh=1` 跳过缓存但并入在途请求。
+- 版本：build metadata（`+sha`）在比较前剥掉，避免 compareVersions 判等导致漏更新。
 - 仓库 URL 解析失败：隐藏仓库行，其余正常。
 - pre-release：`releases/latest` 天然排除预发布；当前版本是预发布时用 `compareVersions` 正确排序（预发布 < 正式）。
 - 宿主无 `pluginManager` 服务（无 profile 启动）：省略 `install`，「更新」退化为发布页链接。
@@ -138,8 +150,8 @@ listsVersions = pkg.update === 'registry'          // versions.tsx
 | `lib/about.js`（新） | 读包信息、URL 归一化、GitHub release 探测、缓存 |
 | `lib/routes.js` | 新增 `GET /api/opencode-client/about`（约 25 行） |
 | `lib/index.js` | 组装 about 依赖并传入 `createRoutes` |
-| `lib/client.js` | `useAbout()` + 看板 chip + 「关于」块 + 可选 badge（约 150 行） |
-| `test/about.test.js`（新） | fake fetch：release 解析、tag 回退、预发布排序、缓存 TTL、失败降级、路由 payload |
+| `lib/client.js` | About store + `useAbout()` + 看板 chip + 「关于」块 + badge（约 220 行） |
+| `test/about.test.js`（新） | fake fetch：release 解析、tag 回退、预发布排序、缓存 TTL、in-flight 合并、force / 保留上次版本、失败降级、install 异常、路由 payload |
 | `scripts/check.mjs` | 客户端字符串断言（版本 chip / 关于块 / 仓库链接存在） |
 | `README.md`、`README.zh.md`、`CHANGELOG.md` | 功能说明与变更记录 |
 
@@ -153,6 +165,18 @@ listsVersions = pkg.update === 'registry'          // versions.tsx
 
 - 开发态信息：宿主读 git（`git describe` / `HEAD..@{u}`），在「关于」块显示分支/commit/落后提交数
 - 当插件改为 npm 发布后，`install.update === 'registry'` 分支自动变成真正的一键更新（DSH 原生）
+
+## 11. review 修订（2026-11-27，合入后复查）
+
+按合入后 review 的发现逐条修掉：
+
+- 客户端单 store（一次加载、共享刷新）、加载/失败/已加载三态、recheck 失败回写提示
+- 宿主 in-flight 合并 + `force` 刷新 + 失败保留上次已知版本（`stale`）
+- 错误文案中文化（限流/网络/解析）；仓库 URL 用 `URL` 归一化（`.git`、`#frag`、尾斜杠）；build metadata 剥离
+- warn 文字对比度（color-mix 加深）；更新入口按 `install.update` 分流（registry 不再放空按钮）；
+  路径安装显示可复制的 `git -C … pull --ff-only`；检查时间跨天显示日期
+- 文档：本文件、COMPATIBILITY 路由清单、ARCHITECTURE 模块树、README/CHANGELOG
+- 顺手修掉设置页既有的 `setLatestOpenCode` 未定义（ReferenceError 被吞的 `/upgrade` 死请求）
 ## 10. 实现状态（2026-11-27）
 
 已实现，分支/工作区：`feat/plugin-about`（`git worktree` 于 `.worktrees/plugin-about`，从 `master` 迁出并 rebase 到 449e7f4，含 PR #50）。
