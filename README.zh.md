@@ -256,8 +256,13 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
 
 ### 权限与事件
 
-- **权限审批** — `permission: ask`（默认）把远端权限请求转成 dsh 审批卡；`allow`/`reject`
-  确定性应答（回复 `once`/`always`/`reject`）。
+- **权限审批** — `permission: ask`（默认）把远端权限请求转成 dsh 审批卡（`once`/`always`/`reject`
+  由你决定）；`allow` = **显式全自动旁路**（不问、直接 `always`），`reject` = 全拒，供无人值守部署。
+  `ask` 的最终表现按场景不同：委派运行（有 agent 在作用域）→ 宿主审批卡；无主会话（你自己在
+  TUI/Web 开的）→ 请求**挂起**进看板「需要你」，到会话里回答；拿不到审批服务时 → 自动 `always`
+  并在插件日志打 warn。所有请求都会记入**权限诊断**：`/board` 的 server 对象带 `permissions`
+  （次数 / 用户批准 / 自动放行 / 拒绝 / 挂起 + 最近 20 条 action/resources），看板远端卡显示
+  「权限 N · 自动 M」（有自动放行时告警色）——「远端没问」与「问了被静默批准」因此可以区分。
 - **提问桥接** — 工具发起的运行（有 agent 在作用域）会把远端提问转发到 dsh 用户提问 UI；
   没有 dsh run 的会话（例如你自己在 OpenCode TUI / Web 里开的）提问默认**挂起**，进入看板
   「需要你」并触发通知，等你到会话里回答；`question: reject` 供无人值守部署显式跳过（直接
@@ -326,6 +331,9 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
 之后需重启 `dsh web`：bundle 选择在启动时组合。
 
 ## 配置
+
+> 界面里也能增删改远端：设置 → 插件 → dsh-opencode-client 的远端列表可「编辑」显示名 / 地址 /
+> 新密码（留空字段不变；密码从不回传客户端，所以改其它字段不会把它弄丢）。
 
 ```yaml
 - id: opencode-client

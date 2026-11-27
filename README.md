@@ -255,7 +255,16 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
 ### Permissions & events
 
 - **Permission approval** — `permission: ask` (default) turns remote permission requests into dsh
-  approval cards; `allow`/`reject` answer deterministically (`once`/`always`/`reject`).
+  approval cards (`once`/`always`/`reject` are your call); `allow` is the **explicit auto-approve
+  bypass** and `reject` refuses everything (unattended deployments). With `ask` the outcome depends
+  on the caller: a delegated run (agent in scope) shows the host approval card; a session dsh did
+  not start keeps the request **pending** in the board's "needs you" row until you answer in the
+  session; when no approval service is available the request is auto-answered `always` with a warn
+  in the plugin log. Every request is counted as a **permission diagnostic** — the `/board` server
+  object carries `permissions` (asked / user-approved / auto-approved / rejected / pending plus the
+  last 20 action+resources) and the board card shows "权限 N · 自动 M" (warning tone when anything
+  was auto-approved), so "the remote never asked" and "it asked and was answered silently" are no
+  longer indistinguishable.
 - **Question bridging** — remote questions are forwarded to dsh's user-question UI for
   tool-initiated runs (an agent is in scope). A session dsh did not start (for example one you
   opened in the OpenCode TUI/Web) keeps its question **pending** by default: it shows up in the
