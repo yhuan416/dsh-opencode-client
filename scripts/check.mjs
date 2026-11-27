@@ -180,6 +180,11 @@ assert.match(clientSource, /function installCardStyles\(\)/)
 assert.match(clientSource, /installCardStyles\(\);/)
 assert.match(clientSource, /className: "dsh-oc-card"/)
 assert.equal((clientSource.match(/cardSurface\(/g) || []).length >= 8, true, 'cardSurface must be used by every surface')
+// asyncSlot bodies must be lazy: building them eagerly dereferenced still-null
+// data and blanked the whole settings section (remote CRUD included).
+assert.match(clientSource, /typeof props\.render === "function" \? props\.render\(\)/)
+assert.match(clientSource, /render: function \(\) \{/)
+assert.ok(existsSync(new URL('../test/client-render.test.js', import.meta.url)), 'client render smoke test must exist')
 assert.match(clientSource, /var IDLE_CARD_CAP = 12;/)
 assert.match(clientSource, /idleHidden > 0 \? "（还有 "/)
 assert.match(clientSource, /function perfWatchScroll\(\)/)
