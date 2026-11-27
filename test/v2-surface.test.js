@@ -83,6 +83,7 @@ function handle(entry, response) {
   if (path === '/api/session' && entry.method === 'GET') {
     if (url.searchParams.get('parentID') === 'ses_1') return json(response, 200, { data: [], cursor: {} })
     if (url.searchParams.get('search') === 'demo') return json(response, 200, { data: [SESSION], cursor: {} })
+    if (url.searchParams.get('archived') === 'true') return json(response, 200, { data: [SESSION], cursor: { next: 'page-2' } })
     return json(response, 200, { data: [SESSION], cursor: { next: null } })
   }
   if (path === '/api/session' && entry.method === 'POST') return json(response, 200, { data: { id: 'ses_new', location: { directory: '/work' } } })
@@ -235,7 +236,7 @@ function lastRequest(fake, method, path) {
   }).pop()
 }
 
-test('v2 sessions: list/info/messages/agents/status normalize to the v1 shapes', async function () {
+test('v2 sessions: list/info/messages/agents/status normalize to one canonical shape', async function () {
   const fake = await startServer()
   try {
     const server = makeServer(fake)
@@ -250,6 +251,12 @@ test('v2 sessions: list/info/messages/agents/status normalize to the v1 shapes',
     assert.equal(rows.count, 1)
     assert.match(rows.text, /demo session/)
     assert.equal(rows.errors.length, 0)
+
+    const archived = await collectSessionRows([server], 'v2', undefined, undefined, 10, { archived: true })
+    assert.equal(archived.count, 1)
+    assert.equal(archived.nextCursor, 'page-2')
+    const archivedCursor = await collectSessionRows([server], 'v2', undefined, undefined, 10, { cursor: 'page-2' })
+    assert.equal(archivedCursor.count, 1)
 
     const messages = await readMessages(server, 'ses_1', 10)
     assert.deepEqual(messages.map(function (message) { return message.role }), ['user', 'assistant'])
@@ -334,6 +341,11 @@ test('v2 workspace: vcs envelope, mode rename, raw fs read, fs find and async sh
     const diff = await gitDiff(server, '/work', 'git', true)
     assert.match(diff.text, /@@ -1 \+1 @@/)
     assert.match(lastRequest(fake, 'GET', '/api/vcs/diff').url, /mode=working/)
+    await gitDiff(server, '/work', 'branch', false, { untracked: 'files', base: 'main' })
+    const branchUrl = lastRequest(fake, 'GET', '/api/vcs/diff').url
+    assert.match(branchUrl, /mode=branch/)
+    assert.match(branchUrl, /untracked=files/)
+    assert.match(branchUrl, /base=main/)
 
     const file = await readRemoteFile(server, '/work', 'a.txt')
     assert.equal(file.binary, false)
@@ -347,6 +359,10 @@ test('v2 workspace: vcs envelope, mode rename, raw fs read, fs find and async sh
     const findUrls = fake.requests.filter(function (request) { return new URL(request.url, 'http://localhost').pathname === '/api/fs/find' }).map(function (request) { return request.url })
     assert.match(findUrls[findUrls.length - 2], /query=\*\.js/) // glob tried first
     assert.match(findUrls[findUrls.length - 1], /query=\.js/)    // then the stripped substring
+    const dirs = await findFiles(server, '/work', 'src', 5, 'dir')
+    assert.equal(dirs.count, 1)
+    const dirUrls = fake.requests.filter(function (request) { return new URL(request.url, 'http://localhost').pathname === '/api/fs/find' }).map(function (request) { return request.url })
+    assert.match(dirUrls[dirUrls.length - 1], /type=directory/)
     // v2 removed content search; findText emulates it with a workspace grep.
     const textSearch = await findText(server, '/work', 'needle')
     assert.equal(textSearch.mode, 'shell-grep')

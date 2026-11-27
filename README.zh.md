@@ -185,7 +185,8 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
 - **发现** — `GET /api/opencode-client/list`（健康状态、projects、按目录分组的 sessions；
   目录取自 `location.directory`）。
 - **会话列表** — 工具 `opencode_sessions` + `GET /api/opencode-client/sessions`；每行在服务端提供时带
-  model（含 `#variant`）、agent、outcome 与 cost。
+  model（含 `#variant`）、agent、outcome 与 cost。`archived=true` 列出归档会话，
+  `cursor`/`nextCursor` 可翻过首屏 500 条快照。
 - **会话消息** — 工具 `opencode_messages` + `GET /api/opencode-client/messages`（含 text / tool /
   file part；`content[]` text/reasoning/tool part 会归一化）；tool 行带调用入参摘要与输出首行，
   `type=` 可按消息类型过滤（服务端过滤）；可用来判断某会话是否值得续用。
@@ -211,11 +212,13 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
 ### 工作区与 git
 
 - **工作区操作** — `opencode_shell`、`opencode_git_status`、`opencode_git_diff`、
-  `opencode_read_file`、`opencode_find`（`kind=file` 搜索路径；`kind=text` 用工作区 grep 兜底）。
+  `opencode_read_file`、`opencode_find`（`kind=file` 搜索路径、`kind=dir` 搜索目录；
+  `kind=text` 用工作区 grep 兜底）。
 - 这些都是确定性的直连调用（不经过远端模型）：核对远端 agent 改了什么、读文件、跑命令或搜索
   工作区。
 - `opencode_shell` 在会话工作区异步执行（提交、轮询、读输出）；
-  `opencode_git_diff` 接受 `committed`/`branch`/`working`，`git` 映射为 `working`。
+  `opencode_git_diff` 接受 `committed`/`branch`/`working`（`git` 映射为 `working`），
+  另支持 `untracked=files|folders` 与 `base=<ref>`。
 
 ### 权限与事件
 
@@ -231,7 +234,7 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
 ### UI
 
 - **观测台（主面板，0.6.0）** — 左侧栏 `OpenCode` 打开的是**卡片看板**，不是内嵌页面：
-  「需要你 / 运行中 / 异常」跨远端平铺置顶，「空闲」按远端分组；顶部远端筛选胶囊记住选择；
+  「需要你 / 运行中 / 异常」跨远端平铺置顶，「空闲」按（远端, 目录）分组；顶部远端筛选胶囊记住选择；
   点卡片在浮层里打开该会话（Esc 或顶栏关闭，浮层自带「新标签打开」）。数据来自
   `GET /api/opencode-client/board`，5 秒轮询、页面不可见即停。
 - **插件页** — 「OpenCode Client」分区：服务器/工作区/会话、会话 id、当前工具、查看消息、

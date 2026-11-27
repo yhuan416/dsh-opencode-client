@@ -231,6 +231,45 @@ test('v2: execution.interrupted completes as interrupted', async function () {
     await fake.close()
   }
 })
+test('v2: backfills running progress when the stream opens mid-run', async function () {
+  const fake = await startServer(function (request, response, requests) {
+    if (request.url === '/api/event') {
+      openSse(response)
+      return
+    }
+    if (request.url.indexOf('/api/session/active') === 0) {
+      replyJson(response, 200, { data: { [SES]: { type: 'running' } } })
+      return
+    }
+    if (request.url.indexOf('/api/session/' + SES + '/message') === 0) {
+      replyJson(response, 200, {
+        data: [{
+          type: 'assistant',
+          time: { created: 1000 },
+          content: [{ type: 'tool', id: 'call_backfill', name: 'shell', state: { status: 'running' }, time: { created: 1100, ran: 1200 } }],
+        }],
+        cursor: {},
+      })
+      return
+    }
+    replyJson(response, 404, {})
+  })
+  const events = createStream()
+  const server = makeServer({ id: 'v2', url: fake.url, apiVersion: '2' })
+  let dispose
+  try {
+    dispose = events.subscribeEvents(server)
+    const progress = await waitFor(function () { return server.progress.get(SES) }, 5000)
+    assert.equal(progress.status, 'tool')
+    assert.equal(progress.tool, 'shell')
+    assert.equal(progress.callID, 'call_backfill')
+    assert.equal(progress.since, 1200)
+  } finally {
+    if (dispose !== undefined) dispose()
+    await fake.close()
+  }
+})
+
 test('v2: permission and form events reach the interaction bridge', async function () {
   let stream
   const fake = await startServer(function (request, response) {
