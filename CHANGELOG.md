@@ -16,6 +16,16 @@
 - **首屏请求分层**：board 与 insights/activity 立即发；usage / upgrade 延迟到首帧后（idle），
   skills 等 insights 到达后再以 heavy 任务启动；筛选变化通过 AbortController 取消在途请求。
 
+### Added
+
+- **服务端 SWR + 启动预热 + single-flight**：观测台的只读接口（`/insights`、`/insights/activity`、
+  `/insights/skills`、`/usage`）改为 stale-while-revalidate——过期后立即返回上一份数据（`stale: true`
+  + `at`），后台只刷新一次；插件启动后 8s 在空闲窗口串行预热 board / 7 天 insights / 30 天
+  activity，首个页面不再吃冷扫描（实测冷 `/insights` ~9s、暖 ~0.6s）。`collectStats` 增加
+  per-server in-flight 合并，insights / usage / 预热不会重复扫同一窗口。
+- **历史天的活跃度永久缓存**：30 天热力按「server + 日期」缓存每日聚合，过去的日子在进程内不再
+  重扫（只有今天 60s 短 TTL），并顺带把 per-day 并发从 4 提到 8。
+
 ### Fixed
 
 - 冷加载同时发 7+ 个请求、toast 与看板各自轮询 `/board` 造成的首屏卡顿与刷新节奏不一致。

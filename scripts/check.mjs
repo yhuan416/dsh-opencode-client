@@ -129,6 +129,19 @@ assert.match(clientSource, /insightBarsSkeleton/)
 assert.match(clientSource, /insightActivitySkeleton/)
 assert.doesNotMatch(clientSource, /insights === null \? null : insightSection/)
 
+// Server side of the same work: SWR for the history scans, one refresh per
+// key, immutable past days, single-flight stats, and a startup warmer.
+const routesSource = readFileSync(new URL('../lib/routes.js', import.meta.url), 'utf8')
+assert.match(routesSource, /swrCache\.serve\(/)
+const sessionsSource = readFileSync(new URL('../lib/sessions.js', import.meta.url), 'utf8')
+assert.match(sessionsSource, /statsInflight/)
+const insightsSource = readFileSync(new URL('../lib/insights.js', import.meta.url), 'utf8')
+assert.match(insightsSource, /dailyActivityCache/)
+assert.ok(existsSync(new URL('../lib/warm.js', import.meta.url)), 'lib/warm.js must exist')
+const warmSource = readFileSync(new URL('../lib/warm.js', import.meta.url), 'utf8')
+assert.match(warmSource, /export function scheduleWarm\(/)
+
+
 
 // The model-facing board must surface the same partition, or finished-but-unread
 // sessions vanish from the agent's view entirely.
