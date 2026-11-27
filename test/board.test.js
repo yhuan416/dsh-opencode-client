@@ -1,5 +1,5 @@
 /**
- * Collection-path test: one fake OpenCode v1 server feeding the real
+ * Collection-path test: one fake OpenCode v2 server feeding the real
  * `collect*` functions into the observation registry, then reading the board.
  * This is the offline stand-in for `scripts/probe-observation.mjs`.
  */
@@ -45,17 +45,17 @@ const SESSIONS = [
 
 test('collectServer + collectStatus + collectPending fill the board', async function () {
   const fake = await startServer({
-    '/global/health': function () { return { healthy: true } },
-    '/project': function () { return [{ id: 'proj_1', worktree: '/home/yhuan/workspace' }] },
-    '/session': function () { return SESSIONS },
-    '/session/status': function () { return { ses_running: { type: 'busy' }, ses_child: { type: 'busy' } } },
-    '/permission': function () {
-      return [{ id: 'perm_1', sessionID: 'ses_running', permission: 'bash', patterns: ['rm -rf /tmp/x'] }]
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [], paths: { tmp: '/tmp' } } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/home/yhuan/workspace' }] } },
+    '/api/session': function () { return { data: SESSIONS, cursor: { next: null } } },
+    '/api/session/active': function () { return { data: { ses_running: { type: 'busy' }, ses_child: { type: 'busy' } } } },
+    '/api/permission/request': function () {
+      return { data: [{ id: 'perm_1', sessionID: 'ses_running', permission: 'bash', patterns: ['rm -rf /tmp/x'] }] }
     },
-    '/question': function () { return [] },
+    '/api/form': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url }])
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const observation = createObservation()
 
@@ -85,9 +85,11 @@ test('collectServer + collectStatus + collectPending fill the board', async func
     assert.equal(board.idleCount, 1)
     assert.equal(board.idle[0].sessionId, 'ses_idle')
     assert.equal(board.needsMe[0].childCount, 1)
-    // v1 uses the global pending endpoints, never per-session ones.
-    assert.ok(fake.requests.includes('/permission'))
-    assert.ok(fake.requests.includes('/question'))
+    // v2 uses the location-level pending endpoints, never the v1 globals.
+    assert.ok(fake.requests.includes('/api/permission/request'))
+    assert.ok(fake.requests.includes('/api/form'))
+    assert.equal(fake.requests.includes('/permission'), false)
+    assert.equal(fake.requests.includes('/question'), false)
   } finally {
     await fake.close()
   }

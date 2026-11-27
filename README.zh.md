@@ -23,10 +23,9 @@ dsh 原生 subagent provider（`opencode-<serverId>`）。
 > **当前优先，先把观测做完善**；`[delegate]` 委派面（消费者＝**agent**：工具 + 原生子代理）
 > 在后续版本逐步推进。两者共用同一套传输与版本探测核心。分轨路线图见 `TODO.md` §10。
 
-**兼容性**：同一份安装同时服务 **OpenCode 1.18.x（v1 HTTP API）** 与 **OpenCode 2.x
-（v2 `/api/*` API + HTTP Basic 认证）**。版本按 server 探测（`apiVersion: auto|1|2`）；
-`auto` 会探测 `GET /api/info`，失败时回退到 v1 并记录原因。详见
-[兼容性与版本](#兼容性与版本)。
+**兼容性**：**仅支持 OpenCode 2.x**（`/api/*` + HTTP Basic 认证）。v1（1.18.x）在 0.7.2 冻结、
+1.0.0 移除；探测到 v1 会直接报「requires OpenCode 2.x」。`apiVersion: auto|2` 仍可用，
+`auto` 探测 `GET /api/info` 并记录失败原因。详见 [兼容性与版本](#兼容性与版本)。
 
 > **定位**：核心能力是把 OpenCode 注册为 dsh 的**原生 subagent 后端**
 > （`opencode_subagent_<server>`），并把远端会话/工作区暴露为工具（`opencode_subagent`、
@@ -62,7 +61,7 @@ dsh web
 3. 可选：把该 server 暴露为原生 subagent（`opencode_subagent_<server>`）——见
    [Subagent 接缝](#subagent-接缝)。
 
-真实环境的完整验收（需要一台真实 `opencode serve`；v1 / v2 都适用）：
+真实环境的完整验收（需要一台真实的 OpenCode 2 `opencode serve`）：
 
 ```sh
 OPC_LIVE_URL=http://192.168.4.50:4096 \

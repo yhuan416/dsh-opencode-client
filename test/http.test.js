@@ -66,20 +66,19 @@ function rejectWith(promise, expected) {
   })
 }
 
-test('apiPath prefixes v2 requests exactly once and leaves v1 paths alone', function () {
+test('apiPath always targets the v2 /api surface', function () {
   assert.equal(apiPath('2', '/session'), '/api/session')
   assert.equal(apiPath('2', '/session/ses_1/message?limit=2'), '/api/session/ses_1/message?limit=2')
   assert.equal(apiPath('2', '/api/reference'), '/api/reference')
   assert.equal(apiPath('2', '/api'), '/api')
-  assert.equal(apiPath('1', '/session'), '/session')
-  assert.equal(apiPath('1', '/api/reference'), '/api/reference')
+  assert.equal(apiPath('1', '/session'), '/api/session', 'v1 is no longer routed')
 })
 
-test('normalizeApiVersion accepts auto/1/2 strings and numbers, defaults to auto', function () {
+test('normalizeApiVersion only keeps auto/2; v1 config falls back to auto', function () {
   assert.equal(normalizeApiVersion(undefined), 'auto')
   assert.equal(normalizeApiVersion('auto'), 'auto')
-  assert.equal(normalizeApiVersion('1'), '1')
-  assert.equal(normalizeApiVersion(1), '1')
+  assert.equal(normalizeApiVersion('1'), 'auto')
+  assert.equal(normalizeApiVersion(1), 'auto')
   assert.equal(normalizeApiVersion('2'), '2')
   assert.equal(normalizeApiVersion(2), '2')
   assert.equal(normalizeApiVersion('v2'), 'auto')
@@ -118,40 +117,33 @@ test('auto mode detects v2, prefixes /api and sends Basic auth', async function 
   }
 })
 
-test('auto mode falls back to v1 when /api/info is not a v2 endpoint', async function () {
+test('a server without /api/info is reported as v1 and rejected', async function () {
   const fake = await startServer(function (request, response) {
     if (request.url === '/api/info') {
       replyJson(response, 404, { _tag: 'NotFoundError' })
       return
     }
-    if (request.url === '/global/health') {
-      replyJson(response, 200, { healthy: true, version: '1.18.10' })
-      return
-    }
-    replyJson(response, 404, { _tag: 'NotFoundError' })
+    replyJson(response, 200, { healthy: true })
   })
   try {
     const server = makeServer({ id: 'v1', url: fake.url, password: 'secret' })
-    const result = await opencodeRequest(server, '/global/health')
-    assert.deepEqual(result.value, { healthy: true, version: '1.18.10' })
+    await rejectWith(opencodeRequest(server, '/global/health'), {
+      code: 'opencode.v1_unsupported',
+      serverId: 'v1',
+      messageMatch: /requires OpenCode 2\.x/,
+    })
     assert.equal(server.versionProbe.version, '1')
     assert.equal(server.versionProbe.reason, 'http-error')
     assert.equal(server.versionProbe.status, 404)
     assert.equal(fake.requests[0].url, '/api/info')
-    assert.ok(fake.requests.some(function (entry) { return entry.url === '/global/health' }))
-    // v1 calls are not prefixed.
-    assert.equal(fake.requests.some(function (entry) { return entry.url === '/api/global/health' }), false)
+    assert.equal(fake.requests.some(function (entry) { return entry.url === '/global/health' }), false, 'v1 paths are never requested')
   } finally {
     await fake.close()
   }
 })
 
-test('auto mode falls back to v1 when the probe answers 401, and records why', async function () {
+test('a 401 probe is reported as v1 unsupported, not retried as v1', async function () {
   const fake = await startServer(function (request, response) {
-    if (request.url === '/api/info') {
-      replyJson(response, 401, { _tag: 'UnauthorizedError', message: 'Authentication required' })
-      return
-    }
     replyJson(response, 401, { _tag: 'UnauthorizedError', message: 'Authentication required' })
   })
   try {
@@ -160,20 +152,16 @@ test('auto mode falls back to v1 when the probe answers 401, and records why', a
     assert.equal(info.version, '1')
     assert.equal(info.reason, 'unauthorized')
     assert.equal(info.status, 401)
-    await rejectWith(opencodeRequest(server, '/session'), { code: 'opencode.unauthorized', status: 401, serverId: 'v1-401' })
+    await rejectWith(opencodeRequest(server, '/session'), { code: 'opencode.v1_unsupported', serverId: 'v1-401' })
   } finally {
     await fake.close()
   }
 })
 
-test('missing password falls back to v1 without probing', async function () {
+test('a missing password is rejected without probing', async function () {
   let hits = 0
   const fake = await startServer(function (request, response) {
     hits += 1
-    if (request.url === '/session') {
-      replyJson(response, 200, [])
-      return
-    }
     replyJson(response, 404, { _tag: 'NotFoundError' })
   })
   try {
@@ -182,20 +170,17 @@ test('missing password falls back to v1 without probing', async function () {
     assert.equal(info.version, '1')
     assert.equal(info.reason, 'missing-password')
     assert.equal(hits, 0, 'a missing password must not trigger a network probe')
-    const result = await opencodeRequest(server, '/session')
-    assert.deepEqual(result.value, [])
-    const request = fake.requests[0]
-    assert.equal(request.url, '/session')
-    assert.equal(request.headers.authorization, undefined)
+    await rejectWith(opencodeRequest(server, '/session'), { code: 'opencode.v1_unsupported', serverId: 'no-password' })
+    assert.equal(fake.requests.length, 0)
   } finally {
     await fake.close()
   }
 })
 
-test('explicit apiVersion=1 skips the probe entirely', async function () {
+test('apiVersion=1 in config is treated as auto and rejected after the probe', async function () {
   const fake = await startServer(function (request, response) {
-    if (request.url === '/session') {
-      replyJson(response, 200, [])
+    if (request.url === '/api/info') {
+      replyJson(response, 404, { _tag: 'NotFoundError' })
       return
     }
     replyJson(response, 404, { _tag: 'NotFoundError' })
@@ -204,9 +189,9 @@ test('explicit apiVersion=1 skips the probe entirely', async function () {
     const server = makeServer({ id: 'forced-v1', url: fake.url, password: 'secret', apiVersion: '1' })
     const info = await ensureApiVersion(server)
     assert.equal(info.version, '1')
-    assert.equal(info.reason, 'configured')
-    await opencodeRequest(server, '/session')
-    assert.equal(fake.requests.some(function (entry) { return entry.url === '/api/info' }), false)
+    assert.equal(info.reason, 'http-error')
+    await rejectWith(opencodeRequest(server, '/session'), { code: 'opencode.v1_unsupported' })
+    assert.equal(fake.requests.some(function (entry) { return entry.url === '/api/info' }), true)
   } finally {
     await fake.close()
   }
@@ -251,10 +236,14 @@ test('401 raises opencode.unauthorized with a password hint', async function () 
 
 test('HTML/SPA responses raise opencode.html_response, never empty data', async function () {
   const fake = await startServer(function (request, response) {
+    if (request.url === '/api/info') {
+      replyJson(response, 200, { version: '2.4.2' })
+      return
+    }
     reply(response, 200, '<!doctype html><html lang="en"><head><title>OpenCode</title></head></html>', 'text/html')
   })
   try {
-    const server = makeServer({ id: 'spa', url: fake.url, password: 'secret', apiVersion: '1' })
+    const server = makeServer({ id: 'spa', url: fake.url, password: 'secret', apiVersion: '2' })
     await assert.rejects(opencodeRequest(server, '/session'), function (error) {
       assert.ok(error instanceof OpenCodeError)
       assert.equal(error.code, 'opencode.html_response')
@@ -270,10 +259,14 @@ test('HTML/SPA responses raise opencode.html_response, never empty data', async 
 
 test('non-JSON responses raise opencode.non_json', async function () {
   const fake = await startServer(function (request, response) {
+    if (request.url === '/api/info') {
+      replyJson(response, 200, { version: '2.4.2' })
+      return
+    }
     reply(response, 200, 'not json', 'text/plain')
   })
   try {
-    const server = makeServer({ id: 'text', url: fake.url, password: 'secret', apiVersion: '1' })
+    const server = makeServer({ id: 'text', url: fake.url, password: 'secret', apiVersion: '2' })
     await rejectWith(opencodeRequest(server, '/session'), { code: 'opencode.non_json', status: 200 })
   } finally {
     await fake.close()
@@ -292,7 +285,7 @@ test('non-2xx JSON responses raise opencode.http_error', async function () {
   }
 })
 
-test('an unreachable server falls back to v1 with a recorded reason', async function () {
+test('an unreachable server is reported as v1 unsupported (probe reason=unreachable)', async function () {
   const fake = await startServer(function (request, response) { replyJson(response, 200, {}) })
   const url = fake.url
   await fake.close()
@@ -302,7 +295,7 @@ test('an unreachable server falls back to v1 with a recorded reason', async func
   assert.equal(info.reason, 'unreachable')
   await assert.rejects(opencodeRequest(server, '/session'), function (error) {
     assert.ok(error instanceof OpenCodeError)
-    assert.equal(error.code, 'opencode.network')
+    assert.equal(error.code, 'opencode.v1_unsupported')
     return true
   })
 })

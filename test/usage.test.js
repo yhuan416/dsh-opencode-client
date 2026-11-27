@@ -123,13 +123,14 @@ test('collectStats caches by bucketed range start, not by `to`', async function 
   }
 })
 
-test('collectStats reports v1 servers as unsupported instead of zeros', async function () {
+test('collectStats rejects v1 instead of reporting zeros', async function () {
   const fake = await startServer({ '/api/info': function () { return { version: '2.3.0' } } })
   try {
-    // No password: the probe treats it as v1, and there is no stats endpoint.
+    // No password: the probe resolves v1, which this plugin now rejects.
     const server = normalizeServers([{ id: 'old', url: fake.url }])[0]
     const usage = await collectStats(server, { from: 0 })
-    assert.deepEqual(usage, { supported: false })
+    assert.equal(usage.supported, false)
+    assert.match(usage.error, /v1_unsupported|requires OpenCode 2/)
     assert.equal(fake.statsCalls(), 0)
   } finally {
     await fake.close()
@@ -295,15 +296,15 @@ test('collectCostByDirectory stops at the request budget and flags the report pa
   }
 })
 
-test('collectCostByDirectory refuses to approximate on v1 (no per-message cost)', async function () {
+test('collectCostByDirectory rejects v1 (no per-message cost)', async function () {
   const fake = await startServer({ '/api/info': function () { return { version: '2.3.0' } } })
   try {
     // No password: the probe resolves v1 without any HTTP call.
     const server = normalizeServers([{ id: 'old', url: fake.url }])[0]
     const report = await collectCostByDirectory(server, { from: Date.now() - 86400000 })
-    assert.equal(report.kind, 'unsupported')
+    assert.equal(report.kind, 'error')
+    assert.match(report.error, /v1_unsupported|requires OpenCode 2/)
     assert.equal(report.directories.length, 0)
-    assert.equal(report.total.partial, false)
     assert.equal(fake.requests.length, 0)
   } finally {
     await fake.close()

@@ -5,7 +5,7 @@
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/github/license/yhuan416/dsh-opencode-client"></a>
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen">
   <img alt="dsh" src="https://img.shields.io/badge/dsh-%3E%3D0.2.1--rc.2-blue">
-  <img alt="opencode" src="https://img.shields.io/badge/opencode-1.18.x%20%7C%202.x-orange">
+  <img alt="opencode" src="https://img.shields.io/badge/opencode-2.x-orange">
   <a href="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml"><img alt="check" src="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/check.yml/badge.svg"></a>
 </p>
 
@@ -26,10 +26,10 @@ dsh subagent provider (`opencode-<serverId>`).
 > agent-facing tools and native subagent provider — follows in later releases. Both share one
 > transport and version-probing core. See `TODO.md` §10 for the per-track roadmap.
 
-**Compatibility**: one install serves **OpenCode 1.18.x (v1 HTTP API)** and **OpenCode 2.x
-(v2 `/api/*` API + HTTP Basic auth)**. The generation is detected per server
-(`apiVersion: auto|1|2`); `auto` probes `GET /api/info` and falls back to v1 with a recorded
-reason. See [Compatibility & versioning](#compatibility--versioning).
+**Compatibility**: **OpenCode 2.x only** (`/api/*` + HTTP Basic auth). v1 (1.18.x) was frozen in
+0.7.2 and removed in 1.0.0 — a v1 server now fails with a clear "requires OpenCode 2.x" error.
+`apiVersion: auto|2` is accepted; `auto` probes `GET /api/info` and records why a probe failed.
+See [Compatibility & versioning](#compatibility--versioning).
 
 > **Primary role**: register OpenCode as a native dsh subagent backend
 > (`opencode_subagent_<server>`) and expose remote sessions/workspaces as tools
@@ -66,7 +66,7 @@ Verify:
 3. Optional: expose the server as a native subagent (`opencode_subagent_<server>`) — see
    [Subagent seam](#subagent-seam).
 
-Full live acceptance run (needs a real `opencode serve`; works for v1 and v2):
+Full live acceptance run (needs a real OpenCode 2 `opencode serve`):
 
 ```sh
 OPC_LIVE_URL=http://192.168.4.50:4096 \
@@ -75,7 +75,7 @@ OPC_LIVE_DIR=/home/yhuan/workspace \
 node scripts/e2e-live.mjs        # or: npm run e2e; OPC_LIVE_INTERACTIONS=1 also exercises approval/question bridging
 ```
 
-`OPC_LIVE_PASSWORD` is required for OpenCode 2 and optional for OpenCode 1.18.x. Offline checks:
+`OPC_LIVE_PASSWORD` is required (OpenCode 2 always uses HTTP Basic auth). Offline checks:
 `npm test` (unit + transport tests) or `npm run check` (smoke checks + tests).
 
 Prerequisite: `opencode serve` must be reachable from the dsh host. It binds `127.0.0.1` by
@@ -134,15 +134,14 @@ More: [ARCHITECTURE.md](ARCHITECTURE.md) · [docs/ARCHITECTURE.zh.md](docs/ARCHI
 ## Features
 
 28 model-facing `opencode_*` tools, host routes, one native subagent provider per server — the
-same tool names on OpenCode 1.18.x (v1 API) and OpenCode 2.x (v2 API), with five explicit version
-exceptions listed below. **OpenCode 2 is the supported target; v1 is frozen**: its code stays and
-the offline suite still covers it, but it is no longer extended and is not verified against a live
-v1 server ([policy](COMPATIBILITY.md#v1-policy-frozen)).
+same tool names. **OpenCode 2 is the only supported generation**: v1 was frozen in 0.7.2 and
+removed in 1.0.0; a v1 server is rejected at the transport with an actionable error
+([policy](COMPATIBILITY.md#v1-policy-removed-in-100)).
 
-### OpenCode 1.18.x vs 2.x
+### OpenCode 1.18.x vs 2.x (historical)
 
 One install speaks both API generations; the generation is detected per server and the 28
-`opencode_*` tool names are identical on both — the v1 column below records the frozen path's
+`opencode_*` tool names were identical on both — the v1 column below records the removed path's
 current behaviour, not a support commitment. Two capabilities have no OpenCode 2 endpoint and
 return an explicit "not available on OpenCode 2" message instead of silently returning empty data;
 two more are restored through v2-native fallbacks, and one is v2-only:
