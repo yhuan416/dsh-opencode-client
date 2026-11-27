@@ -312,6 +312,39 @@ test('v2: permission and form events reach the interaction bridge', async functi
   }
 })
 
+test('v2: session.deleted forgets the row and drops the cached listing', async function () {
+  const { createObservation } = await import('../lib/observation.js')
+  const observation = createObservation()
+  observation.observeIdentity('v2', { id: 'ses_x', title: 'deleted meanwhile' })
+  const fake = await startServer(function (request, response) {
+    if (request.url === '/api/event') {
+      openSse(response)
+      writeEvent(response, { id: 'e1', created: 1, type: 'session.deleted', data: { sessionID: 'ses_x' } })
+      return
+    }
+    replyJson(response, 404, {})
+  })
+  try {
+    const server = makeServer({ id: 'v2', url: fake.url, apiVersion: '2' })
+    // A cached listing still containing this session would re-add the row on the
+    // next refresh; the deletion must invalidate it.
+    server.snapshot = { at: Date.now(), value: { projects: [] } }
+    const stream = createEventStream({
+      activeRuns: new Map(),
+      handlePermission: function () {},
+      handleQuestion: function () {},
+      onEvent: function (subject, event) { observation.observeEvent(subject.id, event) },
+    })
+    const dispose = stream.subscribeEvents(server)
+    await waitFor(function () {
+      return observation.rows().length === 0 && server.snapshot === undefined
+    }, 4000)
+    dispose()
+  } finally {
+    await fake.close()
+  }
+})
+
 test('v2: onEvent feeds the observation registry before the state switch', async function () {
   const { createObservation } = await import('../lib/observation.js')
   const observation = createObservation()

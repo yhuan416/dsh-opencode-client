@@ -95,6 +95,51 @@ test('collectServer + collectStatus + collectPending fill the board', async func
   }
 })
 
+test('a fresh listing prunes sessions deleted while the stream was down', async function () {
+  let sessions = [
+    { id: 'ses_keep', title: 'keep', directory: '/tmp', time: { updated: NOW - 1000 } },
+    { id: 'ses_vanish', title: 'deleted elsewhere', directory: '/tmp', time: { updated: NOW - 2000 } },
+  ]
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: sessions, cursor: { next: null } } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const server = servers[0]
+    const observation = createObservation()
+    const sync = function (value) {
+      for (const group of value.projects) for (const summary of group.sessions) observation.observeIdentity(server.id, summary)
+    }
+    const fresh = function (ids, info) { observation.retain(server.id, ids, { since: info.requestedAt }) }
+
+    const first = await collectServer(server, { onFresh: fresh })
+    sync(first)
+    observation.observeRunning(server.id, new Set(), true)
+    assert.equal(observation.board().idleCount, 2)
+
+    // A cached listing must not run the prune callback (it is not authoritative).
+    let calls = 0
+    const cached = await collectServer(server, { onFresh: function (ids, info) { calls += 1; fresh(ids, info) } })
+    assert.equal(calls, 0)
+    assert.equal(cached, first, 'served from the snapshot cache')
+
+    // Deleted out of band: the next fresh listing no longer contains it, and the
+    // board drops the stale row instead of keeping it forever.
+    sessions = sessions.filter(function (item) { return item.id !== 'ses_vanish' })
+    server.snapshot = undefined
+    const second = await collectServer(server, { onFresh: fresh })
+    sync(second)
+    observation.observeRunning(server.id, new Set(), true)
+    const board = observation.board()
+    assert.equal(board.idleCount, 1)
+    assert.deepEqual(board.idle.map(function (row) { return row.sessionId }), ['ses_keep'])
+  } finally {
+    await fake.close()
+  }
+})
+
 test('an unreachable server yields no pending and no throw', async function () {
   const servers = normalizeServers([{ id: 'dead', url: 'http://127.0.0.1:9' }])
   const observation = createObservation()

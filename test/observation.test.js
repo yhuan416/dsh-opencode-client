@@ -145,6 +145,42 @@ test('describePending keeps permission and form readable', function () {
   assert.equal(describePending('permission', { action: 'bash', resources: ['a', 'b'] }), 'bash (a, b)')
   assert.equal(describePending('permission', {}), 'permission')
   assert.equal(describePending('form', { form: { questions: [{ text: 'which branch?' }] } }), 'form: which branch?')
+  // v2 forms carry the question in fields[].description; title is just the dock
+  // header ("Questions") and must not be preferred over the real text.
+  assert.equal(
+    describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', title: '继续吗', type: 'string', description: 'state-test：是否继续？' }] } }),
+    'form: state-test：是否继续？',
+  )
+  assert.equal(describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', title: '继续吗', type: 'string' }] } }), 'form: 继续吗')
+  assert.equal(describePending('form', { form: { title: 'Questions', fields: [] } }), 'form: Questions')
+})
+
+test('retain drops rows missing from a fresh listing but keeps listed and newer ones', function () {
+  const observation = createObservation()
+  observation.observeIdentity('n100', { id: 'ses_live', title: 'live' })
+  observation.observeIdentity('n100', { id: 'ses_gone', title: 'deleted while the stream was down' })
+  observation.observeIdentity('e5', { id: 'ses_other', title: 'other server' })
+  observation.observeRunning('n100', new Set(), true)
+  observation.observeRunning('e5', new Set(), true)
+  // A deletion event was missed: the stale row is still on the board.
+  assert.equal(observation.board().idleCount, 3)
+  const removed = observation.retain('n100', ['ses_live'])
+  assert.equal(removed, 1)
+  const board = observation.board()
+  assert.equal(board.idleCount, 2)
+  assert.deepEqual(board.idle.map(function (row) { return row.sessionId }).sort(), ['ses_live', 'ses_other'])
+  assert.equal(observation.retain('n100', ['ses_live']), 0, 'idempotent')
+})
+
+test('retain keeps a session first observed after the listing request started', function () {
+  const observation = createObservation()
+  observation.observeIdentity('n100', { id: 'ses_new', title: 'created mid-refresh' })
+  observation.observeEvent('n100', { kind: 'run.started', sessionId: 'ses_new', at: 5000, data: {} })
+  // The list was requested at 4000, before this session's event at 5000.
+  assert.equal(observation.retain('n100', [], { since: 4000 }), 0)
+  assert.equal(observation.board().running.length + observation.board().idle.length, 1)
+  // An older event does not protect an unlisted session.
+  assert.equal(observation.retain('n100', [], { since: 6000 }), 1)
 })
 test('finished-but-unread stays out of idle until viewed', function () {
   const c = clock()
