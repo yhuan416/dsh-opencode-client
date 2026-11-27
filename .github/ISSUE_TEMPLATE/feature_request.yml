@@ -1,0 +1,66 @@
+name: Feature request
+description: Propose an observation or delegation capability
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This project has two tracks: `[observe]` (human-facing board, insights, attention, cost)
+        and `[delegate]` (agent tools and the native dsh subagent backend). Tell us which one the
+        request belongs to.
+
+  - type: dropdown
+    id: track
+    attributes:
+      label: Track
+      options:
+        - observe
+        - delegate
+        - core / compatibility
+        - docs / developer experience
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the workflow that is currently awkward, slow or impossible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the plugin do? Include UI or tool shape if relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds, other tools, or why the status quo is not enough.
+
+  - type: dropdown
+    id: semver
+    attributes:
+      label: Compatibility impact
+      options:
+        - Additive (minor)
+        - Fix / docs (patch)
+        - Breaking change (major)
+        - Unsure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I checked COMPATIBILITY.md and TODO.md for an existing decision
+        - label: I removed secrets and private hostnames from this request
+          required: true
