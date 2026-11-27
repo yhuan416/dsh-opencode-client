@@ -143,15 +143,17 @@ assert.equal(staleSmoke.board().idleCount, 1)
 assert.equal(staleSmoke.retain('s1', []), 1)
 assert.equal(staleSmoke.board().idleCount, 0)
 assert.equal(staleSmoke.retain('s1', []), 0)
-// A truncated listing may only prune rows it can prove are older than the page
-// boundary; the safety gate must stay a behavior, not a source-string accident.
+// Newest-first truncated page: only a missing row that would necessarily have
+// been listed (newer than the page floor) proves deletion. The safety gate must
+// stay a behavior, not a source-string accident.
 const truncatedSmoke = createObservation({ now: function () { return 1000 } })
-truncatedSmoke.observeIdentity('s1', { id: 'ses_old', title: 'old', updatedAt: 100 })
-truncatedSmoke.observeIdentity('s1', { id: 'ses_page', title: 'page', updatedAt: 900 })
+truncatedSmoke.observeIdentity('s1', { id: 'ses_off_page', title: 'page 2', updatedAt: 100 })
+truncatedSmoke.observeIdentity('s1', { id: 'ses_deleted_recent', title: 'deleted', updatedAt: 900 })
 truncatedSmoke.observeRunning('s1', new Set(), true)
-assert.equal(truncatedSmoke.retain('s1', ['ses_page'], { olderThan: 500 }), 1)
+assert.equal(truncatedSmoke.retain('s1', [], { pageFloorUpdatedAt: 500 }), 1)
 assert.equal(truncatedSmoke.board().idleCount, 1)
-assert.equal(truncatedSmoke.retain('s1', ['ses_page'], { olderThan: 50 }), 0, 'row above the page boundary is kept')
+assert.equal(truncatedSmoke.board().idle[0].sessionId, 'ses_off_page')
+assert.equal(truncatedSmoke.retain('s1', [], { pageFloorUpdatedAt: 500 }), 0, 'off-page row is kept')
 assert.equal(
   describePending('form', { form: { title: 'Questions', fields: [{ key: 'q0', type: 'string', description: '继续吗？' }] } }),
   'form: 继续吗？',

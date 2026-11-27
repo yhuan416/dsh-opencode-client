@@ -250,25 +250,29 @@ test('a truncated listing reports the page boundary for safe pruning', async fun
     assert.ok(listing, 'a full page still reports its listing metadata')
     assert.equal(listing.truncated, true)
     assert.equal(listing.ids.length, 500)
-    assert.equal(listing.minUpdatedAt, NOW - 499 * 1000, 'the oldest listed row is the prune lower bound')
+    assert.equal(listing.pageFloorUpdatedAt, NOW - 499 * 1000, 'the oldest listed row is the prune floor')
   } finally {
     await fake.close()
   }
 })
 
-test('a raced listing is not applied to the board', async function () {
+test('a raced refresh applies none of the stale snapshots', async function () {
   const { createBoard } = await import('../lib/board.js')
   const { invalidateSnapshot } = await import('../lib/snapshot.js')
+  let releaseListing
+  const listingGate = new Promise(function (resolve) { releaseListing = resolve })
   const fake = await startServer({
     '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
     '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
     '/api/session': function () {
-      return new Promise(function (resolve) {
-        setTimeout(function () { resolve({ data: [{ id: 'ses_gone', title: 'gone', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } }) }, 120)
+      return listingGate.then(function () {
+        return { data: [{ id: 'ses_gone', title: 'gone', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } }
       })
     },
-    '/api/session/active': function () { return { data: {} } },
+    // Even the liveness snapshot still names the deleted session.
+    '/api/session/active': function () { return { data: { ses_gone: { type: 'busy' } } } },
     '/api/form': function () { return { data: [] } },
+    '/api/permission/request': function () { return { data: [] } },
   })
   try {
     const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
@@ -276,11 +280,15 @@ test('a raced listing is not applied to the board', async function () {
     const observation = createObservation()
     const board = createBoard({ servers: servers, observation: observation })
     const refreshing = board.refreshServer(server)
-    await new Promise(function (resolve) { setTimeout(resolve, 30) })
+    for (let i = 0; i < 100; i += 1) {
+      if (fake.requests.includes('/api/session')) break
+      await new Promise(function (resolve) { setTimeout(resolve, 10) })
+    }
     // The session is deleted while the listing request is still in flight.
     invalidateSnapshot(server)
+    releaseListing()
     await refreshing
-    assert.equal(observation.rows().length, 0, 'the raced listing must not observe the deleted row back')
+    assert.equal(observation.rows().length, 0, 'raced identity/status/jobs/pending must all be skipped')
     assert.equal(board.snapshot().idleCount, 0)
   } finally {
     await fake.close()
@@ -300,6 +308,131 @@ test('collectPending renders the v2 question text on the card detail', async fun
     const entries = await collectPending(servers[0], ['ses_q'])
     assert.equal(entries.length, 1)
     assert.equal(entries[0].detail, 'form: state-test：是否继续？')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('a truncated board page prunes only provably-deleted rows', async function () {
+  const { createBoard } = await import('../lib/board.js')
+  const many = []
+  for (let index = 0; index < 500; index += 1) {
+    many.push({ id: 'ses_page_' + index, title: 't', directory: '/tmp', time: { updated: NOW - index * 1000 } })
+  }
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: many, cursor: { next: 'cursor-2' } } },
+    '/api/session/active': function () { return { data: {} } },
+    '/api/form': function () { return { data: [] } },
+    '/api/permission/request': function () { return { data: [] } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const observation = createObservation()
+    // Above the page floor -> would certainly be listed -> deletion proven.
+    observation.observeIdentity('n100', { id: 'ses_deleted_recent', title: 'gone', updatedAt: NOW })
+    // Below the floor -> could just be on page 2 -> must be kept.
+    observation.observeIdentity('n100', { id: 'ses_off_page', title: 'page 2', updatedAt: NOW - 600000 })
+    const board = createBoard({ servers: servers, observation: observation })
+    await board.refreshServer(servers[0])
+    assert.equal(board.snapshot().idleCount, 501)
+    const ids = observation.rows('n100').map(function (row) { return row.sessionId })
+    assert.ok(ids.includes('ses_off_page'), 'an existing off-page session must survive')
+    assert.equal(ids.includes('ses_deleted_recent'), false, 'a provably deleted recent session must go')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('a truncated page without a floor never prunes', async function () {
+  const { createBoard } = await import('../lib/board.js')
+  const many = []
+  for (let index = 0; index < 500; index += 1) {
+    many.push({ id: 'ses_page_' + index, title: 't', directory: '/tmp' })
+  }
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: many, cursor: { next: 'cursor-2' } } },
+    '/api/session/active': function () { return { data: {} } },
+    '/api/form': function () { return { data: [] } },
+    '/api/permission/request': function () { return { data: [] } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const observation = createObservation()
+    observation.observeIdentity('n100', { id: 'ses_unproven', title: 'stale?' })
+    const board = createBoard({ servers: servers, observation: observation })
+    await board.refreshServer(servers[0])
+    assert.equal(board.snapshot().idleCount, 501, 'no page floor means no absence-based pruning')
+  } finally {
+    await fake.close()
+  }
+})
+
+test('a stale pending snapshot cannot resurrect a deleted row beyond one cycle', async function () {
+  const { createBoard } = await import('../lib/board.js')
+  const { invalidateSnapshot } = await import('../lib/snapshot.js')
+  let forms = [{ id: 'frm_1', sessionID: 'ses_gone', title: 'Questions', fields: [{ key: 'q0', type: 'string', description: '继续吗？' }] }]
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: [{ id: 'ses_keep', title: 'keep', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } } },
+    '/api/session/active': function () { return { data: {} } },
+    '/api/form': function () { return { data: forms } },
+    '/api/permission/request': function () { return { data: [] } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const observation = createObservation()
+    const board = createBoard({ servers: servers, observation: observation })
+    await board.refreshServer(servers[0])
+    // Pending evidence is newer than the listing, so the prune step must keep it.
+    assert.equal(board.snapshot().needsMe.length, 1)
+    // The form disappears; the next fresh listing cycle clears pending and prunes.
+    // A second board instance stands in for the next cycle (the first one's 5 s
+    // pending cache would otherwise serve the stale form again).
+    forms = []
+    invalidateSnapshot(servers[0])
+    const nextBoard = createBoard({ servers: servers, observation: observation })
+    await nextBoard.refreshServer(servers[0])
+    assert.equal(nextBoard.snapshot().needsMe.length, 0)
+    assert.deepEqual(observation.rows('n100').map(function (row) { return row.sessionId }), ['ses_keep'])
+  } finally {
+    await fake.close()
+  }
+})
+
+test('one suspicious empty listing does not wipe the board', async function () {
+  const { createBoard } = await import('../lib/board.js')
+  const { invalidateSnapshot } = await import('../lib/snapshot.js')
+  let sessions = [
+    { id: 'ses_a', title: 'a', directory: '/tmp', time: { updated: NOW } },
+    { id: 'ses_b', title: 'b', directory: '/tmp', time: { updated: NOW - 1 } },
+  ]
+  const fake = await startServer({
+    '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/tmp' }] } },
+    '/api/session': function () { return { data: sessions, cursor: { next: null } } },
+    '/api/session/active': function () { return { data: {} } },
+    '/api/form': function () { return { data: [] } },
+    '/api/permission/request': function () { return { data: [] } },
+  })
+  try {
+    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const server = servers[0]
+    const observation = createObservation()
+    const board = createBoard({ servers: servers, observation: observation })
+    await board.refreshServer(server)
+    assert.equal(board.snapshot().idleCount, 2)
+    sessions = []
+    invalidateSnapshot(server)
+    await board.refreshServer(server)
+    assert.equal(board.snapshot().idleCount, 2, 'a sudden empty 200 is not trusted on the first sight')
+    invalidateSnapshot(server)
+    await board.refreshServer(server)
+    assert.equal(board.snapshot().idleCount, 0, 'the second empty listing is believed')
   } finally {
     await fake.close()
   }

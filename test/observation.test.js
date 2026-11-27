@@ -199,16 +199,39 @@ test('retain protects sessions the event stream announced after the request star
   assert.equal(observation.retain('n100', [], {}), 1)
 })
 
-test('retain on a truncated listing only prunes rows below the page boundary', function () {
+test('retain on a truncated page only prunes rows that would have been listed', function () {
   const observation = createObservation()
-  observation.observeIdentity('n100', { id: 'ses_very_old', title: 'old', updatedAt: 100 })
-  observation.observeIdentity('n100', { id: 'ses_page_edge', title: 'edge', updatedAt: 900 })
+  // Newest-first page with floor 500: a row newer than the floor would
+  // necessarily be on the page, so a missing one proves deletion; an older row
+  // may simply be on page 2 and must be kept.
+  observation.observeIdentity('n100', { id: 'ses_off_page', title: 'old, still exists', updatedAt: 100 })
+  observation.observeIdentity('n100', { id: 'ses_deleted_recent', title: 'deleted after activity', updatedAt: 900 })
+  observation.observeIdentity('n100', { id: 'ses_floor_tie', title: 'tie at the floor', updatedAt: 500 })
   observation.observeRunning('n100', new Set(), true)
-  // The page only returned ses_page_edge; rows older than its oldest row are
-  // provably deleted, rows whose age is unproven are kept.
-  assert.equal(observation.retain('n100', ['ses_page_edge'], { olderThan: 500 }), 1)
-  assert.deepEqual(observation.board().idle.map(function (row) { return row.sessionId }), ['ses_page_edge'])
-  assert.equal(observation.retain('n100', ['ses_page_edge'], { olderThan: 50 }), 0)
+  assert.equal(observation.retain('n100', [], { pageFloorUpdatedAt: 500 }), 1)
+  assert.deepEqual(observation.board().idle.map(function (row) { return row.sessionId }).sort(), ['ses_floor_tie', 'ses_off_page'])
+  assert.equal(observation.retain('n100', [], { pageFloorUpdatedAt: 500 }), 0, 'idempotent')
+})
+
+test('retain never drops a row with live evidence', function () {
+  const observation = createObservation()
+  observation.observeIdentity('n100', { id: 'ses_pending' })
+  observation.markPending('n100', 'ses_pending', { kind: 'form', requestId: 'f1', detail: 'form: x' })
+  observation.observeIdentity('n100', { id: 'ses_running' })
+  observation.observeRunning('n100', new Set(['ses_running']), true)
+  observation.observeIdentity('n100', { id: 'ses_job' })
+  observation.observeJobs('n100', [{ sessionID: 'ses_job', id: 'job_1', kind: 'shell', title: 'build', startedAt: 1 }])
+  assert.equal(observation.retain('n100', [], {}), 0)
+  assert.equal(observation.rows('n100').length, 3)
+})
+
+test('retain compares local observation time, not the remote wire clock', function () {
+  const c = clock()
+  const observation = createObservation({ now: c.now })
+  observation.observeIdentity('n100', { id: 'ses_remote' })
+  // The server's clock is far ahead of ours; that must not protect the row.
+  observation.observeEvent('n100', { kind: 'session.created', sessionId: 'ses_remote', at: 999999, data: {} })
+  assert.equal(observation.retain('n100', [], { since: 2000 }), 1)
 })
 test('finished-but-unread stays out of idle until viewed', function () {
   const c = clock()

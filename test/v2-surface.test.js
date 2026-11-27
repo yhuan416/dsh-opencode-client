@@ -529,6 +529,32 @@ test('v2 interactions: default question policy keeps an unowned form pending', a
   }
 })
 
+test('v2 interactions: unowned permission uses the shared one-line detail', async function () {
+  const fake = await startServer()
+  try {
+    const server = makeServer(fake)
+    const pending = []
+    const interactions = createInteractions({
+      permissionMode: 'ask',
+      questionPolicy: 'ignore',
+      activeRuns: new Map(),
+      getUserQuestions: function () { return undefined },
+      getApproval: function () { return undefined },
+      markPending: function (_server, sessionId, request) { pending.push({ sessionId: sessionId, request: request }) },
+    })
+    interactions.handlePermission(server, undefined, { id: 'per_9', sessionID: 'ses_9', action: 'bash', resources: ['git push'] })
+    await new Promise(function (resolve) { setTimeout(resolve, 80) })
+    assert.equal(fake.requests.filter(function (request) { return request.method === 'POST' }).length, 0, 'an unowned request must never be answered')
+    assert.equal(pending.length, 1)
+    assert.equal(pending[0].request.kind, 'permission')
+    // Same helper as the pending snapshot (`describePermission`), no "OpenCode "
+    // prefix that the snapshot path would later overwrite.
+    assert.equal(pending[0].request.detail, 'bash (git push)')
+  } finally {
+    await fake.close()
+  }
+})
+
 test('v2 interactions: reject policy dismisses the form with DELETE', async function () {
   const fake = await startServer()
   try {
