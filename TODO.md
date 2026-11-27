@@ -339,13 +339,15 @@
 
 - [ ] 新增客户端 board store（仿 about store）：BoardPage / toast watcher / 设置页共享
       `{ value, at, inflight, listeners }`
-- [ ] 轮询分级：页面可见 5s `refresh=1`；仅后台 toast 15s；中间 tick `refresh=0` 用服务端缓存
+- [x] 轮询分级：页面可见 5s，其中每 3 个 tick 才 `refresh=1` 全量采集，中间 tick `refresh=0`
+      读服务端 observation 快照；配置变更/手动刷新强制全量
 - [ ] 设置页改为复用 board store（去掉自己的 15s 轮询）
 - [ ] （后续 v1.2 候选）board 改 SSE 事件驱动 + 兜底轮询
 
 ### Phase 5 — 度量与回归（贯穿）
 
-- [ ] 客户端 `performance.mark`：first-paint / board-ready / insights-core / activity / skills / idle
+- [x] 客户端 `performance.mark`：board-skeleton / board-ready / insights-core / activity / skills / idle
+      + `PerformanceObserver("longtask")`（`localStorage.dsh-oc-perf=1` 开启，`__dshOcPerf.dump()` 出表）
 - [ ] 真机验收数值写进 design doc §6：看板暖<300ms、7 天卡<800ms、热力<1s、skills 不阻塞
 - [ ] `npm run check` 补 swr / scheduler / board store 单测
 - [ ] `scripts/e2e-live.mjs` 补「预热后冷加载命中缓存（stale/miss 分层）」断言

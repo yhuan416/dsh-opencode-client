@@ -115,8 +115,10 @@ board 5s tick → 只重渲染 board 两组件；insights/activity/skills 各自
 新增客户端 **board store**（仿现有 about store，单例）：
 
 - `{ value, at, inflight, listeners, timer }`；`BoardPage`、常驻 toast watcher、设置页共享同一份
-- 轮询分级：页面可见且在看板 → 5s `refresh=1`；仅 toast（页面不可见）→ 15s `refresh=1`；
-  中间 tick 用 `refresh=0` 读服务端缓存，减少远程 collect
+- 轮询分级：页面可见且在看板 → 5s 一跳，其中**每 3 跳（15s）**才 `refresh=1` 让远端重新采集；
+  其余两跳 `refresh=0` 读宿主 observation 快照（内存读）；仅 toast（页面不可见）→ 15s
+- 快照去重：payload 序列化结果相同则不 notify，内容没变的 tick 完全不重渲染
+- 头部「更新于 hh:mm · 刷新中…」用独立 1s 小组件按快照年龄推导，不引入第二个 store
 - 设置页只读同一 store（15s `refresh=0`），不再自己起一套 15s 轮询
 - 后续（v1.2 候选）：SSE 事件驱动 + 兜底轮询，彻底去掉固定 5s 全量刷新
 

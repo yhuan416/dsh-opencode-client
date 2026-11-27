@@ -18,6 +18,16 @@
 
 ### Added
 
+- **看板中段 tick 不再全量采集**：`/board` 每 3 个 tick（15s）才 `refresh=1` 让远端重新采集，
+  其余两次 `refresh=0` 直接读宿主已有的 observation 快照（内存读）。配置变更 / 手动刷新仍强制全量。
+- **快照去重，内容没变就不重渲染**：`boardWatch` 用 payload 序列化结果判重，内容相同的轮询不再
+  notify，空转的 5s tick 不再重渲染 60 张空闲卡 + 洞察块（页面"一直在动"的忙感来源之一）。
+- **头部「更新于 hh:mm · 刷新中…」**：独立的 1s 小组件按快照年龄推导刷新状态，只重渲染这一小段
+  文字，不引入第二个 store，也不会因为指示器把整页刷一遍。
+- **可选的性能埋点**：`localStorage.setItem("dsh-oc-perf", "1")` + 刷新后记录
+  `board-skeleton / board-ready / board-idle / insights-core / activity / skills` 时间点，并用
+  `PerformanceObserver("longtask")` 收集 >50ms 主线程阻塞；控制台 `__dshOcPerf.dump()` 出表。
+  默认关闭，正常访问零开销。
 - **服务端 SWR + 启动预热 + single-flight**：观测台的只读接口（`/insights`、`/insights/activity`、
   `/insights/skills`、`/usage`）改为 stale-while-revalidate——过期后立即返回上一份数据（`stale: true`
   + `at`），后台只刷新一次；插件启动后 8s 在空闲窗口串行预热 board / 7 天 insights / 30 天

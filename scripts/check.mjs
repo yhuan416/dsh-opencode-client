@@ -142,6 +142,17 @@ assert.match(clientSource, /function serverOverviewSkeleton\(count\)/)
 // they must not share a wrapping row or the card grows when /usage lands.
 assert.match(clientSource, /minHeight: "34px", lineHeight: "17px"/)
 assert.match(clientSource, /"top: " \+ stats\.models\[0\]\.model/)
+// PR-C: no full collect / re-render on every 5s tick — every third tick asks the
+// remotes, the rest read the host snapshot; identical payloads skip notifying.
+assert.match(clientSource, /boardWatch\.tick % 3 === 1/)
+assert.match(clientSource, /\?idleLimit=60" \+ \(full \? "&refresh=1" : "&refresh=0"\)/)
+assert.match(clientSource, /if \(next !== "" && next === boardWatch\.serialized\) return;/)
+assert.match(clientSource, /function BoardFreshness\(props\)/)
+assert.match(clientSource, /"更新于 " \+ new Date\(at\)\.toLocaleTimeString\(\)/)
+// Opt-in instrumentation for the "page still feels janky" question.
+assert.match(clientSource, /function perfMark\(name\)/)
+assert.match(clientSource, /__dshOcPerf/)
+assert.match(clientSource, /entryTypes: \["longtask"\]/)
 assert.match(clientSource, /return boardSkeleton\(insightBlock\)/)
 assert.doesNotMatch(clientSource, /正在采集会话状态…/)
 
