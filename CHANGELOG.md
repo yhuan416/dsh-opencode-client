@@ -1,3 +1,18 @@
+## 1.1.5 (unreleased) — [docs] 发布渠道描述对齐
+
+### Docs
+
+- **改正过期的发布说明**：`CONTRIBUTING.md` 与 `COMPATIBILITY.md` 还写着「git-only、`private`、永不发布 npm」，
+  与实际（npm 主通道 + `v*` tag 触发 OIDC 发布）相反；`docs/INSTALL.zh.md` 头部停在 `v0.6.0` /
+  `feat/opencode-v2-support` 分支，clone 示例与排障里的版本门槛同样过期。
+- **`SECURITY.md` 支持版本**从 `1.0.x` 更新到 `1.1.x`；README 两版补 npm / publish 徽章，并在「更新」段落
+  点明 npm 安装等同 registry 安装（走 DSH 原生更新流程）。
+- **`package.json` 的 `description` 改为中英双语**：npm 包页与市场卡片在目录条目缺失时都读这个字段。
+- **市场条目描述按上游规则重写**（`market/yhuan416__dsh-opencode-client.yml`）：单行、句号结尾、只说功能，
+  补上「远端会话读取 / 委派」；含 `: ` 的英文描述加引号（否则 YAML 会把它当成嵌套键）。
+  `market/README.md` 记录条目必须满足的形式规则，以及 npm 探测的最新状态。
+- `check.yml` 注明检查用 Node 22、发布用 Node 24 的原因（最低支持版本 vs trusted publishing 需要 npm ≥ 11.5.1）。
+
 ## 1.1.4 (2026-11-28) — [ci] 发布改走 OIDC（Provenance）
 
 ### Changed

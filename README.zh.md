@@ -3,6 +3,8 @@
 <p align="center">
   <a href="https://github.com/yhuan416/dsh-opencode-client/releases"><img alt="release" src="https://img.shields.io/github/v/tag/yhuan416/dsh-opencode-client?label=release&sort=semver"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/github/license/yhuan416/dsh-opencode-client"></a>
+  <a href="https://www.npmjs.com/package/dsh-opencode-client"><img alt="npm" src="https://img.shields.io/npm/v/dsh-opencode-client"></a>
+  <a href="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/publish.yml"><img alt="publish" src="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/publish.yml/badge.svg"></a>
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen">
   <img alt="dsh" src="https://img.shields.io/badge/dsh-%3E%3D0.2.1--rc.2-blue">
   <img alt="opencode" src="https://img.shields.io/badge/opencode-2.x-orange">
@@ -302,7 +304,7 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
   `已是最新版本 / 可更新到 vY / 无法检查更新`、上次检查时间与「重新检查」。版本与仓库来自本包
   `package.json`，最新版本查 GitHub Releases（宿主缓存 24 小时，失败 1 小时后重试；看板 chip、设置区块与
   详情页标签共享一次加载，冷启动只打一次 GitHub）。离线 / 限流只降级检查区并保留上次已知版本；
-  「更新」对 registry 安装交给 DSH 原生流程；路径安装打开发布页并给出可复制的
+  「更新」对 registry 安装（npm 安装也属于这一类）交给 DSH 原生流程；路径安装打开发布页并给出可复制的
   `git -C <目录> pull --ff-only`；git 源安装（插件市场）更新走发布页 / 市场。
 - **入口** — 左侧栏 `OpenCode` 入口打开看板；服务器行与看板卡片负责打开内嵌 UI。已去掉会话头
   按钮与右侧栏标签页。

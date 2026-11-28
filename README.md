@@ -3,6 +3,8 @@
 <p align="center">
   <a href="https://github.com/yhuan416/dsh-opencode-client/releases"><img alt="release" src="https://img.shields.io/github/v/tag/yhuan416/dsh-opencode-client?label=release&sort=semver"></a>
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/github/license/yhuan416/dsh-opencode-client"></a>
+  <a href="https://www.npmjs.com/package/dsh-opencode-client"><img alt="npm" src="https://img.shields.io/npm/v/dsh-opencode-client"></a>
+  <a href="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/publish.yml"><img alt="publish" src="https://github.com/yhuan416/dsh-opencode-client/actions/workflows/publish.yml/badge.svg"></a>
   <img alt="node" src="https://img.shields.io/badge/node-%3E%3D22-brightgreen">
   <img alt="dsh" src="https://img.shields.io/badge/dsh-%3E%3D0.2.1--rc.2-blue">
   <img alt="opencode" src="https://img.shields.io/badge/opencode-2.x-orange">
@@ -319,9 +321,9 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
   `package.json`; the newest release comes from GitHub Releases (cached 24 h in the Host, retried
   after 1 h on failure; the board chip, settings block and detail badge share one load, so a cold
   start spends one GitHub request). Offline / rate-limited checks degrade only the check area and
-  keep the last known version. 更新 hands registry installations to DSH's own update flow; a
-  path-linked checkout opens the release page and shows a copyable `git -C <dir> pull --ff-only`;
-  git installs (plugin market) update through the release page / market.
+  keep the last known version. 更新 hands registry installations (an npm install counts as one) to
+  DSH's own update flow; a path-linked checkout opens the release page and shows a copyable
+  `git -C <dir> pull --ff-only`; git installs (plugin market) update through the release page / market.
 - **Fleet health (0.8.0)** — the board and settings page show API-version drift, probe failure reasons
   and SSE reconnect counts.
 - **Entry points** — the left sidebar `OpenCode` entry opens the board; server rows and board cards

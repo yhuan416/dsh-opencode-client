@@ -4,8 +4,8 @@
 
 | Version | Supported |
 |---|---|
-| `1.0.x` | ✅ current |
-| `0.7.x` and older | ❌ upgrade to 1.0.x |
+| `1.1.x` | ✅ current |
+| `1.0.x` and older | ❌ upgrade to `1.1.x` |
 
 Only OpenCode **2.x** servers are supported. v1 servers are rejected by the transport.
 
