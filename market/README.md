@@ -16,6 +16,9 @@ This directory keeps the local source of truth for the plugin's
   is optional; `icon` is a GitHub-hosted raster (180×180 PNG here, the market renders ~96px). A
   description containing `: ` must be quoted — ours uses the full-width `：` in Chinese, so it does not.
 - The icon is `docs/assets/icon-180.png` (180×180 PNG; the market does not accept SVG).
+- Storefront screenshots are declared **in this repository**, not in the entry: `screenshots.json` beside
+  `package.json` lists 1–8 repo-relative images (`docs/assets/board.png`, `docs/assets/insights.png`).
+  Changing them is a push here — the market picks them up on its next nightly build, no upstream PR.
 - The market catalog is generated from awesome-dsh-plugin; changing the file here **does not**
   list the plugin. It only becomes visible after the upstream PR is merged and the daily catalog
   refresh runs.
