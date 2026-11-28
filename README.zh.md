@@ -63,7 +63,7 @@ dsh plugin --profile web add dsh-opencode-client
 
 # 2. 至少配置一台 server（完整字段见「配置」）
 #    OpenCode 2.x 还需要 server 密码：
-#    config.servers: [{ id: n100, url: "http://192.168.4.50:4096", password: "<OPENCODE_SERVER_PASSWORD>" }]
+#    config.servers: [{ id: server-a, url: "http://server-a:4096", password: "<OPENCODE_SERVER_PASSWORD>" }]
 
 # 3. 重启 dsh web
 dsh web
@@ -81,9 +81,9 @@ dsh web
 真实环境的完整验收（需要一台真实的 OpenCode 2 `opencode serve`）：
 
 ```sh
-OPC_LIVE_URL=http://192.168.4.50:4096 \
+OPC_LIVE_URL=http://server-a:4096 \
 OPC_LIVE_PASSWORD='<OPENCODE_SERVER_PASSWORD>' \
-OPC_LIVE_DIR=/home/yhuan/workspace \
+OPC_LIVE_DIR=/home/user/workspace \
 node scripts/e2e-live.mjs        # 或 npm run e2e；OPC_LIVE_INTERACTIONS=1 还会验证权限/提问桥接
 ```
 
@@ -118,16 +118,16 @@ flowchart LR
     DSH --> TOOLS
     DSH --> PROVIDER
 
-    ROUTES -->|"v2 HTTP API"| N100["opencode serve · n100"]
-    TOOLS -->|"v2 HTTP API"| N100
-    PROVIDER -->|"v2 HTTP API"| N100
-    ROUTES -->|"v2 HTTP API"| M65["opencode serve · m65"]
-    TOOLS -->|"v2 HTTP API"| M65
-    PROVIDER -->|"v2 HTTP API"| M65
+    ROUTES -->|"v2 HTTP API"| SERVER_A["opencode serve · server-a"]
+    TOOLS -->|"v2 HTTP API"| SERVER_A
+    PROVIDER -->|"v2 HTTP API"| SERVER_A
+    ROUTES -->|"v2 HTTP API"| SERVER_B["opencode serve · server-b"]
+    TOOLS -->|"v2 HTTP API"| SERVER_B
+    PROVIDER -->|"v2 HTTP API"| SERVER_B
 
-    N100 -.->|"SSE"| SSE
-    M65 -.->|"SSE"| SSE
-    CLIENT -.->|"iframe: native OpenCode UI"| N100
+    SERVER_A -.->|"SSE"| SSE
+    SERVER_B -.->|"SSE"| SSE
+    CLIENT -.->|"iframe: native OpenCode UI"| SERVER_A
 ```
 
 浏览器只与 **dsh 同源**通信 —— `lib/client.js` 渲染看板/插件页，在打开会话时用 iframe 嵌入
@@ -322,7 +322,7 @@ dsh plugin --profile web add dsh-opencode-client
 dsh plugin --profile web add /path/to/dsh-opencode-client
 
 # 方式三：脚本写入 profile（deps + bundles + 起始 server 行）
-bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
+bash scripts/install-into-profile.sh http://server-a:4096 server-a
 ```
 
 手动方式（profile）：
@@ -350,18 +350,18 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
     servers:
       # OpenCode 2.x：serve 进程需设置 OPENCODE_SERVER_PASSWORD=<secret>，
       # 插件配置的 `password` 填同一个值（HTTP Basic，用户名固定 "opencode"）。
-      - id: n100
-        label: n100 opencode 2.x
-        url: http://192.168.4.50:4096
+      - id: server-a
+        label: server-a opencode 2.x
+        url: http://server-a:4096
         apiVersion: auto            # auto（探测 GET /api/info）| 2（v1 会被拒绝）
         password: "<OPENCODE_SERVER_PASSWORD>"
-        # directory: /home/yhuan/workspace   # 调用方未给目录时的默认远端目录
+        # directory: /home/user/workspace   # 调用方未给目录时的默认远端目录
         # agent: plan            # 委派默认 agent
         # model: deepseek/deepseek-chat      # 默认模型 "provider/model"
     permission: ask              # ask（默认，审批卡）| allow | reject
     question: ignore             # ignore（默认：挂起 + 看板「需要你」+ 通知）| reject（无人值守时直接 dismiss）
     pathMap:                     # 本地/远端路径布局不同时
-      - { from: /home/yhuan, to: /home/yhuan }
+      - { from: /home/user, to: /home/user }
     routing:                     # 多 server 的子代理派发（servers > 1 时默认开启）
       providerName: opencode-auto
       policy: [directory, sticky, least-busy, round-robin]
@@ -378,10 +378,10 @@ server 会被 `opencode.v1_unsupported` 拒绝。可用 `apiVersion: 2` 跳过�
 
 ```yaml
 - insert:
-    - id: tool-opencode-n100
+    - id: tool-opencode-server-a
       name: "@deepseek-ai/dsh-tool-subagent"
       config:
-        provider: opencode-n100   # "opencode-" + server id
+        provider: opencode-server-a   # "opencode-" + server id
         maxDepth: provider-managed
         toolName: opencode_subagent_n100
 ```
@@ -398,7 +398,7 @@ server 时，插件额外注册一个路由 provider `opencode-auto`（可用 `r
 4. `round-robin` —— 其余情况下轮转。
 
 若 start 在 run 发布前失败（不可达 / 5xx / 超时），`failover: true` 会换下一台候选；选中的 server
-会写进会话标题（`dsh subagent: <label> @n100`）并打日志。工具行示例：
+会写进会话标题（`dsh subagent: <label> @server-a`）并打日志。工具行示例：
 
 ```yaml
 - insert:

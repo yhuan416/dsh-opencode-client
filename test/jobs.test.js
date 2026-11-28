@@ -60,7 +60,7 @@ test('collectJobs keeps running jobs, drops finished ones and caches', async fun
     },
   })
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const first = await collectJobs(server)
     assert.equal(first.supported, true)
     assert.deepEqual(first.jobs.map(function (job) { return [job.id, job.sessionID, job.status, job.startedAt] }), [
@@ -102,10 +102,10 @@ test('collectJobs never probes a v1 server', async function () {
 
 test('a running job makes an idle session `background`, and dropping it restores idle', function () {
   const observation = createObservation({ now: function () { return 5_000 } })
-  observation.observeIdentity('e5', { id: 'ses_a', title: '你好', updatedAt: 2_000 })
-  observation.observeRunning('e5', new Set(), true)
-  observation.observeJobs('e5', [{ ...JOB }])
-  let rows = observation.rows('e5')
+  observation.observeIdentity('server-b', { id: 'ses_a', title: '你好', updatedAt: 2_000 })
+  observation.observeRunning('server-b', new Set(), true)
+  observation.observeJobs('server-b', [{ ...JOB }])
+  let rows = observation.rows('server-b')
   assert.equal(rows[0].status, 'background')
   assert.equal(rows[0].job.command, JOB.command)
   assert.equal(rows[0].job.kind, 'shell')
@@ -114,20 +114,20 @@ test('a running job makes an idle session `background`, and dropping it restores
   assert.equal(board.backgroundCount, 1)
   assert.equal(board.idle.length, 0, 'a background row is not idle')
 
-  observation.observeJobs('e5', [])
-  rows = observation.rows('e5')
+  observation.observeJobs('server-b', [])
+  rows = observation.rows('server-b')
   assert.equal(rows[0].status, 'idle')
   assert.equal(rows[0].job, null)
 })
 
 test('background yields to running and to a pending request', function () {
   const observation = createObservation({ now: function () { return 5_000 } })
-  observation.observeIdentity('e5', { id: 'ses_a', title: 'x' })
-  observation.observeJobs('e5', [{ ...JOB }])
-  observation.observeRunning('e5', new Set(['ses_a']), true)
-  assert.equal(observation.rows('e5')[0].status, 'running')
-  observation.markPending('e5', 'ses_a', { kind: 'permission', requestId: 'p1', detail: 'bash' })
-  assert.equal(observation.rows('e5')[0].status, 'waiting-permission')
+  observation.observeIdentity('server-b', { id: 'ses_a', title: 'x' })
+  observation.observeJobs('server-b', [{ ...JOB }])
+  observation.observeRunning('server-b', new Set(['ses_a']), true)
+  assert.equal(observation.rows('server-b')[0].status, 'running')
+  observation.markPending('server-b', 'ses_a', { kind: 'permission', requestId: 'p1', detail: 'bash' })
+  assert.equal(observation.rows('server-b')[0].status, 'waiting-permission')
 })
 
 test('board refresh reports a job whose session already went idle', async function () {
@@ -137,7 +137,7 @@ test('board refresh reports a job whose session already went idle', async functi
     '/api/session': function () {
       return {
         data: [{
-          id: 'ses_a', title: '你好', location: { directory: '/home/yhuan' }, cost: 0,
+          id: 'ses_a', title: '你好', location: { directory: '/home/user' }, cost: 0,
           time: { created: 1_760_000_000_000, updated: 1_760_000_010_000, busy: 1_760_000_005_000, idle: 1_760_000_010_000 },
         }],
       }
@@ -148,7 +148,7 @@ test('board refresh reports a job whose session already went idle', async functi
     '/api/experimental/job': function () { return { data: [JOB] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const observation = createObservation({ now: function () { return 1_760_000_020_000 } })
     const board = createBoard({ servers: servers, observation: observation })
     await board.refreshAll()

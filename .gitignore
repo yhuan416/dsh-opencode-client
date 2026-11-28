@@ -3,3 +3,10 @@ node_modules/
 *.log
 .env
 .env.*
+
+# local-only material that must never be published
+.npmrc
+*.pem
+*.key
+credentials*.yaml
+*.tgz

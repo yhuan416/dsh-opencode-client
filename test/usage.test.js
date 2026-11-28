@@ -78,7 +78,7 @@ test('collectStats normalizes a v2 stats payload', async function () {
     '/api/experimental/session/stats': function () { return { data: STATS } },
   })
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'x' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'x' }])[0]
     const usage = await collectStats(server, { from: 0 })
     assert.equal(usage.supported, true)
     assert.equal(usage.sessions, 167)
@@ -99,7 +99,7 @@ test('collectStats caches by bucketed range start, not by `to`', async function 
     '/api/experimental/session/stats': function () { return { data: STATS } },
   })
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'x' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'x' }])[0]
     // Two polls inside one bucket: different `from` by 200 s, different `to`.
     const base = 1_760_000_000_000
     const bucketStart = Math.floor(base / STATS_BUCKET_MS) * STATS_BUCKET_MS
@@ -219,7 +219,7 @@ test('collectCostByDirectory sums in-window message cost, not lifetime session c
   const now = Date.now()
   const fake = await startServer(attributionFixture(now))
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
     assert.equal(report.kind, 'windowed')
     // s1: 5 (two messages), s3: 2 (1.5 + 0.5, stops before the 10-day-old one),
@@ -247,7 +247,7 @@ test('collectCostByDirectory marks a capped report partial instead of under-coun
   const now = Date.now()
   const fake = await startServer(attributionFixture(now))
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const report = await collectCostByDirectory(server, { from: now - 7 * 86400000, maxSessions: 2 })
     assert.equal(report.total.priced, 2)
     assert.equal(report.total.skipped, 1)
@@ -274,7 +274,7 @@ test('collectCostByDirectory sums only the message type stats counts (compaction
     },
   })
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
     assert.equal(report.total.cost, 1.5, 'compaction cost is outside the stats/session.cost definition and must not count')
   } finally {
@@ -286,7 +286,7 @@ test('collectCostByDirectory stops at the request budget and flags the report pa
   const now = Date.now()
   const fake = await startServer(attributionFixture(now))
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const report = await collectCostByDirectory(server, { from: now - 7 * 86400000, maxRequests: 1 })
     assert.equal(report.total.partial, true)
     assert.ok(report.total.cost < 14, 'a budget stop must not be reported as a complete total')
@@ -331,7 +331,7 @@ test('collectCostByDirectory keeps totals un-truncated while the display list is
   routes['/api/session'] = function () { return { data: sessions } }
   const fake = await startServer(routes)
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const server = servers[0]
     const report = await collectCostByDirectory(server, { from: now - 7 * 86400000 })
     assert.equal(report.directories.length, 10, 'display list stays capped')
@@ -372,7 +372,7 @@ test('GET /usage exposes byModel and, on request, a reconciled byDirectory', asy
   })
   try {
     const observation = createObservation()
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
     const usage = routes.find(function (route) { return route.path === '/api/opencode-client/usage' })
 
@@ -422,7 +422,7 @@ test('collectCostByDirectory retries a failed read once and caches the complete 
       : { data: [{ type: 'assistant', cost: 2, time: { created: now - 1000 } }] }
   }))
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const from = now - 7 * 86400000
     const report = await collectCostByDirectory(server, { from: from })
     assert.equal(calls, 2, 'one failed page is retried from a fresh first page')
@@ -446,7 +446,7 @@ test('collectCostByDirectory records the failure reason and does not cache a par
     return { __status: 500, body: { error: 'storage unavailable' } }
   }))
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const from = now - 7 * 86400000
     const first = await collectCostByDirectory(server, { from: from })
     assert.equal(first.total.partial, true)
@@ -471,14 +471,14 @@ test('GET /usage exposes directory failure details and retry counts', async func
   }))
   try {
     const observation = createObservation()
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const usage = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
       .find(function (route) { return route.path === '/api/opencode-client/usage' })
     const grouped = await (await usage.fetch({ url: '/api/opencode-client/usage?from=' + (now - 7 * 86400000) + '&group=directory' })).json()
     assert.equal(grouped.total.byDirectoryPartial, true)
     assert.equal(grouped.total.byDirectoryRetried, 0)
     assert.equal(grouped.total.byDirectoryFailures.length, 1)
-    assert.equal(grouped.total.byDirectoryFailures[0].server, 'e5')
+    assert.equal(grouped.total.byDirectoryFailures[0].server, 'server-b')
     assert.equal(grouped.total.byDirectoryFailures[0].session, 's1')
     assert.match(grouped.total.byDirectoryFailures[0].reason, /503/)
     assert.equal(grouped.servers[0].directoryFailures.length, 1)

@@ -88,7 +88,7 @@ function startFake(options) {
 test('collectSkillUsage aggregates skill names inside the window', async function () {
   const fake = await startFake()
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const result = await collectSkillUsage(servers, { now: NOW, days: 7 })
     assert.deepEqual(result.total.skills, [{ name: 'jira', calls: 3 }, { name: 'gitlab', calls: 1 }, { name: 'legacy', calls: 1 }])
     assert.equal(result.total.calls, 5)
@@ -107,7 +107,7 @@ test('collectSkillUsage aggregates skill names inside the window', async functio
 test('collectSkillUsage caches per server/window bucket', async function () {
   const fake = await startFake()
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     await collectSkillUsage(servers, { now: NOW, days: 7 })
     const first = fake.messageRequests()
     await collectSkillUsage(servers, { now: NOW, days: 7 })
@@ -120,7 +120,7 @@ test('collectSkillUsage caches per server/window bucket', async function () {
 test('a session that never reaches the window edge is reported truncated', async function () {
   const fake = await startFake({ loopCursor: true })
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     servers[0].skillsCache = new Map()
     const result = await collectSkillUsage(servers, { now: NOW, days: 7 })
     assert.equal(result.total.truncated, true)
@@ -148,7 +148,7 @@ test('v1 reports unsupported without walking messages', async function () {
 test('route returns the skills payload', async function () {
   const fake = await startFake()
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const observation = { board: function () { return {} }, observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function () { return {} }, serverInfo: function () { return undefined } }
     const route = createRoutes({ servers: servers, delegate: {}, observation: observation, board: observation })
       .find(function (item) { return item.path === '/api/opencode-client/insights/skills' })

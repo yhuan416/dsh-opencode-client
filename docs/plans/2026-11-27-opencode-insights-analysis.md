@@ -5,7 +5,7 @@
 > 会话列表（尤其空闲会话）下移到页面底部。
 > 本文只回答「OpenCode 现在能支持什么、口径是什么、代价多大」，不做实现。
 >
-> 实测环境：OpenCode **2.3.0**，两台 server（e5 192.168.4.65、n100 192.168.4.50），
+> 实测环境：OpenCode **2.3.0**，两台 server（server-b server-b、server-a server-a），
 > 2026-11-27 访问；所有数字来自 `GET /api/*`（只读）。
 
 ## 1. 可用数据源
@@ -23,7 +23,7 @@
 
 ## 2. 实测样本（7 天窗口）
 
-| 指标 | e5 | n100 |
+| 指标 | server-b | server-a |
 |---|---|---|
 | 会话 / 子代理 | 61 / 0 | 59 / 1 |
 | prompt（轮次）/ steps | 606 / 8634 | 341 / 4409 |
@@ -34,11 +34,11 @@
 | 活跃天数 / streak | 7 / 6 | 6 / 5 |
 | 30 天窗口 | 95 会话 / 1439 prompts / $584.15（1.2s） | 121 会话 / 1018 prompts / $74.27（0.6s） |
 
-按工具（e5，7 天，`tools=detail`）：
+按工具（server-b，7 天，`tools=detail`）：
 `shell 5356（P50 92ms）· execute 2562（1227ms）· edit 504（21ms）· read 241 · grep 166 ·
 write 128 · skill 53 · question 17 · glob 7 · webfetch 6 · websearch 3 · search 1`。
 
-`activity[]` 是**按日 steps**，只包含有活动的日期（e5 7 天里 11-21 缺项），画图需补 0。
+`activity[]` 是**按日 steps**，只包含有活动的日期（server-b 7 天里 11-21 缺项），画图需补 0。
 
 ## 3. 面板 → 数据映射
 
@@ -55,7 +55,7 @@ write 128 · skill 53 · question 17 · glob 7 · webfetch 6 · websearch 3 · s
 | 项目分布 | `/session` + `/project`；或 `stats?project=<id>` 逐项目 | 会话数（1 请求）或窗口 token/cost（N 请求） | ⚠️ 口径二选一（见 §5） |
 | 技能加载明细 | 只有 `skill` 工具**调用总数** | 按技能名需扫消息 | ❌ v1 不做 |
 | 命令执行明细 | `shell`/`execute` **调用数** | 按命令名需扫 shell 消息 | ❌ v1 不做 |
-| 活跃时长 | 仅 `time.busy→idle`（**最后一次运行**） | e5 全量相加仅 2.3h，明显低估 | ❌ 或标注「最后一次运行」 |
+| 活跃时长 | 仅 `time.busy→idle`（**最后一次运行**） | server-b 全量相加仅 2.3h，明显低估 | ❌ 或标注「最后一次运行」 |
 | Token 构成（系统提示词/工具定义/…） | 无 | OpenCode 不暴露 | ❌ |
 | 耗时拆解（模型等待/思考/回复/工具） | 工具 P50 有；整体拆分需逐消息 | assistant `time.firstToken/streamed/completed` 可近似，但需扫消息 | ❌ v1 |
 
@@ -65,7 +65,7 @@ write 128 · skill 53 · question 17 · glob 7 · webfetch 6 · websearch 3 · s
 2. **没有 token 构成**：无法复刻截图的「系统提示词/工具定义/注入内容」环图，最多画 in/out/reasoning/cache 四段。
 3. **没有耗时拆解**：只有每个工具的 P50，没有「模型等待/思考/回复/工具执行」的总时长分布。
 4. **窗口口径 vs 终生值**：会话列表里的 `tokens/cost` 是**终生累计**，不能当 7 天值用；窗口值只能来自 stats。
-5. **按项目窗口值要 N 次请求**：项目数 e5 15 / n100 40，全部逐项目 stats 约 55 次 × 0.3–1s；需 top-N + 缓存。
+5. **按项目窗口值要 N 次请求**：项目数 server-b 15 / server-a 40，全部逐项目 stats 约 55 次 × 0.3–1s；需 top-N + 缓存。
 6. **统计接口是历史扫描**：7 天 0.25–0.72s/台，30 天 0.6–1.2s/台，全量会超时（20s 上限，已记为 0.8.0 待修）。
 7. **费用为 0 是常态**：两台 server 的 7 天费用主要来自 grok；订阅制模型 `cost=0`，费用维度对「用得多不多」解释力弱，必须同时给 token。
 

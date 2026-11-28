@@ -226,7 +226,7 @@ assert.match(toolsSource, /finished, not looked at/)
 assert.match(toolsSource, /snapshot\.unseen/)
 
 // Observation registry: key shape, precedence, and the board projection.
-assert.equal(observationKey('n100', 'ses_1'), 'n100\u0000ses_1')
+assert.equal(observationKey('server-a', 'ses_1'), 'server-a\u0000ses_1')
 assert.deepEqual(OBSERVATION_STATUSES.slice(0, 2), ['waiting-permission', 'waiting-question'])
 assert.equal(typeof collectPending, 'function')
 const observationSmoke = createObservation({ now: function () { return 1000 } })
@@ -266,12 +266,12 @@ assert.equal(
 // Unread comes from OpenCode's own markers: idle > viewed, and a viewed session
 // returns to idle instead of lingering in `unseen`.
 const unreadSmoke = createObservation({ now: function () { return 3000 } })
-unreadSmoke.observeIdentity('e5', { id: 'ses_u', busyAt: 1000, idleAt: 2000, viewedAt: 500 })
-unreadSmoke.observeRunning('e5', new Set(['ses_u']), true)
-unreadSmoke.observeRunning('e5', new Set(), true)
+unreadSmoke.observeIdentity('server-b', { id: 'ses_u', busyAt: 1000, idleAt: 2000, viewedAt: 500 })
+unreadSmoke.observeRunning('server-b', new Set(['ses_u']), true)
+unreadSmoke.observeRunning('server-b', new Set(), true)
 assert.equal(unreadSmoke.board().unseen.length, 1)
 assert.equal(unreadSmoke.board().idle.length, 0)
-unreadSmoke.observeIdentity('e5', { id: 'ses_u', viewedAt: 2000 })
+unreadSmoke.observeIdentity('server-b', { id: 'ses_u', viewedAt: 2000 })
 assert.equal(unreadSmoke.board().unseen.length, 0)
 assert.equal(unreadSmoke.board().idle.length, 1)
 
@@ -283,10 +283,10 @@ assert.deepEqual(parseModel('deepseek/deepseek-chat'), { providerID: 'deepseek',
 assert.deepEqual(parseModel({ providerID: 'p', modelID: 'm' }), { providerID: 'p', modelID: 'm' })
 assert.equal(parseModel('nope'), undefined)
 
-const servers = normalizeServers([{ id: 'n100', url: 'http://127.0.0.1:4096/', label: 'n100' }])
+const servers = normalizeServers([{ id: 'server-a', url: 'http://127.0.0.1:4096/', label: 'server-a' }])
 assert.equal(servers.length, 1)
 assert.equal(servers[0].url, 'http://127.0.0.1:4096')
-assert.equal(servers[0].label, 'n100')
+assert.equal(servers[0].label, 'server-a')
 assert.deepEqual(normalizeServers([{ id: '', url: 'http://x' }]), [])
 assert.deepEqual(parsePathMap([{ from: '/a/', to: '/b/' }]), [{ from: '/a', to: '/b' }])
 assert.equal(normalizeApiVersion(undefined), 'auto')

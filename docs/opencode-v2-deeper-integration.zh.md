@@ -8,7 +8,7 @@
 
 ## 0. 结论摘要
 
-1. **契约没有变化**：n100（192.168.4.50）与 e5（192.168.4.65）均为 `opencode 2.3.0`，`/openapi.json` 仍是 **139 paths / 515 schemas**，与 2026-11-18 迁移基线逐条比对无新增、无删除。所以现有 0.2.0 的适配仍然成立，不需要再改契约层。
+1. **契约没有变化**：server-a（server-a）与 server-b（server-b）均为 `opencode 2.3.0`，`/openapi.json` 仍是 **139 paths / 515 schemas**，与 2026-11-18 迁移基线逐条比对无新增、无删除。所以现有 0.2.0 的适配仍然成立，不需要再改契约层。
 2. **深度整合空间在 v2 独有的 6 类能力**（v1 没有或不可用）：
    - 消息队列 / steer（`inbox`、`delivery: steer|queue`、`resume`）
    - 检查点回滚（`revert/stage|commit|DELETE`）
@@ -17,7 +17,7 @@
    - 定时调度（`experimental/schedule`，需远端开关）
    - PTY 终端（`pty`、`experimental/persistent-pty`、`experimental/session/{id}/terminal`）
    另有高价值/高风险的“远端能力管理”（MCP / plugin / config / integration）和“反向 MCP / RPC”（`client-mcp`、`rpc`、`pair`）。
-3. **已实测可用**（本次在 n100 的 `/tmp` 临时会话上验证，见 §2）：`inbox` 队列/取消、`revert/stage` + discard、`generate`（不产生消息的一次性生成）、`export?sanitize=true`、`session/stats`、`migration/v1`、`worktree` 列表、`terminal` 列表。
+3. **已实测可用**（本次在 server-a 的 `/tmp` 临时会话上验证，见 §2）：`inbox` 队列/取消、`revert/stage` + discard、`generate`（不产生消息的一次性生成）、`export?sanitize=true`、`session/stats`、`migration/v1`、`worktree` 列表、`terminal` 列表。
 4. **2.3.0 上 spec 存在但不可用 / 需开关**：`environment`(404)、`instructions/entries`(404)、`schedule`(403，需 `experimental.schedules`)、`artifacts`(403，需 `experimental.artifacts`)、`vcs/base`(503，需配置 review base)、`usage/limits`(返回 `data: null`)。
 
 ---
@@ -44,7 +44,7 @@
 
 ---
 
-## 2. 实测证据（n100，2.3.0）
+## 2. 实测证据（server-a，2.3.0）
 
 | 调用 | 结果 | 结论 |
 |---|---|---|
@@ -104,7 +104,7 @@
 
 ### E. 会话运维（中价值 / 低成本 / 中风险）→ 建议 0.4.0
 
-- `export`（支持 `sanitize`）+ `import`：n100↔e5 迁移会话、归档到 dsh、脱敏分享给同事；
+- `export`（支持 `sanitize`）+ `import`：server-a↔server-b 迁移会话、归档到 dsh、脱敏分享给同事；
 - `move`：把会话搬到另一个目录（"把这个会话挪进新项目"）；
 - `migration/v1`：升级 v2 后诊断"旧 v1 会话是否已迁移"（直接回应迁移文档 §6 R6 的用户痛点）；
 - `view`：标记会话已读，影响 UI 未读状态。
@@ -170,7 +170,7 @@
 
 ## 附：本次实测脚本
 
-临时脚本（不随仓库发布）：`/tmp/deep-probe.mjs`、`/tmp/env-probe2.mjs`，用 `fetch` + Basic auth 直连 `http://192.168.4.50:4096`，覆盖 §2 表格中的端点。关键片段：
+临时脚本（不随仓库发布）：`/tmp/deep-probe.mjs`、`/tmp/env-probe2.mjs`，用 `fetch` + Basic auth 直连 `http://server-a:4096`，覆盖 §2 表格中的端点。关键片段：
 
 ```js
 const r = await fetch(H + `/api/session/${SID}/prompt`, {

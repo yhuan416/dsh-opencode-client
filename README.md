@@ -70,7 +70,7 @@ dsh plugin --profile web add dsh-opencode-client
 
 # 2. configure at least one server (full schema in Configuration)
 #    OpenCode 2.x also needs the server password:
-#    config.servers: [{ id: n100, url: "http://192.168.4.50:4096", password: "<OPENCODE_SERVER_PASSWORD>" }]
+#    config.servers: [{ id: server-a, url: "http://server-a:4096", password: "<OPENCODE_SERVER_PASSWORD>" }]
 
 # 3. restart dsh web
 dsh web
@@ -88,9 +88,9 @@ Verify:
 Full live acceptance run (needs a real OpenCode 2 `opencode serve`):
 
 ```sh
-OPC_LIVE_URL=http://192.168.4.50:4096 \
+OPC_LIVE_URL=http://server-a:4096 \
 OPC_LIVE_PASSWORD='<OPENCODE_SERVER_PASSWORD>' \
-OPC_LIVE_DIR=/home/yhuan/workspace \
+OPC_LIVE_DIR=/home/user/workspace \
 node scripts/e2e-live.mjs        # or: npm run e2e; OPC_LIVE_INTERACTIONS=1 also exercises approval/question bridging
 ```
 
@@ -126,16 +126,16 @@ flowchart LR
     DSH --> TOOLS
     DSH --> PROVIDER
 
-    ROUTES -->|"v2 HTTP API"| N100["opencode serve · n100"]
-    TOOLS -->|"v2 HTTP API"| N100
-    PROVIDER -->|"v2 HTTP API"| N100
-    ROUTES -->|"v2 HTTP API"| M65["opencode serve · m65"]
-    TOOLS -->|"v2 HTTP API"| M65
-    PROVIDER -->|"v2 HTTP API"| M65
+    ROUTES -->|"v2 HTTP API"| SERVER_A["opencode serve · server-a"]
+    TOOLS -->|"v2 HTTP API"| SERVER_A
+    PROVIDER -->|"v2 HTTP API"| SERVER_A
+    ROUTES -->|"v2 HTTP API"| SERVER_B["opencode serve · server-b"]
+    TOOLS -->|"v2 HTTP API"| SERVER_B
+    PROVIDER -->|"v2 HTTP API"| SERVER_B
 
-    N100 -.->|"SSE"| SSE
-    M65 -.->|"SSE"| SSE
-    CLIENT -.->|"iframe: native OpenCode UI"| N100
+    SERVER_A -.->|"SSE"| SSE
+    SERVER_B -.->|"SSE"| SSE
+    CLIENT -.->|"iframe: native OpenCode UI"| SERVER_A
 ```
 
 The browser only talks to the **dsh origin** — `lib/client.js` renders the board/plugin page and
@@ -342,7 +342,7 @@ dsh plugin --profile web add dsh-opencode-client
 dsh plugin --profile web add /path/to/dsh-opencode-client
 
 # C. helper script: symlink + dependency + bundle selection + a starter server row
-bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
+bash scripts/install-into-profile.sh http://server-a:4096 server-a
 ```
 
 or add it manually to the profile and select it as a bundle:
@@ -367,18 +367,18 @@ Restart `dsh web` afterwards: the bundle selection is composed at startup.
     servers:
       # OpenCode 2.x: start the server with OPENCODE_SERVER_PASSWORD=<secret> and repeat
       # the same value in `password` (HTTP Basic auth, user "opencode").
-      - id: n100
-        label: n100 opencode 2.x
-        url: http://192.168.4.50:4096
+      - id: server-a
+        label: server-a opencode 2.x
+        url: http://server-a:4096
         apiVersion: auto            # auto (probe GET /api/info) | 2 (v1 is rejected)
         password: "<OPENCODE_SERVER_PASSWORD>"
-        # directory: /home/yhuan/workspace   # default remote dir when the caller does not give one
+        # directory: /home/user/workspace   # default remote dir when the caller does not give one
         # agent: plan            # default OpenCode agent for delegation
         # model: deepseek/deepseek-chat      # default model "provider/model"; v2 also "provider/model#variant"
     permission: ask              # ask (default, dsh approval card) | allow | reject
     question: ignore             # ignore (default: keep pending on the board + notify) | reject (dismiss, unattended)
     pathMap:                     # only when local and remote path layouts differ
-      - { from: /home/yhuan, to: /home/yhuan }
+      - { from: /home/user, to: /home/user }
     routing:                     # multi-server subagent dispatch (default: on when servers > 1)
       providerName: opencode-auto
       policy: [directory, sticky, least-busy, round-robin]
@@ -398,10 +398,10 @@ To expose an OpenCode server as a native dsh subagent, add a tool row:
 
 ```yaml
 - insert:
-    - id: tool-opencode-n100
+    - id: tool-opencode-server-a
       name: "@deepseek-ai/dsh-tool-subagent"
       config:
-        provider: opencode-n100   # "opencode-" + server id
+        provider: opencode-server-a   # "opencode-" + server id
         maxDepth: provider-managed
         toolName: opencode_subagent_n100
 ```
@@ -420,7 +420,7 @@ same machine. When more than one server is configured the plugin also registers 
 
 A start that fails before the run is published (unreachable, 5xx, timeout) falls through to the
 next candidate when `failover: true`; the chosen server is appended to the session title
-(`dsh subagent: <label> @n100`) and logged. Expose it as a tool row:
+(`dsh subagent: <label> @server-a`) and logged. Expose it as a tool row:
 
 ```yaml
 - insert:

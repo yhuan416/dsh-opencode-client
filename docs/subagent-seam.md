@@ -1,7 +1,7 @@
 # dsh subagent seam 对接分析（dsh 0.2.2-rc.4）
 
 > 目的：回答"**opencode 能不能作为 dsh 的子智能体被调用，能插多深**"。
-> 依据：dsh 0.2.2-rc.4 源码契约（`@deepseek-ai/dsh-subagent`、`dsh-tool-subagent`、`dsh-agent-team`）+ 本插件实现 + 真机验证（n100/m65，opencode 2.3.0）。
+> 依据：dsh 0.2.2-rc.4 源码契约（`@deepseek-ai/dsh-subagent`、`dsh-tool-subagent`、`dsh-agent-team`）+ 本插件实现 + 真机验证（server-a/server-b，opencode 2.3.0）。
 > 关联：[docs/opencode-v2-deeper-integration.zh.md](opencode-v2-deeper-integration.zh.md)（opencode 侧的深度整合盘点）。
 
 ---
@@ -49,11 +49,11 @@
 | 插座 | 形态 | 当前是否可用 | 受 capability 门控 |
 |---|---|---|---|
 | **① per-provider 工具**：`opencode_subagent_n100` / `_m65` | `dsh-tool-subagent` 以本插件 provider 起一次性子代理；异步 + 结算通知 | ✅ 已启用并验证 | 模型选择需 `agentOptions` + 工具行 `modelSelection: true`；`maxDepth` 只能 `provider-managed` |
-| **①′ 路由工具**：`opencode_subagent_auto` | provider 换成 `opencode-auto`：每次 start 在 n100/m65 间自动选（directory → sticky → least-busy → round-robin，失败自动换台） | ✅ 0.3.0 已实现并真机验证 | 同 ①；`routing` 配置可调策略 |
-| **② workflow 引擎后端**：`workflow(script)` 里的 `agent(prompt, opts)` | `workflow-ptc` 的 `provider` 配置（默认 `spawn`）决定所有 `agent()` 子代理跑在哪个后端；可改成 `opencode-n100` | ⚙️ 配置级可用（未切换） | `opts.schema` 需 `outputSchema`；`opts.provider/model`（LLM 路由覆盖）需 `agentOptions`；并发上限 `maxConcurrentAgents`（默认 ≤16）、`maxTotalAgents`（默认 1000） |
+| **①′ 路由工具**：`opencode_subagent_auto` | provider 换成 `opencode-auto`：每次 start 在 server-a/server-b 间自动选（directory → sticky → least-busy → round-robin，失败自动换台） | ✅ 0.3.0 已实现并真机验证 | 同 ①；`routing` 配置可调策略 |
+| **② workflow 引擎后端**：`workflow(script)` 里的 `agent(prompt, opts)` | `workflow-ptc` 的 `provider` 配置（默认 `spawn`）决定所有 `agent()` 子代理跑在哪个后端；可改成 `opencode-server-a` | ⚙️ 配置级可用（未切换） | `opts.schema` 需 `outputSchema`；`opts.provider/model`（LLM 路由覆盖）需 `agentOptions`；并发上限 `maxConcurrentAgents`（默认 ≤16）、`maxTotalAgents`（默认 1000） |
 | **③ 本插件自有 delegate 工具** `opencode_subagent` | seam 之外：一次性/续聊、agent/model/schema/附件、`opencode_prompt` 续聊、`opencode_progress` 进度 | ✅ 已启用 | 无（插件自管） |
 
-> workflow 后端是**配置级**深度集成：`workflow-ptc` 在 profile 的 agent 工具组里默认 `provider: spawn`（本地子代理），把它改成 `provider: opencode-n100` 后，workflow 脚本里每个 `agent()` 都会变成远端 opencode 会话（`cwd` 经插件的 `pathMap` 映射）。代价：远端并发/成本/延迟，且脚本里 `agent()` 默认拿不到结构化结果（除非 provider 广告 `outputSchema`）。
+> workflow 后端是**配置级**深度集成：`workflow-ptc` 在 profile 的 agent 工具组里默认 `provider: spawn`（本地子代理），把它改成 `provider: opencode-server-a` 后，workflow 脚本里每个 `agent()` 都会变成远端 opencode 会话（`cwd` 经插件的 `pathMap` 映射）。代价：远端并发/成本/延迟，且脚本里 `agent()` 默认拿不到结构化结果（除非 provider 广告 `outputSchema`）。
 
 ---
 
@@ -70,11 +70,11 @@
 | stopReason | `completed` / `aborted` / `error` / `max-tokens`（finish=length）/ `refusal`（content-filter），diagnostic ≤4096B |
 | dispose | 幂等：abort controller + 远端 `interrupt`，等待结算 |
 | 父 Agent 归属 | `activeRuns[agent]` 携带 `request.parent` → 审批卡/提问落到正确 dsh agent |
-| 工具行 | profile 里 `tool-opencode-n100/m65`，`maxDepth: provider-managed` |
+| 工具行 | profile 里 `tool-opencode-server-a/server-b`，`maxDepth: provider-managed` |
 
 **真机证据（2026-11-20，opencode 2.3.0）**：
 
-- `opencode_subagent_n100` / `opencode_subagent_m65` 启动后分别返回 `NATIVE_PROVIDER_N100_OK` / `NATIVE_PROVIDER_M65_OK`（异步启动 + 结算通知正常）；
+- `opencode_subagent_n100` / `opencode_subagent_m65` 启动后分别返回 `NATIVE_PROVIDER_SERVER_A_OK` / `NATIVE_PROVIDER_SERVER_B_OK`（异步启动 + 结算通知正常）；
 - 远端 child session：父会话用 `task` 派生 `ses_e07ac7d25…`（`parentID` 正确、agent=general、succeeded），`opencode_children` 正确列出；
 - 历史 seam 直测（OpenCode 1.18.31，v1 已移除）：`capabilities` 全 false、`activeRuns.agent is parent: true`、`result.stopReason=completed`、`dispose` 幂等、abort 路径 0.0s 结算。
 
@@ -163,21 +163,21 @@ dsh 的 `interrupt(user|ancestor)` 最终走 `dispose`/`signal`；插件 `dispos
 
 ---
 
-## 4.1 0.3.0 真机验证（n100 + m65，OpenCode 2.3.0）
+## 4.1 0.3.0 真机验证（server-a + server-b，OpenCode 2.3.0）
 
 ```text
-1) cwd=/tmp          -> n100  completed "ok"   (directory policy: n100.directory=/tmp)
-2) cwd=/home/yhuan    -> m65   completed "ok"   (directory policy: m65.directory=/home/yhuan)
-3) round-robin(4)     -> n100 | m65 | n100 | m65
-4) failover           -> broken(127.0.0.1:1) failed, routed -> n100 completed
-5) missing dir        -> error: "opencode: m65 cannot see directory /home/yhuan/nope-dir
+1) cwd=/tmp          -> server-a  completed "ok"   (directory policy: server-a.directory=/tmp)
+2) cwd=/home/user    -> server-b   completed "ok"   (directory policy: server-b.directory=/home/user)
+3) round-robin(4)     -> server-a | server-b | server-a | server-b
+4) failover           -> broken(127.0.0.1:1) failed, routed -> server-a completed
+5) missing dir        -> error: "opencode: server-b cannot see directory /home/user/nope-dir
                          (LocationNotFoundError); configure pathMap ..."
 ```
 
 ## 5. 历史验证记录（0.2.1-rc.2 时期）
 
 ```text
-name: opencode-n100 capabilities: {"agentOptions":false,"agentPreset":false,"outputSchema":false,"depthLimit":false}
+name: opencode-server-a capabilities: {"agentOptions":false,"agentPreset":false,"outputSchema":false,"depthLimit":false}
 run id: ses_e5047ca1cffe7bw1... | activeRuns.agent is parent: true
 result: {"stopReason":"completed","text":"provider-ok"}
 dispose idempotent: true

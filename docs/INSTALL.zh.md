@@ -12,13 +12,13 @@
 |---|---|
 | dsh | ≥ 0.2.1-rc.2（本机验证 0.2.2-rc.5） |
 | Node | ≥ 22（dsh 自带，不需要单独装） |
-| 网络 | 能直连目标 `opencode serve`，如 `http://192.168.4.50:4096`、`http://192.168.4.65:4096` |
+| 网络 | 能直连目标 `opencode serve`，如 `http://server-a:4096`、`http://server-b:4096` |
 | 凭据 | OpenCode 2.x 需要 `OPENCODE_SERVER_PASSWORD`；在该机器的 `~/.config/opencode/server.env` 里 |
 
 先验证网络（**401 = 通了**，`000` 才是没通）：
 
 ```sh
-curl -s -o /dev/null -w '%{http_code}\n' http://192.168.4.50:4096/api/info
+curl -s -o /dev/null -w '%{http_code}\n' http://server-a:4096/api/info
 ```
 
 ## 1. 拿代码
@@ -59,7 +59,7 @@ dsh plugin --profile web add dsh-opencode-client
 
 ```sh
 cd dsh-opencode-client
-OPENCODE_SERVER_PASSWORD='<密码>' bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
+OPENCODE_SERVER_PASSWORD='<密码>' bash scripts/install-into-profile.sh http://server-a:4096 server-a
 ```
 
 脚本会：软链到 profile、写 dependency、**把插件选为 bundle**、追加一段 `opencode-client`
@@ -97,13 +97,13 @@ dsh plugin --profile web add D:\dev\dsh-opencode-client
   name: dsh-opencode-client
   config:
     servers:
-      - id: n100
-        label: n100 opencode
-        url: http://192.168.4.50:4096
+      - id: server-a
+        label: server-a opencode
+        url: http://server-a:4096
         password: <OPENCODE_SERVER_PASSWORD>
-      - id: e5
-        label: e5 opencode
-        url: http://192.168.4.65:4096
+      - id: server-b
+        label: server-b opencode
+        url: http://server-b:4096
         password: <同一个密码>
     # ask：无 dsh run 归属的权限请求只登记为「需要你」，不替你批准
     # 想恢复旧的自动批准行为，改成 auto

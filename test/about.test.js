@@ -216,7 +216,7 @@ test('GET /api/opencode-client/about forwards refresh and returns the payload', 
   const { createRoutes } = await import('../lib/routes.js')
   const seen = []
   const routes = createRoutes({
-    servers: [{ id: 'n100', url: 'http://127.0.0.1:1', label: 'n100' }],
+    servers: [{ id: 'server-a', url: 'http://127.0.0.1:1', label: 'server-a' }],
     delegate: {},
     observation: {},
     board: {},

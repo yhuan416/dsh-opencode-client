@@ -1,5 +1,13 @@
 ## 1.1.5 (unreleased) — [docs] 发布渠道描述对齐
 
+### Security
+
+- **清掉仓库里的环境私有信息**：文档、脚本、测试里的内网地址（`192.168.4.x`）、机器名（`n100` / `e5` / `m65`）
+  与 `/home/yhuan` 路径统一替换成 `server-a` / `server-b` / `/home/user`；`scripts/install-into-profile.sh`
+  不再内置某台机器的默认地址（URL 参数改为必填）。`.gitignore` 补上 `.npmrc` / `*.pem` / `*.key` /
+  `credentials*.yaml` / `*.tgz`。封面图里写死的 `v1.0.0` 去掉，避免版本号过期。
+  说明：本次只清理当前树，**历史提交没有重写**（旧地址仍留在 git 历史里）。
+
 ### Docs
 
 - **改正过期的发布说明**：`CONTRIBUTING.md` 与 `COMPATIBILITY.md` 还写着「git-only、`private`、永不发布 npm」，
@@ -347,7 +355,7 @@
 
 ### Verification
 
-- 真机 e5 / n100（OpenCode 2.4.2）：目录归因与 stats **delta=0、partial=false**；技能 7 天
+- 真机 server-b / server-a（OpenCode 2.4.2）：目录归因与 stats **delta=0、partial=false**；技能 7 天
   72 次 / 30 天 151 次；部署自检 usage / board / insights / MCP+skills / upgrade 全 **PASS**。
 
 ### Migration
@@ -401,11 +409,11 @@
 
 - 明确不做（数据不可得，不伪造）：逐日 token/费用、token 构成、耗时拆解、活跃时长、
   技能/命令明细。脚注已写明「费用仅含报价模型 · 日图仅 steps」。
-- **OpenCode 2.4.2 验收（2026-11-27）**：e5 / n100 两台 server 从 2.3.0 升到 2.4.2，
+- **OpenCode 2.4.2 验收（2026-11-27）**：server-b / server-a 两台 server 从 2.3.0 升到 2.4.2，
   `npm run e2e` 两台各 10/10 通过；`/openapi.json` 对比为纯增量，本插件读取的
   endpoint / event / payload 无删除（详见 `COMPATIBILITY.md`「2.4.x deltas」）。
   升级中踩到并已修掉：2.4.0 把 MCP `protocol` 默认值从 `legacy` 改成 `auto`，只提供
-  `2026-07-28` 的 stdio server（n100 `dev-tools`）会因探测超时回退 legacy 而连接失败，
+  `2026-07-28` 的 stdio server（server-a `dev-tools`）会因探测超时回退 legacy 而连接失败，
   需在 **v2 形态** `mcp.servers.<name>` 里写 `"protocol": "2026-07-28"`（v1 形态
   `mcp.<name>` 会静默丢掉该字段）；另注意重启后首次读取 model/skill/mcp 清单可能为空。
 
@@ -430,7 +438,7 @@
   合并进登记表；会话已经 `idle`（`time.idle` 已写、`/session/active` 为空）但 job 仍在跑的，
   状态为新的 **`background`**（优先级 `running` 之下、`idle` 之上）。看板新增「后台运行」分区、
   server 卡计数、`opencode_board` 的 `background (N)` 段与 `opencode_progress` 的 background 行，
-  都带命令与已跑时长。实测 n100/e5：一条 `jira_weekly_report.py` 后台跑了 9+ 分钟，期间会话所有
+  都带命令与已跑时长。实测 server-a/server-b：一条 `jira_weekly_report.py` 后台跑了 9+ 分钟，期间会话所有
   常规信号都说空闲——这是唯一能看见它的信号。只有 OpenCode 的后台 job 机制可见；agent 里
   `nohup … &` 直接脱离 job 的进程仍然看不见。v1 明确不支持（接口缺失时静默降级，不影响看板）。
 - **成本归因**：
@@ -439,7 +447,7 @@
   - 新 `collectCostByDirectory()`：按目录汇总**窗口内**成本。OpenCode 没有按目录聚合的端点，
     而 `session.cost` 是**终生累计**，所以改为累加窗口内 `assistant` 消息的 `cost`（与 `/experimental/session/stats` 同一数据源；
     compaction 消息也带成本，但 stats 与 `session.cost` 都不计它，计入会让目录与总成本对不上——
-    e5 上一条 $0.444 的 compaction 就会让偏差到 0.45%）；活跃判定用 `time.busy`（只有真跑过的会话才有），
+    server-b 上一条 $0.444 的 compaction 就会让偏差到 0.45%）；活跃判定用 `time.busy`（只有真跑过的会话才有），
     不再用会被「查看/改名」刷新的 `time.updated`。目录取会话自身的，空或 `/` 时回退项目
     worktree（`global` 的 worktree 就是 `/`，把总账挂在 `/` 比标「未归属」更糟）。
     候选会话 = 活跃且有价成本；只为它们翻消息（每会话通常 1 页），并发 4、单次上限 50 个会话 /
@@ -532,7 +540,7 @@
   - **未读拆成「本地候选 + 远端清除」**：候选 = 我们亲眼看到 running→idle（`sawFinish`），清除 =
     OpenCode 的 `viewed >= idle`（在它自己的 UI 里看过）或 dsh 的 `/seen`。标记已读复用
     `POST /session/{id}/view {idle}`。
-    **为什么不只用远端标记**（实测修正）：e5 180 个会话里 10 个、n100 339 个里 1 个根本没
+    **为什么不只用远端标记**（实测修正）：server-b 180 个会话里 10 个、server-a 339 个里 1 个根本没
     `time.viewed`——从没在 OpenCode UI 打开过的、dsh 委派建的会话；而两台机器上 `idle > viewed`
     的是 0 个。只按标记判会把“刚跑完且确实没人看过”判成已读，功能永不触发；只按本地判又会在
     dsh 重启后把几百条历史刷成未读。所以候选走本地、清除走远端。
@@ -688,7 +696,7 @@
 - 不持久化：重启后从快照重建。
 - iframe 里的会话页跨域：焦点进入后 Esc 归 OpenCode（父页面收不到键盘事件），
   只能用顶栏「关闭」；首次嵌入需在 OpenCode 里登录一次。彻底解决要同源代理。
-- 空闲会话数量大（n100+e5 约 480，含大量 `dsh delegate` / `dsh subagent:` 机器会话），
+- 空闲会话数量大（server-a+server-b 约 480，含大量 `dsh delegate` / `dsh subagent:` 机器会话），
   目前每台最多取 60 条；是否需要默认过滤机器会话待定。
 
 ## 0.5.1 (2026-11-20)
@@ -741,7 +749,7 @@ silently losing shell output.
 
 ### Verified
 
-- Live on n100 (OpenCode 2.3.0): session rows show
+- Live on server-a (OpenCode 2.3.0): session rows show
   `alibaba-token-plan-cn/deepseek-v4.1-flash#high · agent=build · succeeded`; message tool
   lines show `bash: completed · cd … && git add … → M CHANGELOG.md …`; `type=user` filters
   server-side; `seq 1 200000` returns 1 MiB with
@@ -764,7 +772,7 @@ Session info shows the reasoning variant.
 
 ### Verified
 
-- Live on n100 (OpenCode 2.3.0): a session created with
+- Live on server-a (OpenCode 2.3.0): a session created with
   `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high` reports `variant:"high"` over the API and
   now renders as `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high`.
 
@@ -789,7 +797,7 @@ OpenCode 2 model variants are selectable, not just listable.
 
 ### Verified
 
-- Live on n100 (OpenCode 2.3.0): delegating with
+- Live on server-a (OpenCode 2.3.0): delegating with
   `alibaba-token-plan-cn/deepseek-v4.1-flash-1017#high` created a session whose
   `model.variant` is `high`; omitting the variant yields the server default.
 
@@ -824,7 +832,7 @@ through v2-native fallbacks, and message pagination is now correct for long sess
 
 ### Verified
 
-- Live on n100 (OpenCode 2.3.0): content search returned `./a.txt:1: alpha needle here` (2 hits);
+- Live on server-a (OpenCode 2.3.0): content search returned `./a.txt:1: alpha needle here` (2 hits);
   a session that used `todowrite` reported all 6 todos with priorities; a 199-message session
   returned 149 of 150 requested messages (one raw entry is not a text message); model listing
   showed `qwen4-max-preview{none|low|medium|xhigh}` and `deepseek-v4.1-flash-1017{none|low|high}`.
@@ -868,9 +876,9 @@ Multi-server subagent routing, accurate stop reasons, and a crash fix in the sha
 
 ### Verified
 
-- Live routed provider across n100 + m65 (OpenCode 2.3.0): directory routing (`/tmp` → n100,
-  `/home/yhuan` → m65), round-robin alternating (`n100 → m65 → n100 → m65`), failover from a dead
-  endpoint to n100, and the missing-directory diagnostic.
+- Live routed provider across server-a + server-b (OpenCode 2.3.0): directory routing (`/tmp` → server-a,
+  `/home/user` → server-b), round-robin alternating (`server-a → server-b → server-a → server-b`), failover from a dead
+  endpoint to server-a, and the missing-directory diagnostic.
 
 ## 0.2.0 (2026-11-20)
 
