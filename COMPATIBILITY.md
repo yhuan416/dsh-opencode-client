@@ -235,8 +235,10 @@ Explicitly **not** covered:
 - The OpenCode upstream HTTP API and `@opencode/client` — pinned and upgraded independently.
 - UI layout, copy and `localStorage` keys.
 
-Breaking changes bump **major**, additive changes **minor**, fixes **patch**. Releases are
-git-only (annotated tag); the package is `private` and never published to npm.
+Breaking changes bump **major**, additive changes **minor**, fixes **patch**. Releases go to npm
+from an annotated `v<version>` tag: `.github/workflows/publish.yml` runs the gates and publishes with
+npm trusted publishing (OIDC), so every tarball carries a provenance attestation naming the tag and
+commit it was built from.
 
 ## Versioning policy
 

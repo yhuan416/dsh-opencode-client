@@ -3,7 +3,8 @@
 > 面向「想在第二台机器（比如 PC）上装这个插件」的场景。目标：左栏出现 **OpenCode**
 > 卡片看板，并且会话里能用 `opencode_board` 工具。
 >
-> 版本：v0.6.0 · 分支 `feat/opencode-v2-support`
+> 版本：1.1.x · 分支 `master`（每个 npm 版本对应一个 `v*` tag；只想要现成插件的话，
+> 走 [3a npm 安装](#3a-npm推荐无需-clone)，不需要 clone）
 
 ## 0. 前置条件
 
@@ -26,8 +27,8 @@ curl -s -o /dev/null -w '%{http_code}\n' http://192.168.4.50:4096/api/info
 > 改代码、或用脚本软链进 profile 时才需要。
 
 ```sh
-git clone -b feat/opencode-v2-support https://github.com/yhuan416/dsh-opencode-client
-# 或者固定在这一版：git clone -b v0.6.0 https://github.com/yhuan416/dsh-opencode-client
+git clone https://github.com/yhuan416/dsh-opencode-client
+# 想固定在某个版本上就加 tag（把 v1.1.4 换成你要的）：git clone --branch v1.1.4 --depth 1 <同一地址>
 ```
 
 插件是纯 JS、无构建步骤，clone 下来就能用。
@@ -67,6 +68,10 @@ OPENCODE_SERVER_PASSWORD='<密码>' bash scripts/install-into-profile.sh http://
 ### 3c. Windows / 手动
 
 ```powershell
+# npm 安装（推荐，不用 clone）
+dsh plugin --profile web add dsh-opencode-client
+
+# 或者指向本地 checkout
 dsh plugin --profile web add D:\dev\dsh-opencode-client
 ```
 
@@ -147,7 +152,7 @@ curl -s "http://<host>:3080/api/opencode-client/board" | head -c 300
 | 卡片页一直「正在采集会话状态…」 | 路由没注册（bundle 没选上） | 检查 `package.json` 的 `dsh.profile.bundles` |
 | `apiVersion: "1"` + `state: offline` | 没配 `password` | 补上密码；`curl -u "opencode:<密码>" http://host:4096/api/info` 自测 |
 | 点卡片没反应 | 深链算不出来 | 打开浏览器控制台看 `opencode board: no deep link` 警告 |
-| 浮层里报 `Unrecognised route!` | 深链格式旧 | 必须 `/server/<base64url(origin)>/session/<id>`；升级到 v0.6.0+ |
+| 浮层里报 `Unrecognised route!` | 深链格式旧 | 必须 `/server/<base64url(origin)>/session/<id>`；该格式自 v0.6.0 固定，升级到当前版本即可 |
 | 改了 `client.js` 但页面没变 | 前端不走热重载 | 重启 dsh |
 | 浮层里要登录 / Esc 无效 | iframe 跨域 | 已知限制，见 CHANGELOG「已知限制」 |
 | YAML 解析失败 | 用了 Tab 或缩进不齐 | 全部改成空格，缩进层级对齐上面的示例 |

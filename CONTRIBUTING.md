@@ -107,9 +107,13 @@ Before opening a PR:
 
 ## Release policy
 
-Releases are **git-only**: an annotated tag on `master`, no npm publish (`private: true`).
-Maintainers cut tags; contributors should not create release tags. The versioning promise and the
-covered API surface are in [COMPATIBILITY.md](COMPATIBILITY.md#semver-scope-100).
+Releases go to npm from CI. Bump `package.json` and `package-lock.json`, finalize the CHANGELOG
+section, merge the PR, then push an annotated tag `v<version>` on `master` — that tag is the only
+publish trigger. `.github/workflows/publish.yml` runs the gates and publishes through npm trusted
+publishing (OIDC, no long-lived token), and it refuses to start when the tag disagrees with
+`package.json` or when that version is already on the registry. Maintainers cut tags; contributors
+should not create release tags. The versioning promise and the covered API surface are in
+[COMPATIBILITY.md](COMPATIBILITY.md#semver-scope-100).
 
 ## Reporting bugs and security issues
 

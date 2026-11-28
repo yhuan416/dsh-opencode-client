@@ -2,7 +2,7 @@
   "name": "dsh-opencode-client",
   "version": "1.1.4",
   "type": "module",
-  "description": "DeepSeek Harness plugin that acts as an OpenCode client: list, read and continue remote OpenCode sessions, delegate work to them, and use OpenCode as a native subagent.",
+  "description": "DeepSeek Harness plugin that acts as an OpenCode client: list, read and continue remote OpenCode sessions, delegate work to them, and use OpenCode as a native subagent. · DSH 的 OpenCode 客户端：跨 server 看板、远端会话读取与委派，并把 OpenCode 注册为 dsh 原生子代理。",
   "icon": "./icon.svg",
   "repository": {
     "type": "git",
