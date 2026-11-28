@@ -60,10 +60,10 @@
     "tools": { "totals": {…}, "usage": [{…}] },
     "models": [{ "model": "…", "steps": 0, "tokens": {…}, "cost": 0 }],
     "activity": [{ "date": "2026-11-27", "steps": 0 }],
-    "projects": [{ "server": "e5", "directory": "/path", "sessions": 0 }]
+    "projects": [{ "server": "server-b", "directory": "/path", "sessions": 0 }]
   },
   "servers": [
-    { "id": "e5", "label": "e5", "supported": true, "…同上各字段…", "truncated": false }
+    { "id": "server-b", "label": "server-b", "supported": true, "…同上各字段…", "truncated": false }
   ]
 }
 ```

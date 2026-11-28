@@ -7,9 +7,9 @@
  * the right rows, the registry is collecting; the panel only re-renders it.
  *
  * Usage:
- *   OPC_PROBE_URL=http://192.168.4.65:4096 \
+ *   OPC_PROBE_URL=http://server-b:4096 \
  *   [OPC_PROBE_PASSWORD='<OPENCODE_SERVER_PASSWORD, v2 only>'] \
- *   [OPC_PROBE_ID=n100] \
+ *   [OPC_PROBE_ID=server-a] \
  *   [OPC_PROBE_JSON=1] \
  *   node scripts/probe-observation.mjs
  *
@@ -22,7 +22,7 @@ import { createObservation } from '../lib/observation.js'
 
 const url = process.env.OPC_PROBE_URL
 if (url === undefined || url === '') {
-  console.error('OPC_PROBE_URL is required (e.g. http://192.168.4.65:4096)')
+  console.error('OPC_PROBE_URL is required (e.g. http://server-b:4096)')
   process.exit(2)
 }
 const servers = normalizeServers([{

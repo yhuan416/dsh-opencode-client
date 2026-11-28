@@ -40,15 +40,15 @@ function startServer(routes) {
 }
 
 const SESSIONS = [
-  { id: 'ses_running', title: 'api probe', directory: '/home/yhuan/workspace', time: { created: NOW - 60000, updated: NOW - 1000 } },
-  { id: 'ses_child', title: 'subagent', parentID: 'ses_running', directory: '/home/yhuan/workspace', time: { updated: NOW - 500 } },
-  { id: 'ses_idle', title: '周报', directory: '/home/yhuan/workspace/gitlab', time: { updated: NOW - 86400000 } },
+  { id: 'ses_running', title: 'api probe', directory: '/home/user/workspace', time: { created: NOW - 60000, updated: NOW - 1000 } },
+  { id: 'ses_child', title: 'subagent', parentID: 'ses_running', directory: '/home/user/workspace', time: { updated: NOW - 500 } },
+  { id: 'ses_idle', title: '周报', directory: '/home/user/workspace/gitlab', time: { updated: NOW - 86400000 } },
 ]
 
 test('collectServer + collectStatus + collectPending fill the board', async function () {
   const fake = await startServer({
     '/api/info': function () { return { version: '2.4.2', pid: 1, urls: [], paths: { tmp: '/tmp' } } },
-    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/home/yhuan/workspace' }] } },
+    '/api/project': function () { return { data: [{ id: 'proj_1', canonical: '/home/user/workspace' }] } },
     '/api/session': function () { return { data: SESSIONS, cursor: { next: null } } },
     '/api/session/active': function () { return { data: { ses_running: { type: 'busy' }, ses_child: { type: 'busy' } } } },
     '/api/permission/request': function () {
@@ -57,7 +57,7 @@ test('collectServer + collectStatus + collectPending fill the board', async func
     '/api/form': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const observation = createObservation()
 
@@ -108,7 +108,7 @@ test('a fresh listing prunes sessions deleted while the stream was down', async 
     '/api/session': function () { return { data: sessions, cursor: { next: null } } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const observation = createObservation()
     const sync = function (value) {
@@ -161,7 +161,7 @@ test('a listing raced by a deletion is served but not cached', async function ()
     },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     serverRef = servers[0]
     const raced = await collectServer(serverRef)
     assert.equal(raced.raced, true, 'raced listing is marked for the board')
@@ -188,7 +188,7 @@ test('createBoard prunes sessions the server listing dropped', async function ()
     '/api/session/active': function () { return { data: {} } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const observation = createObservation()
     const board = createBoard({ servers: servers, observation: observation })
@@ -214,7 +214,7 @@ test('concurrent refreshes share one listing request', async function () {
     '/api/session': function () { return { data: [{ id: 'ses_a', title: 'a', directory: '/tmp', time: { updated: NOW } }], cursor: { next: null } } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const seen = []
     const [first, second] = await Promise.all([
@@ -244,7 +244,7 @@ test('a truncated listing reports the page boundary for safe pruning', async fun
     '/api/session': function () { return { data: many, cursor: { next: 'cursor-2' } } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     let listing
     await collectServer(servers[0], { onListing: function (value) { listing = value } })
     assert.ok(listing, 'a full page still reports its listing metadata')
@@ -275,7 +275,7 @@ test('a raced refresh applies none of the stale snapshots', async function () {
     '/api/permission/request': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const observation = createObservation()
     const board = createBoard({ servers: servers, observation: observation })
@@ -304,7 +304,7 @@ test('collectPending renders the v2 question text on the card detail', async fun
     },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const entries = await collectPending(servers[0], ['ses_q'])
     assert.equal(entries.length, 1)
     assert.equal(entries[0].detail, 'form: state-test：是否继续？')
@@ -328,16 +328,16 @@ test('a truncated board page prunes only provably-deleted rows', async function 
     '/api/permission/request': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const observation = createObservation()
     // Above the page floor -> would certainly be listed -> deletion proven.
-    observation.observeIdentity('n100', { id: 'ses_deleted_recent', title: 'gone', updatedAt: NOW })
+    observation.observeIdentity('server-a', { id: 'ses_deleted_recent', title: 'gone', updatedAt: NOW })
     // Below the floor -> could just be on page 2 -> must be kept.
-    observation.observeIdentity('n100', { id: 'ses_off_page', title: 'page 2', updatedAt: NOW - 600000 })
+    observation.observeIdentity('server-a', { id: 'ses_off_page', title: 'page 2', updatedAt: NOW - 600000 })
     const board = createBoard({ servers: servers, observation: observation })
     await board.refreshServer(servers[0])
     assert.equal(board.snapshot().idleCount, 501)
-    const ids = observation.rows('n100').map(function (row) { return row.sessionId })
+    const ids = observation.rows('server-a').map(function (row) { return row.sessionId })
     assert.ok(ids.includes('ses_off_page'), 'an existing off-page session must survive')
     assert.equal(ids.includes('ses_deleted_recent'), false, 'a provably deleted recent session must go')
   } finally {
@@ -360,9 +360,9 @@ test('a truncated page without a floor never prunes', async function () {
     '/api/permission/request': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const observation = createObservation()
-    observation.observeIdentity('n100', { id: 'ses_unproven', title: 'stale?' })
+    observation.observeIdentity('server-a', { id: 'ses_unproven', title: 'stale?' })
     const board = createBoard({ servers: servers, observation: observation })
     await board.refreshServer(servers[0])
     assert.equal(board.snapshot().idleCount, 501, 'no page floor means no absence-based pruning')
@@ -384,7 +384,7 @@ test('a stale pending snapshot cannot resurrect a deleted row beyond one cycle',
     '/api/permission/request': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const observation = createObservation()
     const board = createBoard({ servers: servers, observation: observation })
     await board.refreshServer(servers[0])
@@ -398,7 +398,7 @@ test('a stale pending snapshot cannot resurrect a deleted row beyond one cycle',
     const nextBoard = createBoard({ servers: servers, observation: observation })
     await nextBoard.refreshServer(servers[0])
     assert.equal(nextBoard.snapshot().needsMe.length, 0)
-    assert.deepEqual(observation.rows('n100').map(function (row) { return row.sessionId }), ['ses_keep'])
+    assert.deepEqual(observation.rows('server-a').map(function (row) { return row.sessionId }), ['ses_keep'])
   } finally {
     await fake.close()
   }
@@ -420,7 +420,7 @@ test('one suspicious empty listing does not wipe the board', async function () {
     '/api/permission/request': function () { return { data: [] } },
   })
   try {
-    const servers = normalizeServers([{ id: 'n100', url: fake.url, password: 'secret' }])
+    const servers = normalizeServers([{ id: 'server-a', url: fake.url, password: 'secret' }])
     const server = servers[0]
     const observation = createObservation()
     const board = createBoard({ servers: servers, observation: observation })
@@ -449,7 +449,7 @@ test('GET /board exposes per-server version/state/groups', async function () {
   const { createRoutes } = await import('../lib/routes.js')
   const { createObservation } = await import('../lib/observation.js')
   const observation = createObservation()
-  const fakeServer = { id: 'n100', label: 'n100 opencode', url: 'http://127.0.0.1:4096', sse: { state: 'open' } }
+  const fakeServer = { id: 'server-a', label: 'server-a opencode', url: 'http://127.0.0.1:4096', sse: { state: 'open' } }
   const boardService = {
     observedById: function () { return new Map() },
     refreshAll: function () { return Promise.resolve() },
@@ -491,15 +491,15 @@ test('POST /servers and /probe drive the config editor and a real probe', async 
   const post = serversRoute.find(function (route) { return route.methods.includes('POST') })
   const del = routes.find(function (route) { return route.path === '/api/opencode-client/servers/remove' })
 
-  const body = JSON.stringify({ server: { id: 'e5', url: 'http://192.168.4.65:4096/', password: 'pw', label: 'e5 opencode' } })
+  const body = JSON.stringify({ server: { id: 'server-b', url: 'http://server-b:4096/', password: 'pw', label: 'server-b opencode' } })
   const created = await post.fetch({ url: '/api/opencode-client/servers', json: function () { return Promise.resolve(JSON.parse(body)) } })
   const createdPayload = await created.json()
   assert.equal(createdPayload.ok, true)
-  assert.deepEqual(calls[0], ['add', { id: 'e5', url: 'http://192.168.4.65:4096', label: 'e5 opencode', password: 'pw' }])
+  assert.deepEqual(calls[0], ['add', { id: 'server-b', url: 'http://server-b:4096', label: 'server-b opencode', password: 'pw' }])
 
-  const removed = await del.fetch({ url: '/api/opencode-client/servers/remove', json: function () { return Promise.resolve({ id: 'e5' }) } })
+  const removed = await del.fetch({ url: '/api/opencode-client/servers/remove', json: function () { return Promise.resolve({ id: 'server-b' }) } })
   assert.equal((await removed.json()).ok, true)
-  assert.deepEqual(calls[1], ['remove', 'e5'])
+  assert.deepEqual(calls[1], ['remove', 'server-b'])
 })
 
 test('POST /servers/update patches only the fields the form sent (password preserved)', async function () {
@@ -525,19 +525,19 @@ test('POST /servers/update patches only the fields the form sent (password prese
   assert.ok(update, 'servers/update route is registered')
 
   // Rename + normalized url; an empty password means "keep the stored one".
-  const renamed = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { label: 'e5 新名', url: 'http://192.168.4.65:4096/', password: '' } }) } })
+  const renamed = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'server-b', patch: { label: 'server-b 新名', url: 'http://server-b:4096/', password: '' } }) } })
   assert.equal((await renamed.json()).ok, true)
-  assert.deepEqual(calls[0], ['e5', { label: 'e5 新名', url: 'http://192.168.4.65:4096' }])
+  assert.deepEqual(calls[0], ['server-b', { label: 'server-b 新名', url: 'http://server-b:4096' }])
 
   // A new password is forwarded; no other field is invented.
-  const rekey = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { password: 'new-pw' } }) } })
+  const rekey = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'server-b', patch: { password: 'new-pw' } }) } })
   assert.equal((await rekey.json()).ok, true)
-  assert.deepEqual(calls[1], ['e5', { password: 'new-pw' }])
+  assert.deepEqual(calls[1], ['server-b', { password: 'new-pw' }])
 
   // Empty patch / bad url are rejected before touching the config.
-  const empty = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { password: '' } }) } })
+  const empty = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'server-b', patch: { password: '' } }) } })
   assert.equal((await empty.json()).ok, false)
-  const badUrl = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'e5', patch: { url: 'ftp://nope' } }) } })
+  const badUrl = await update.fetch({ url: '/api/opencode-client/servers/update', json: function () { return Promise.resolve({ id: 'server-b', patch: { url: 'ftp://nope' } }) } })
   assert.equal((await badUrl.json()).ok, false)
   assert.equal(calls.length, 2)
 })
@@ -589,7 +589,7 @@ test('server-scoped routes resolve a server instead of throwing ReferenceError',
   const { createObservation } = await import('../lib/observation.js')
   const observation = createObservation()
   const routes = createRoutes({
-    servers: [{ id: 'n100', url: 'http://127.0.0.1:4096' }],
+    servers: [{ id: 'server-a', url: 'http://127.0.0.1:4096' }],
     delegate: {},
     observation: observation,
     board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function (options) { return observation.board(options) }, serverInfo: function () { return undefined } },
@@ -597,7 +597,7 @@ test('server-scoped routes resolve a server instead of throwing ReferenceError',
   // 16 handlers used to call an unbound `findServer`, so every one of them threw
   // ReferenceError. Validation errors (400) prove the lookup now resolves.
   const fork = routes.find(function (route) { return route.path === '/api/opencode-client/fork' })
-  const response = await fork.fetch({ url: '/api/opencode-client/fork', json: function () { return Promise.resolve({ server: 'n100' }) } })
+  const response = await fork.fetch({ url: '/api/opencode-client/fork', json: function () { return Promise.resolve({ server: 'server-a' }) } })
   assert.equal(response.status, 400)
   assert.match((await response.json()).error, /server and session required/)
   // An unknown id falls back to the default server rather than being rejected.

@@ -4,19 +4,19 @@ import { test } from 'node:test'
 test('permission log counts each answer and keeps a bounded ring (issue #57)', async function () {
   const { createPermissionLog } = await import('../lib/permissions.js')
   const log = createPermissionLog({ limit: 2 })
-  assert.equal(log.snapshot('e5'), undefined)
-  log.record('e5', { action: 'read', resources: ['.env'], reply: 'once', source: 'host-approval' })
-  log.record('e5', { action: 'read', resources: ['.env'], reply: 'reject', source: 'host-approval' })
-  log.record('e5', { action: 'bash', resources: ['ls'], reply: 'auto', source: 'ask-no-approval' })
-  log.record('e5', { action: 'write', resources: [], reply: 'pending', source: 'unowned-session' })
-  const state = log.snapshot('e5')
+  assert.equal(log.snapshot('server-b'), undefined)
+  log.record('server-b', { action: 'read', resources: ['.env'], reply: 'once', source: 'host-approval' })
+  log.record('server-b', { action: 'read', resources: ['.env'], reply: 'reject', source: 'host-approval' })
+  log.record('server-b', { action: 'bash', resources: ['ls'], reply: 'auto', source: 'ask-no-approval' })
+  log.record('server-b', { action: 'write', resources: [], reply: 'pending', source: 'unowned-session' })
+  const state = log.snapshot('server-b')
   assert.equal(state.asked, 4)
   assert.equal(state.userApproved, 1)
   assert.equal(state.autoApproved, 1)
   assert.equal(state.rejected, 1)
   assert.equal(state.pending, 1)
   assert.equal(state.recent.length, 2)
-  assert.equal(log.snapshot('n100'), undefined)
+  assert.equal(log.snapshot('server-a'), undefined)
 })
 
 test('/board exposes permission diagnostics per server', async function () {
@@ -25,10 +25,10 @@ test('/board exposes permission diagnostics per server', async function () {
   const { createPermissionLog } = await import('../lib/permissions.js')
   const { normalizeServers } = await import('../lib/config.js')
   const permissions = createPermissionLog({ limit: 5 })
-  permissions.record('e5', { action: 'read', resources: ['.env'], reply: 'auto', source: 'ask-no-approval' })
+  permissions.record('server-b', { action: 'read', resources: ['.env'], reply: 'auto', source: 'ask-no-approval' })
   const observation = createObservation()
   const routes = createRoutes({
-    servers: [{ id: 'e5', label: 'e5', url: 'http://127.0.0.1:4096', sse: { state: 'open' } }],
+    servers: [{ id: 'server-b', label: 'server-b', url: 'http://127.0.0.1:4096', sse: { state: 'open' } }],
     delegate: {},
     observation: observation,
     board: { observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function (options) { return observation.board(options) }, serverInfo: function () { return undefined } },

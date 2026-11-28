@@ -21,12 +21,12 @@ OpenCode UI: remote execution, permissions, questions and files all stay on the 
 
 ```text
 ┌ OpenCode Client ─────────────────────────────────────────────────────────────┐
-│ n100  2.4.2    live  · 2 running · bash                                       │
-│   /home/yhuan/workspace/gitlab   [新建会话]                                    │
+│ server-a  2.4.2    live  · 2 running · bash                                       │
+│   /home/user/workspace/gitlab   [新建会话]                                    │
 │     · 日志查11.5 App回放失败  · ses_xxx  [聊天] [内嵌打开] [新标签]             │
 │     · dsh subagent: api probe · ses_yyy  [聊天] ...                           │
 │                                                                              │
-│ ── chat: ses_xxx @ n100 ──────────────────────────────────────────────────── │
+│ ── chat: ses_xxx @ server-a ──────────────────────────────────────────────────── │
 │  [user]      刚才让你记住的数字是多少？           2026-11-06 15:52           │
 │  [assistant] 7391                                                           │
 │  [tool]      bash completed · 1.2s · git status                              │

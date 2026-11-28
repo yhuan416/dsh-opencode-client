@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install dsh-opencode-client into a dsh web profile (manual, no pnpm store needed).
-# Usage: [OPENCODE_SERVER_PASSWORD=...] bash scripts/install-into-profile.sh [opencode-url] [server-id]
+# Usage: [OPENCODE_SERVER_PASSWORD=...] bash scripts/install-into-profile.sh <opencode-url> [server-id]
 #
 # The password is optional but required for OpenCode 2.x servers: without it the
 # plugin falls back to the v1 API and the server shows as offline.
@@ -8,9 +8,15 @@ set -euo pipefail
 
 PROFILE_DIR="${DSH_HOME:-$HOME/.dsh}/profiles/web"
 PLUGIN_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-OPENCODE_URL="${1:-http://192.168.4.50:4096}"
-SERVER_ID="${2:-n100}"
+OPENCODE_URL="${1:-}"
+SERVER_ID="${2:-server-a}"
 PASSWORD="${OPENCODE_SERVER_PASSWORD:-}"
+
+if [ -z "$OPENCODE_URL" ]; then
+  echo "usage: [OPENCODE_SERVER_PASSWORD=...] bash $0 <opencode-url> [server-id]" >&2
+  echo "  e.g. bash $0 http://opencode-host:4096 server-a" >&2
+  exit 2
+fi
 
 echo "==> plugin : $PLUGIN_DIR"
 echo "==> profile: $PROFILE_DIR"

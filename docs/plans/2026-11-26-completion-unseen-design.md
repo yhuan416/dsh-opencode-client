@@ -34,7 +34,7 @@
 | 左栏徽标 | **无官方字段**：`sidebar.panellist` 只给 `{size, active}` + `{id, order, label}` | 自己画（唯一选择） |
 | toast 座位 | `shell.overlay`（文档明示是 badge / toast stack / status pill 的座位） | 复用已有注册 |
 
-实测记录（OpenCode 2.3.0，e5）：
+实测记录（OpenCode 2.3.0，server-b）：
 
 ```
 session.time = {created, updated, busy, idle, viewed}       // 两个样本 idle === viewed（已读）
@@ -72,7 +72,7 @@ unread = status === 'idle' && sawFinish && idleAt !== undefined && !(viewedAt >=
 ```
 
 **修正（实施中实测推翻初稿）**：初稿写的是“未读 = `idleAt > viewedAt`”，要求两个字段都在。
-真机量下来 e5 180 个会话里有 10 个、n100 339 个里有 1 个**根本没有 `time.viewed`**——就是那些
+真机量下来 server-b 180 个会话里有 10 个、server-a 339 个里有 1 个**根本没有 `time.viewed`**——就是那些
 从没在 OpenCode UI 里打开过、由 dsh 委派创建的会话；同时两台机器上 `idle > viewed` 的会话是
 **0 个**。照初稿的规则，“刚跑完且确实没人看过”恰好被判成已读，功能等于永远不触发。
 

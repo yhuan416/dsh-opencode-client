@@ -61,7 +61,7 @@ test('latestVersion caches a successful lookup', async function () {
 })
 
 test('upgrade route exposes only the latest version', async function () {
-  const servers = normalizeServers([{ id: 'e5', url: 'http://127.0.0.1:1', password: 'pw' }])
+  const servers = normalizeServers([{ id: 'server-b', url: 'http://127.0.0.1:1', password: 'pw' }])
   const observation = { board: function () { return {} }, observedById: function () { return new Map() }, refreshAll: function () { return Promise.resolve() }, snapshot: function () { return {} }, serverInfo: function () { return undefined } }
   const route = createRoutes({
     servers: servers,

@@ -13,7 +13,7 @@ DSH 插件详情页的「版本 / 来源信息」由 `@deepseek-ai/dsh-client-ui
 listsVersions = pkg.update === 'registry'          // versions.tsx
 ```
 
-本插件在本机是 profile 依赖 `file:/home/yhuan/workspace/gitlab/dsh-opencode-client`
+本插件在本机是 profile 依赖 `file:/home/user/workspace/gitlab/dsh-opencode-client`
 （`plugin_manager list_bundles` 实测：`version: 1.0.0`，无 `update` 字段），
 因此详情页只有 DSH 自己生成的「来源信息（代码来源 file:… / 当前版本 1.0.0）」，
 **没有版本检查，也无法通过配置开启**。要显示 GitHub 链接与更新状态，只能插件自己画。
@@ -66,7 +66,7 @@ listsVersions = pkg.update === 'registry'          // versions.tsx
     "repository": "https://github.com/yhuan416/dsh-opencode-client",
     "license": "MIT"
   },
-  "install": { "source": "file:/home/yhuan/workspace/gitlab/dsh-opencode-client", "update": null },
+  "install": { "source": "file:/home/user/workspace/gitlab/dsh-opencode-client", "update": null },
   "latest": {
     "status": "latest",            // latest | update-available | unavailable
     "version": "1.0.1",

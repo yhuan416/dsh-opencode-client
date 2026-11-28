@@ -46,7 +46,7 @@
 - **交互（Phase 3）**：session 作用域权限（`decision: once|always|reject`）与表单（类型化字段、`{answer:{key:value}}`、`DELETE` 取消）桥接到 dsh 审批/提问。
 - **工作区/管理（Phase 4）**：shell 走 `POST /api/shell` + 轮询 + `/output`；vcs `mode=working|branch|committed`；`/api/fs/read/*` 原始字节；`/api/fs/find`；fork `{before}`、compact、`init` 命令、`parentID` 子会话。
 - **不可用功能**（决策：明确报错/降级，不伪造）：`opencode_share`、`opencode_tools`；`opencode_find(kind=text)` 与 `session_info` 的 todo 在 0.4.0 以 v2 原生能力补回（workspace grep、`todowrite` 推导），消息按 cursor 分页；v1 保持原样。
-- **验证**：`npm test`（45 项离线测试，含 8 项 v2 面测试）、`npm run check`、`npm run e2e` 对真实 v2.3.0（n100/e5）与本地 v1.18.10 各 10/10 步通过。
+- **验证**：`npm test`（45 项离线测试，含 8 项 v2 面测试）、`npm run check`、`npm run e2e` 对真实 v2.3.0（server-a/server-b）与本地 v1.18.10 各 10/10 步通过。
 
 ---
 

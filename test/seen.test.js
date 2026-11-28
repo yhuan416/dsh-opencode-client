@@ -55,19 +55,19 @@ test('POST /seen marks the session viewed on the remote with the row idle', asyn
     '/api/session/ses_1/view': function () { return { __status: 204 } },
   })
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const observation = createObservation()
-    observation.observeIdentity('e5', { id: 'ses_1', busyAt: IDLE - 5000, idleAt: IDLE, viewedAt: IDLE - 90000 })
+    observation.observeIdentity('server-b', { id: 'ses_1', busyAt: IDLE - 5000, idleAt: IDLE, viewedAt: IDLE - 90000 })
     // Watch it run, then stop: that edge is what arms the reminder.
-    observation.observeRunning('e5', new Set(['ses_1']), true)
-    observation.observeRunning('e5', new Set(), true)
+    observation.observeRunning('server-b', new Set(['ses_1']), true)
+    observation.observeRunning('server-b', new Set(), true)
     const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
     const seen = routes.find(function (route) { return route.path === '/api/opencode-client/seen' })
 
     // The row is in the unseen partition before the call.
     assert.equal(observation.board().unseen.length, 1)
 
-    const response = await seen.fetch({ url: '/api/opencode-client/seen', json: function () { return Promise.resolve({ server: 'e5', session: 'ses_1' }) } })
+    const response = await seen.fetch({ url: '/api/opencode-client/seen', json: function () { return Promise.resolve({ server: 'server-b', session: 'ses_1' }) } })
     const payload = await response.json()
     assert.equal(payload.ok, true)
     assert.equal(payload.supported, true)
@@ -87,18 +87,18 @@ test('POST /seen prefers an explicit idle and refuses to guess one', async funct
     '/api/session/ses_2/view': function () { return { __status: 204 } },
   })
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const observation = createObservation()
     const routes = createRoutes({ servers: servers, delegate: {}, observation: observation, board: boardStub(observation) })
     const seen = routes.find(function (route) { return route.path === '/api/opencode-client/seen' })
 
-    const explicit = await seen.fetch({ url: '/api/opencode-client/seen', json: function () { return Promise.resolve({ server: 'e5', session: 'ses_2', idle: 1234 }) } })
+    const explicit = await seen.fetch({ url: '/api/opencode-client/seen', json: function () { return Promise.resolve({ server: 'server-b', session: 'ses_2', idle: 1234 }) } })
     assert.equal((await explicit.json()).ok, true)
     assert.deepEqual(JSON.parse(fake.views()[0].body), { idle: 1234 })
 
     // Unknown session and no idle: 400 and no remote write, never `Date.now()`
     // (which could run ahead of a live run and mark an in-flight turn read).
-    const unknown = await seen.fetch({ url: '/api/opencode-client/seen', json: function () { return Promise.resolve({ server: 'e5', session: 'ses_missing' }) } })
+    const unknown = await seen.fetch({ url: '/api/opencode-client/seen', json: function () { return Promise.resolve({ server: 'server-b', session: 'ses_missing' }) } })
     assert.equal(unknown.status, 400)
     assert.match((await unknown.json()).error, /idle required/)
     assert.equal(fake.views().length, 1, 'no view request for the refused call')

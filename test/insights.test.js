@@ -116,7 +116,7 @@ test('a past activity day is scanned once, even across different windows', async
   try {
     // Different server id: `activityCache` is keyed by day+server, and this test
     // must not leave a result behind for the sibling window test below.
-    const servers = normalizeServers([{ id: 'e5-daily', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b-daily', url: fake.url, password: 'pw' }])
     const first = await collectActivity(servers, { days: 4, now: NOW })
     assert.equal(first.partial, false)
     const scanned = fake.requests.length
@@ -134,7 +134,7 @@ test('a past activity day is scanned once, even across different windows', async
 test('collectInsights aggregates window-scoped totals, activity fill and project counts', async function () {
   const fake = await startFake(fakeHandlers())
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const result = await collectInsights(servers, { now: NOW })
     const total = result.total
     assert.equal(total.sessions, 2)
@@ -172,15 +172,15 @@ test('collectInsights isolates a failing server from the total', async function 
   }))
   try {
     const servers = normalizeServers([
-      { id: 'e5', url: good.url, password: 'pw' },
-      { id: 'n100', url: bad.url, password: 'pw' },
+      { id: 'server-b', url: good.url, password: 'pw' },
+      { id: 'server-a', url: bad.url, password: 'pw' },
     ])
     const result = await collectInsights(servers, { now: NOW })
     assert.equal(result.total.sessions, 2, 'only the healthy server contributes')
-    const failed = result.servers.find(function (row) { return row.id === 'n100' })
+    const failed = result.servers.find(function (row) { return row.id === 'server-a' })
     assert.equal(failed.supported, false)
     assert.equal(failed.sessions, undefined)
-    assert.ok(result.servers.find(function (row) { return row.id === 'e5' }).supported === true)
+    assert.ok(result.servers.find(function (row) { return row.id === 'server-b' }).supported === true)
   } finally {
     await good.close()
     await bad.close()
@@ -190,7 +190,7 @@ test('collectInsights isolates a failing server from the total', async function 
 test('stats summary and detail never share a cache slot', async function () {
   const fake = await startFake(fakeHandlers())
   try {
-    const server = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])[0]
+    const server = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])[0]
     const from = new Date(2026, 10, 20, 0, 0, 0).getTime()
     const summary = await collectStats(server, { from: from, tools: 'summary' })
     assert.deepEqual(summary.tools.usage, undefined, 'summary has no per-tool usage')
@@ -208,7 +208,7 @@ test('stats summary and detail never share a cache slot', async function () {
 test('days selects a calendar window and drives the activity length', async function () {
   const fake = await startFake(fakeHandlers())
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const month = await collectInsights(servers, { now: NOW, days: 30 })
     assert.equal(month.total.activity.length, 30)
     assert.equal(new Date(month.from).getHours(), 0, 'window starts at local midnight')
@@ -257,7 +257,7 @@ test('collectActivity buckets sessions, tokens and steps per day and caches', as
     },
   })
   try {
-    const servers = normalizeServers([{ id: 'e5', url: fake.url, password: 'pw' }])
+    const servers = normalizeServers([{ id: 'server-b', url: fake.url, password: 'pw' }])
     const result = await collectActivity(servers, { days: 3, now: NOW })
     assert.equal(result.days, 3)
     assert.equal(result.activity.length, 3)

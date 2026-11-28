@@ -39,7 +39,7 @@ import { sendSessionMessage } from '../lib/session-run.js'
 
 const url = process.env.OPC_LIVE_URL || process.env.OCV2_URL
 if (url === undefined || url === '') {
-  console.error('OPC_LIVE_URL is required (e.g. http://192.168.4.50:4096)')
+  console.error('OPC_LIVE_URL is required (e.g. http://server-a:4096)')
   process.exit(2)
 }
 const password = process.env.OPC_LIVE_PASSWORD || process.env.OCV2_PASSWORD
