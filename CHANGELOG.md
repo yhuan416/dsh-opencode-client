@@ -1,3 +1,33 @@
+## 1.3.0 (unreleased) — [delegate] 委派台账与失败原因
+
+### Added
+
+- **委派台账**（`lib/ledger.js`）：进程内有界环形缓冲（默认 200 行），两条委派路径
+  （原生 `opencode-<id>` provider 与 `opencode_subagent` 工具）各记一行——server、任务、目录、模型、
+  开始/结束时间、耗时、状态（ok / failed / aborted / running）与失败原因；**建会话就失败**也留痕。
+  读取入口：`GET /api/opencode-client/delegations`（`?limit=&server=&status=`，`DELETE` 清空）、
+  只读工具 `opencode_delegations`、设置页「委派台账」卡片（汇总 + 最近 5 条）。
+- **失败原因带身份**：`session.execution.failed` 的 `{name,message,data}` 不再被压成一句
+  "remote session failed"，而是透出为错误对象的 `opencodeName` / `code` / `data`；台账行新增
+  `errorName` / `errorCode`，`opencode_delegations` 输出 `[Name · code]` 前缀。
+
+- **单次委派的花费**：`session.step.ended` 的 `{tokens, cost}` 由 SSE 累加到 server 计数器
+  （`lib/run-usage.js`），台账按「run 开始到结算的差值」记 `steps` / `tokens`（input/output/reasoning/
+  cacheRead/cacheWrite）/ `cost`；`opencode_delegations` 输出 `$x` 或 `unpriced`，设置页行尾附成本。
+- **父子委派关系**：台账行新增 `parent`（原生 provider 取 `request.parent.sessionId`，
+  工具路径取 `exec.agent.sessionId`），能看出「谁派给谁」。
+- **`outputSchema` 能力**：provider 现在广告 `outputSchema: true`——请求带 schema 时把约束追加到
+  任务文本、用 `lib/structured.js` 本地校验，成功返回 `SubagentResult.structured`；不符合则结算为
+  `error` 并带诊断，而不是把散文当结果交回去。
+
+### Changed
+
+- **结构化输出校验补齐**：`opencode_subagent` 的 `schema` 从「只查 required」扩展到
+  `type`（含类型数组）/ `required` / `properties` / `items` / `enum`（递归）；未建模的关键字放行，
+  避免因 caller 用了新关键字而误杀合法结果。
+- abort 与 `finish=length|content-filter` 在台账里分别记成 `aborted` / `max-tokens` / `refusal`，
+  与原生 provider 的 `stopReason` 口径一致。
+
 ## 1.2.0 (2026-11-28) — [packaging] npm 成为主安装通道
 
 这一版没有改插件行为，改的是「怎么装、怎么发、仓库里写了什么」。走 minor 而不是 patch 的理由：

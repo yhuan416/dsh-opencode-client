@@ -376,3 +376,36 @@ test('v2: onEvent feeds the observation registry before the state switch', async
     await fake.close()
   }
 })
+
+test('v2: session.step.ended accumulates tokens and cost on the server', async function () {
+  let stream
+  const fake = await startServer(function (request, response) {
+    if (request.url === '/api/event') {
+      openSse(response)
+      stream = response
+      return
+    }
+    replyJson(response, 404, { _tag: 'NotFoundError' })
+  })
+  const events = createStream()
+  const server = makeServer({ id: 'v2-usage', url: fake.url, apiVersion: '2' })
+  let dispose
+  try {
+    dispose = events.subscribeEvents(server)
+    await waitFor(function () { return server.sse.state === 'open' && stream !== undefined })
+
+    writeEvent(stream, { id: 'u1', created: 1, type: 'session.step.ended', data: { sessionID: SES, finish: 'stop', tokens: { input: 100, output: 20, reasoning: 5, cache: { read: 30, write: 1 } }, cost: 0.25 } })
+    writeEvent(stream, { id: 'u2', created: 2, type: 'session.step.ended', data: { sessionID: SES, finish: 'stop', tokens: { input: 50, output: 10 }, cost: 0.5 } })
+
+    await waitFor(function () { return server.usage !== undefined && server.usage.steps === 2 })
+    assert.equal(server.usage.tokens.input, 150)
+    assert.equal(server.usage.tokens.output, 30)
+    assert.equal(server.usage.tokens.reasoning, 5)
+    assert.equal(server.usage.tokens.cacheRead, 30)
+    assert.equal(server.usage.tokens.cacheWrite, 1)
+    assert.equal(server.usage.cost, 0.75)
+  } finally {
+    if (dispose !== undefined) dispose()
+    await fake.close()
+  }
+})
