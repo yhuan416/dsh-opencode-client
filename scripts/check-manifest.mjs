@@ -25,7 +25,25 @@ const manifest = JSON.parse(read('package.json'))
 // ---------------------------------------------------------------- identity
 assert.match(manifest.name, /^[a-z0-9][a-z0-9._-]*$/, 'package name must be a valid npm name')
 assert.match(manifest.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, 'version must be semver')
-assert.equal(manifest.private, true, 'a plugin installed from git must not be npm-publishable')
+
+// ---------------------------------------------------------------- publishing
+// npm is the primary install channel: the market's card command prefers a
+// verified npm name over a git spec, and DSH only offers its own update flow
+// for registry installs. The manifest must therefore be publishable, and a
+// publish must never be the first place the gates run — `prepublishOnly` is
+// the hook `npm publish` calls right before packing.
+assert.notEqual(manifest.private, true, 'a publishable plugin must not set private: true')
+assert.equal(
+  manifest.publishConfig?.access,
+  'public',
+  'publishConfig.access must be public: an unscoped package is published public',
+)
+assert.match(
+  String(manifest.scripts?.prepublishOnly ?? ''),
+  /\bcheck\b/,
+  'prepublishOnly must run the check gate before npm publish',
+)
+
 assert.ok(manifest.engines !== undefined, 'engines is required (node and dsh)')
 assert.equal(typeof manifest.engines.node, 'string', 'engines.node must declare the Node range')
 assert.equal(

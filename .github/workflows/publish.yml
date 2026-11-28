@@ -1,0 +1,51 @@
+name: publish
+
+# Tag-driven npm publishing. The manifest gate asserts that a tag on HEAD equals
+# `v<version>`, so a tag that disagrees with package.json fails before npm is
+# contacted; `prepublishOnly` runs the same gate again right before packing.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish to npm for real (unchecked runs `npm publish --dry-run`)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  # npm provenance: an OIDC token, when the package is published from a public
+  # repo. `NPM_TOKEN` below is the fallback credential for classic tokens.
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The gate runs `git describe --exact-match --tags HEAD`.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Gates (syntax · client · manifest · tests)
+        run: npm run check
+      - name: Pack check
+        run: npm pack --dry-run
+      - name: Publish
+        if: github.event_name == 'push' || inputs.publish
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Dry run
+        if: github.event_name == 'workflow_dispatch' && !inputs.publish
+        run: npm publish --dry-run --access public

@@ -22,6 +22,9 @@ curl -s -o /dev/null -w '%{http_code}\n' http://192.168.4.50:4096/api/info
 
 ## 1. 拿代码
 
+> 只想用、不改代码：**跳过本节**，直接看 [3a npm 安装](#3a-npm推荐无需-clone)。clone 只在你需要
+> 改代码、或用脚本软链进 profile 时才需要。
+
 ```sh
 git clone -b feat/opencode-v2-support https://github.com/yhuan416/dsh-opencode-client
 # 或者固定在这一版：git clone -b v0.6.0 https://github.com/yhuan416/dsh-opencode-client
@@ -42,7 +45,16 @@ dsh plugin --profile web list      # 看现有插件
 
 ## 3. 安装
 
-### 3a. Linux / macOS（脚本，推荐）
+### 3a. npm（推荐，无需 clone）
+
+```sh
+dsh plugin --profile web add dsh-opencode-client
+```
+
+`add` 只加依赖，**bundle 仍然要自己选上**（见 3c 的 `bundles` 片段）。npm 安装还有一个好处：
+插件设置区「关于」里的版本/更新走 DSH 原生 registry 流程（git / 本地路径安装只能打开 release 页）。
+
+### 3b. Linux / macOS（脚本）
 
 ```sh
 cd dsh-opencode-client
@@ -52,7 +64,7 @@ OPENCODE_SERVER_PASSWORD='<密码>' bash scripts/install-into-profile.sh http://
 脚本会：软链到 profile、写 dependency、**把插件选为 bundle**、追加一段 `opencode-client`
 配置（带密码、`permission: ask`），并在写文件前备份 `package.json` / `cordis.patch.yml`。
 
-### 3b. Windows / 手动
+### 3c. Windows / 手动
 
 ```powershell
 dsh plugin --profile web add D:\dev\dsh-opencode-client

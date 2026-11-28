@@ -63,7 +63,8 @@ calendar, and the idle fleet below.
 
 ```sh
 # 1. install the plugin into the web profile (bundle selection is composed at restart)
-dsh plugin --profile web add /path/to/dsh-opencode-client
+#    a local checkout works too: dsh plugin --profile web add /path/to/dsh-opencode-client
+dsh plugin --profile web add dsh-opencode-client
 
 # 2. configure at least one server (full schema in Configuration)
 #    OpenCode 2.x also needs the server password:
@@ -332,10 +333,13 @@ On OpenCode 2 the plugin also normalizes these API differences for you:
 > see **[docs/INSTALL.zh.md](docs/INSTALL.zh.md)** (Chinese).
 
 ```sh
-# A. dsh plugin manager
+# A. dsh plugin manager — published release (recommended: no checkout, no git clone)
+dsh plugin --profile web add dsh-opencode-client
+
+# B. dsh plugin manager — a local checkout or an explicit git spec (development)
 dsh plugin --profile web add /path/to/dsh-opencode-client
 
-# B. helper script: symlink + dependency + bundle selection + a starter server row
+# C. helper script: symlink + dependency + bundle selection + a starter server row
 bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
 ```
 
@@ -343,10 +347,12 @@ or add it manually to the profile and select it as a bundle:
 
 ```json
 {
-  "dependencies": { "dsh-opencode-client": "file:/path/to/dsh-opencode-client" },
+  "dependencies": { "dsh-opencode-client": "^1.1.3" },
   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-opencode-client"] } }
 }
 ```
+
+A local checkout uses `"file:/path/to/dsh-opencode-client"` as the dependency value instead.
 
 Restart `dsh web` afterwards: the bundle selection is composed at startup.
 
@@ -476,8 +482,11 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 | OpenCode 2.x (v2 API) | `/api/*` + HTTP Basic auth (verified against `2.4.2`; `2.3.0+` expected) | supported end to end |
 | OpenCode 1.x (v1 API) | any | **rejected** with `opencode.v1_unsupported` |
 
-The plugin follows independent semantic versioning and is **not published to npm** (install from
-git or a local path). **Current release: `1.1.2`** (annotated tag `v1.1.2`): the observe page and settings share one card
+The plugin follows independent semantic versioning and **is published to npm**
+(`dsh plugin add dsh-opencode-client`); a local checkout or a git spec still works and is the
+development channel. **Current release: `1.1.3`** (annotated tag `v1.1.3`): npm becomes the primary
+install channel (`publishConfig`, a `prepublishOnly` gate, a tag-driven publish workflow) while the
+plugin itself is unchanged from `1.1.2` — the observe page and settings share one card
 system, remotes are editable in the UI (label / url / password, never echoing the password), and
 permission requests are observable (counts, answer source, recent actions, "权限 N · 自动 M" chip);
 it also fixes the settings section going blank and the `promptFailureMessage` ReferenceError.

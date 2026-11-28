@@ -1,3 +1,26 @@
+## 1.1.3 (2026-11-28) — [packaging] npm 发布成为主安装通道
+
+### Changed
+
+- **发布渠道从「git-only」改为 npm 优先**：1.0.0 定稿时写的是「git-only + annotated tag，不发布 npm」
+  （`private: true`）。代价是每次安装都要 clone 仓库——大陆网络得走 gh-proxy，慢且容易失败；DSH 插件页
+  的版本/更新区只在 `package.update === 'registry'` 时渲染，git / file: 安装永远看不到；市场目录里的
+  `npm` / `version` / `downloads` 也一直是 `null`，卡片只能给 `github:` 安装命令。现在去掉 `private`，
+  补 `publishConfig.access: public` 与 `keywords`，并把 `npm run check` 挂到 `prepublishOnly` ——
+  即使有人手工 `npm publish`，四道门禁也会先跑。git / 本地 checkout 保留为开发与兜底通道。
+- **新增 `.github/workflows/publish.yml`**：推 `v*` tag 时全量 checkout（门禁会用
+  `git describe --exact-match --tags HEAD` 校验 tag 与版本一致）→ `npm ci` → `npm run check` →
+  `npm pack --dry-run` → `npm publish --provenance --access public`；`workflow_dispatch` 默认只跑
+  dry-run，要真发布得显式勾选。
+- **清单门禁改口**：`scripts/check-manifest.mjs` 里那条「a plugin installed from git must not be
+  npm-publishable」换成发布形态断言 —— 非 `private`、`publishConfig.access` 为 `public`、
+  `prepublishOnly` 必须跑 `check`。
+
+### Docs
+
+- README 两版、`docs/INSTALL.zh.md`、`COMPATIBILITY.md` 的安装命令改为 npm 优先（本地 checkout /
+  显式 git spec 作为第二通道），`TODO.md` 里「不发布 npm」的决策记录同步更正。
+
 ## 1.1.2 (2026-11-28) — [observe] 卡片系统统一、远端可编辑、权限诊断
 
 ### Added
