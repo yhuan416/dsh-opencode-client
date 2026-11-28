@@ -2,8 +2,8 @@
 
 ### Security
 
-- **清掉仓库里的环境私有信息**：文档、脚本、测试里的内网地址（`192.168.4.x`）、机器名（`n100` / `e5` / `m65`）
-  与 `/home/yhuan` 路径统一替换成 `server-a` / `server-b` / `/home/user`；`scripts/install-into-profile.sh`
+- **清掉仓库里的环境私有信息**：文档、脚本、测试里的内网地址、机器名与本机绝对路径统一替换成
+  `server-a` / `server-b` / `/home/user`；`scripts/install-into-profile.sh`
   不再内置某台机器的默认地址（URL 参数改为必填）。`.gitignore` 补上 `.npmrc` / `*.pem` / `*.key` /
   `credentials*.yaml` / `*.tgz`。封面图里写死的 `v1.0.0` 去掉，避免版本号过期。
   说明：本次只清理当前树，**历史提交没有重写**（旧地址仍留在 git 历史里）。
