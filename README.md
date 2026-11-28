@@ -349,7 +349,7 @@ or add it manually to the profile and select it as a bundle:
 
 ```json
 {
-  "dependencies": { "dsh-opencode-client": "^1.1.4" },
+  "dependencies": { "dsh-opencode-client": "^1.2.0" },
   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-opencode-client"] } }
 }
 ```
@@ -486,10 +486,11 @@ See [COMPATIBILITY.md](COMPATIBILITY.md) for the test matrix and versioning poli
 
 The plugin follows independent semantic versioning and **is published to npm**
 (`dsh plugin add dsh-opencode-client`); a local checkout or a git spec still works and is the
-development channel. **Current release: `1.1.4`** (annotated tag `v1.1.4`): the release itself moves to
-npm trusted publishing (OIDC), so published tarballs carry a provenance attestation; `1.1.3` made npm
-the primary install channel (`publishConfig`, a `prepublishOnly` gate, a tag-driven publish workflow).
-The plugin is otherwise unchanged from `1.1.2` — the observe page and settings share one card
+development channel. **Current release: `1.2.0`** (annotated tag `v1.2.0`): npm becomes the primary
+install channel end to end — install and update both ride the registry (`1.1.3` added `publishConfig`
+and the `prepublishOnly` gate, `1.1.4` moved publishing to trusted publishing/OIDC with provenance,
+`1.2.0` points the docs at npm and sanitizes the repository). The plugin is otherwise unchanged from
+`1.1.2` — the observe page and settings share one card
 system, remotes are editable in the UI (label / url / password, never echoing the password), and
 permission requests are observable (counts, answer source, recent actions, "权限 N · 自动 M" chip);
 it also fixes the settings section going blank and the `promptFailureMessage` ReferenceError.

@@ -1,4 +1,15 @@
-## 1.1.5 (unreleased) — [docs] 发布渠道描述对齐
+## 1.2.0 (2026-11-28) — [packaging] npm 成为主安装通道
+
+这一版没有改插件行为，改的是「怎么装、怎么发、仓库里写了什么」。走 minor 而不是 patch 的理由：
+安装通道从 git 换成 npm，对使用者是可见的能力变化——`dsh plugin --profile web add dsh-opencode-client`
+就能装，插件页的版本/更新区（只在 registry 安装时渲染）开始对普通用户生效。
+
+### Changed
+
+- **安装与更新统一走 npm**：包发布在 npm（`1.1.3` 起）、由 `v*` tag 触发 trusted publishing（OIDC）
+  发布、tarball 带 provenance；git / 本地 checkout 仍作为开发通道保留。README 两版与
+  `docs/INSTALL.zh.md` 的安装命令改为 npm 优先，`CONTRIBUTING.md` / `COMPATIBILITY.md` 里
+  「git-only、`private`、永不发布 npm」的旧说法一并改正。
 
 ### Security
 
@@ -13,7 +24,7 @@
 - **改正过期的发布说明**：`CONTRIBUTING.md` 与 `COMPATIBILITY.md` 还写着「git-only、`private`、永不发布 npm」，
   与实际（npm 主通道 + `v*` tag 触发 OIDC 发布）相反；`docs/INSTALL.zh.md` 头部停在 `v0.6.0` /
   `feat/opencode-v2-support` 分支，clone 示例与排障里的版本门槛同样过期。
-- **`SECURITY.md` 支持版本**从 `1.0.x` 更新到 `1.1.x`；README 两版补 npm / publish 徽章，并在「更新」段落
+- **`SECURITY.md` 支持版本**更新到 `1.2.x`；README 两版补 npm / publish 徽章，并在「更新」段落
   点明 npm 安装等同 registry 安装（走 DSH 原生更新流程）。
 - **`package.json` 的 `description` 改为中英双语**：npm 包页与市场卡片在目录条目缺失时都读这个字段。
 - **市场条目描述按上游规则重写**（`market/yhuan416__dsh-opencode-client.yml`）：单行、句号结尾、只说功能，
