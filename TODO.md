@@ -13,14 +13,19 @@
 
 ## 1. 下一批（按优先级，可直接开工）
 
-### 1.1 `[delegate]` 可编排 —— 候选 v1.3（约 4–6 天）
+### 1.1 `[delegate]` 可编排 —— 目标 v1.3.0（台账与失败原因已落地）
 
 目标：远端 agent 作为 dsh 子代理**可编排、可归因**。
 
-- [ ] **委派台账**：订阅 `subagent/start|end`，记录「谁委派了什么 / 用了哪台 server 与模型 / 耗时 /
-      tokens 与成本 / 成败与失败原因」，插件页可回看；`/board` 增加对应汇总
-- [ ] **错误可见性**：`execution.failed` 透出 `error.name` / `error.data`；结构化输出校验补
-      `enum` / `items` / `properties`
+- [x] **委派台账**：两条委派路径各记一行（server / 任务 / 目录 / 耗时 / 状态 / 失败原因，
+      建会话就失败也留痕）；`GET /api/opencode-client/delegations` + `opencode_delegations` +
+      设置页卡片。进程内 200 行，不落盘（远端会话本身就是持久记录）
+- [x] **失败原因可见**：`execution.failed` 的 `{name,message,data}` → 错误对象的
+      `opencodeName` / `code` / `data`，台账带 `errorName` / `errorCode`；结构化校验补
+      `type` / `required` / `properties` / `items` / `enum`
+- [ ] **单次 run 的 tokens / 成本**：`step.ended` 事件已带 `{tokens, cost}`，把它们累加到
+      当前台账行（先确认多 step 累加口径与 `cost=0` 的未报价模型）
+- [ ] **父子委派关系**：workflow 扇出时沿 `subagent` 事件链记 parent，台账里能看出「谁派给谁」
 - [ ] **provider 能力广告**：`outputSchema: true`（prompt 约束 + 本地校验）→ workflow 的
       `agent(...,{schema})`；`agentOptions: true` + `subagentModelMap` → `agent(...,{provider,model})`；
       `maxTokens` 明确拒绝
