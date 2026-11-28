@@ -56,8 +56,23 @@ jobs:
         run: npm run check
       - name: Pack check
         run: npm pack --dry-run
+      - name: Skip an already-published version
+        id: published
+        # Re-running a tag (or tagging a commit whose version was published by
+        # hand first) must not fail the release: npm refuses to publish over an
+        # existing version, so decide here and skip the step instead.
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          if npm view "$name@$version" version >/dev/null 2>&1; then
+            echo "published=true" >> "${GITHUB_OUTPUT:-/dev/null}"
+            echo "$name@$version is already on the registry; skipping publish."
+          else
+            echo "published=false" >> "${GITHUB_OUTPUT:-/dev/null}"
+            echo "$name@$version is not on the registry yet."
+          fi
       - name: Publish
-        if: github.event_name == 'push' || inputs.publish
+        if: (github.event_name == 'push' || inputs.publish) && steps.published.outputs.published == 'false'
         # With a trusted publisher configured for this repository and this exact
         # workflow filename, npm exchanges the OIDC token (id-token: write) and
         # no secret is involved. NPM_TOKEN is only the fallback for a package
