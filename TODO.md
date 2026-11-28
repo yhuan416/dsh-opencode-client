@@ -243,7 +243,9 @@
 - [x] 传输迁移到 `@opencode/client`（锁定 `2.4.2`），全部 v2 调用按模块完成
 - [x] `COMPATIBILITY.md` 写明 SemVer 覆盖范围：**工具名 / 文档化 HTTP 路由 / config 结构**；
       其余路由 internal、dsh 宿主契约不在承诺内
-- [x] 发布方式定稿：**git-only + annotated tag，不发布 npm**（`private: true`）
+- [x] ~~发布方式定稿：git-only + annotated tag，不发布 npm（`private: true`）~~ —— **1.1.3
+      （2026-11-28）推翻**：改为 npm 优先（`publishConfig` + `prepublishOnly` 门禁 + tag 触发
+      `publish.yml`），git / 本地 checkout 留作开发通道；原因见 CHANGELOG 1.1.3
 
 ### 10.6 不排期 / 已否决（要做先改定位）
 

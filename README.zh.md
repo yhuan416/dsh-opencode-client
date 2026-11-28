@@ -56,7 +56,8 @@ dsh 原生 subagent provider（`opencode-<serverId>`）。
 
 ```sh
 # 1. 把插件装进 web profile（bundle 选择在重启时组合）
-dsh plugin --profile web add /path/to/dsh-opencode-client
+#    本地 checkout 也可以：dsh plugin --profile web add /path/to/dsh-opencode-client
+dsh plugin --profile web add dsh-opencode-client
 
 # 2. 至少配置一台 server（完整字段见「配置」）
 #    OpenCode 2.x 还需要 server 密码：
@@ -312,10 +313,13 @@ OpenCode 2 上插件还会替你吸收这些 API 差异：
 > **[docs/INSTALL.zh.md](docs/INSTALL.zh.md)**。
 
 ```sh
-# 方式一：dsh 插件管理
+# 方式一：dsh 插件管理装 npm 发布版（推荐：不用 clone、不依赖 git）
+dsh plugin --profile web add dsh-opencode-client
+
+# 方式二：装本地 checkout 或显式 git spec（开发用）
 dsh plugin --profile web add /path/to/dsh-opencode-client
 
-# 方式二：脚本写入 profile（deps + bundles + 起始 server 行）
+# 方式三：脚本写入 profile（deps + bundles + 起始 server 行）
 bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
 ```
 
@@ -323,10 +327,12 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
 
 ```json
 {
-  "dependencies": { "dsh-opencode-client": "file:/path/to/dsh-opencode-client" },
+  "dependencies": { "dsh-opencode-client": "^1.1.3" },
   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-opencode-client"] } }
 }
 ```
+
+装本地 checkout 时把依赖值换成 `"file:/path/to/dsh-opencode-client"`。
 
 之后需重启 `dsh web`：bundle 选择在启动时组合。
 
@@ -450,8 +456,10 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 | OpenCode 2.x（v2 API） | `/api/*` + HTTP Basic 认证（实测 `2.4.2`；预期 `2.3.0+`） | 端到端支持 |
 | OpenCode 1.x（v1 API） | 任意 | **拒绝**（`opencode.v1_unsupported`） |
 
-插件采用独立语义化版本，**不发布 npm**（从 git 或本地路径安装）。**当前版本 `1.1.2`**
-（annotated tag `v1.1.2`）：观测台与设置页统一卡片系统（一套 surface token + hover/focus），
+插件采用独立语义化版本，**已发布到 npm**（`dsh plugin add dsh-opencode-client`；本地 checkout 或
+git spec 仍可用，作为开发通道）。**当前版本 `1.1.3`**（annotated tag `v1.1.3`）：npm 成为主安装
+通道（`publishConfig`、`prepublishOnly` 门禁、tag 触发的发布流水线），插件功能与 `1.1.2` 一致——
+观测台与设置页统一卡片系统（一套 surface token + hover/focus），
 远端可界面内编辑（改名 / 改地址 / 改密码，密码不回传），权限请求可观测（次数 / 答复来源 /
 最近明细，看板「权限 N · 自动 M」），并修复设置区因占位块即时求值整块消失、以及委派 prompt
 失败报 `ReferenceError` 两个问题。另含 1.1.1 的渐进填充 / 统一轮询 / SWR + 预热。`1.0.0` 线移除 v1 API，传输层改用
