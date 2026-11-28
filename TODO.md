@@ -23,12 +23,14 @@
 - [x] **失败原因可见**：`execution.failed` 的 `{name,message,data}` → 错误对象的
       `opencodeName` / `code` / `data`，台账带 `errorName` / `errorCode`；结构化校验补
       `type` / `required` / `properties` / `items` / `enum`
-- [ ] **单次 run 的 tokens / 成本**：`step.ended` 事件已带 `{tokens, cost}`，把它们累加到
-      当前台账行（先确认多 step 累加口径与 `cost=0` 的未报价模型）
-- [ ] **父子委派关系**：workflow 扇出时沿 `subagent` 事件链记 parent，台账里能看出「谁派给谁」
-- [ ] **provider 能力广告**：`outputSchema: true`（prompt 约束 + 本地校验）→ workflow 的
-      `agent(...,{schema})`；`agentOptions: true` + `subagentModelMap` → `agent(...,{provider,model})`；
-      `maxTokens` 明确拒绝
+- [x] **单次 run 的 tokens / 成本**：SSE 累加 `step.ended` 的 `{tokens, cost}`，台账按 run 差值记账
+      （未报价模型显示 `unpriced` 而不是 `$0`）
+- [x] **父子委派关系**：行上记录 `parent`（provider 取 `request.parent.sessionId`、工具取
+      `exec.agent.sessionId`）；跨层扇出的完整树聚合仍未做
+- [x] **`outputSchema` 能力**：provider 广告 `outputSchema: true`，schema 走 prompt 约束 + 本地校验，
+      成功返回 `SubagentResult.structured`
+- [ ] **`agentOptions` 能力**：`subagentModelMap` → workflow 的 `agent(...,{provider,model})`；
+      `maxTokens` 明确拒绝（需要先确认模型映射与远端 provider/model 的对应关系）
 - [ ] **workflow 扇出切远端**（配置级，无代码）：`workflow-ptc.provider` 从 `spawn` 改为
       `opencode-<id>` / `opencode-auto`；先量化远端并发、延迟与成本，再决定是否默认开
 

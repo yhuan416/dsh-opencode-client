@@ -104,7 +104,12 @@ test('clear empties the ledger and keeps it usable', () => {
   ledger.begin({ server: 'a' })
   ledger.clear()
   assert.equal(ledger.size(), 0)
-  assert.deepEqual(ledger.list(), { rows: [], summary: { total: 0, running: 0, ok: 0, failed: 0, aborted: 0, byServer: [] } })
+  const empty = ledger.list()
+  assert.deepEqual(empty.rows, [])
+  assert.deepEqual(
+    { total: empty.summary.total, running: empty.summary.running, ok: empty.summary.ok, failed: empty.summary.failed, aborted: empty.summary.aborted, steps: empty.summary.steps, cost: empty.summary.cost, byServer: empty.summary.byServer },
+    { total: 0, running: 0, ok: 0, failed: 0, aborted: 0, steps: 0, cost: 0, byServer: [] },
+  )
   const row = ledger.begin({ server: 'a', kind: 'delegate' })
   assert.equal(row.kind, 'delegate')
   assert.equal(ledger.size(), 1)
@@ -124,4 +129,30 @@ test('a failed row keeps the error identity, not just the message', () => {
   assert.match(row.error, /invalid api key/)
   const listed = ledger.list().rows[0]
   assert.equal(listed.errorName, 'ProviderAuthError', 'the identity survives list()')
+})
+
+test('usage is recorded as the delta between a run start and its settle', () => {
+  const ledger = createLedger()
+  const before = { tokens: { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 }, cost: 0, steps: 0 }
+  const row = ledger.begin({ server: 'a', task: 'costed run', parent: 'ses_parent', usage: before })
+  assert.equal(row.parent, 'ses_parent')
+  const after = { tokens: { input: 900, output: 120, reasoning: 30, cacheRead: 400, cacheWrite: 0 }, cost: 0.42, steps: 3 }
+  ledger.finish(row, { stopReason: 'completed', usage: after })
+  assert.equal(row.steps, 3)
+  assert.equal(row.cost, 0.42)
+  assert.equal(row.tokens.input, 900)
+  assert.equal(row.tokens.cacheRead, 400)
+  const listed = ledger.list()
+  assert.equal(listed.summary.steps, 3)
+  assert.ok(Math.abs(listed.summary.cost - 0.42) < 1e-9)
+  assert.ok(Math.abs(listed.summary.byServer[0].cost - 0.42) < 1e-9)
+})
+
+test('a run that reported no steps keeps tokens/cost empty instead of zeroes', () => {
+  const ledger = createLedger()
+  const zero = { tokens: { input: 0, output: 0, reasoning: 0, cacheRead: 0, cacheWrite: 0 }, cost: 0, steps: 0 }
+  const row = ledger.begin({ server: 'a', usage: zero })
+  ledger.finish(row, { stopReason: 'completed', usage: zero })
+  assert.equal(row.tokens, null)
+  assert.equal(row.cost, null)
 })

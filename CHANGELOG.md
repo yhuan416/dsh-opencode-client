@@ -11,6 +11,15 @@
   "remote session failed"，而是透出为错误对象的 `opencodeName` / `code` / `data`；台账行新增
   `errorName` / `errorCode`，`opencode_delegations` 输出 `[Name · code]` 前缀。
 
+- **单次委派的花费**：`session.step.ended` 的 `{tokens, cost}` 由 SSE 累加到 server 计数器
+  （`lib/run-usage.js`），台账按「run 开始到结算的差值」记 `steps` / `tokens`（input/output/reasoning/
+  cacheRead/cacheWrite）/ `cost`；`opencode_delegations` 输出 `$x` 或 `unpriced`，设置页行尾附成本。
+- **父子委派关系**：台账行新增 `parent`（原生 provider 取 `request.parent.sessionId`，
+  工具路径取 `exec.agent.sessionId`），能看出「谁派给谁」。
+- **`outputSchema` 能力**：provider 现在广告 `outputSchema: true`——请求带 schema 时把约束追加到
+  任务文本、用 `lib/structured.js` 本地校验，成功返回 `SubagentResult.structured`；不符合则结算为
+  `error` 并带诊断，而不是把散文当结果交回去。
+
 ### Changed
 
 - **结构化输出校验补齐**：`opencode_subagent` 的 `schema` 从「只查 required」扩展到
