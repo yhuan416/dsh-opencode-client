@@ -109,3 +109,19 @@ test('clear empties the ledger and keeps it usable', () => {
   assert.equal(row.kind, 'delegate')
   assert.equal(ledger.size(), 1)
 })
+
+test('a failed row keeps the error identity, not just the message', () => {
+  const ledger = createLedger()
+  const row = ledger.begin({ server: 'a' })
+  const error = new Error('opencode: remote session failed (ProviderAuthError): invalid api key')
+  error.name = 'OpenCodeError'
+  error.code = 'provider_auth'
+  error.opencodeName = 'ProviderAuthError'
+  ledger.finish(row, { stopReason: 'error', error })
+  assert.equal(row.status, 'failed')
+  assert.equal(row.errorName, 'ProviderAuthError')
+  assert.equal(row.errorCode, 'provider_auth')
+  assert.match(row.error, /invalid api key/)
+  const listed = ledger.list().rows[0]
+  assert.equal(listed.errorName, 'ProviderAuthError', 'the identity survives list()')
+})
