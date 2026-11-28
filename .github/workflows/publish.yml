@@ -33,8 +33,23 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Node 24 ships npm 11.x: trusted publishing needs npm >= 11.5.1 and
+          # Node >= 22.14.0 (Node 22 still bundles npm 10, which cannot do OIDC).
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
+      - name: Check the npm CLI for trusted publishing (>= 11.5.1)
+        run: |
+          node --version
+          npm --version
+          node -e '
+            const version = require("child_process").execSync("npm --version").toString().trim()
+            const [major, minor, patch] = version.split(".").map(Number)
+            const ok = major > 11 || (major === 11 && (minor > 5 || (minor === 5 && patch >= 1)))
+            if (!ok) {
+              console.error(`npm ${version} cannot do trusted publishing; need >= 11.5.1`)
+              process.exit(1)
+            }
+          '
       - name: Install dependencies
         run: npm ci --no-audit --no-fund
       - name: Gates (syntax · client · manifest · tests)
@@ -43,6 +58,10 @@ jobs:
         run: npm pack --dry-run
       - name: Publish
         if: github.event_name == 'push' || inputs.publish
+        # With a trusted publisher configured for this repository and this exact
+        # workflow filename, npm exchanges the OIDC token (id-token: write) and
+        # no secret is involved. NPM_TOKEN is only the fallback for a package
+        # that has no trusted publisher yet; remove it once OIDC publishes work.
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
