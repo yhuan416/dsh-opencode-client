@@ -3,9 +3,10 @@
 This plugin follows **independent semantic versioning** (it does not mirror the dsh release train)
 and **is published to npm**; `dsh plugin --profile web add dsh-opencode-client` is the primary
 channel, while a local checkout or an explicit git spec stays supported as the development channel.
-**Current release: `1.1.3`** (2026-11-28, annotated tag `v1.1.3`): npm becomes the primary install
-channel (`publishConfig`, a `prepublishOnly` gate, a tag-driven publish workflow); the plugin is
-otherwise unchanged from `1.1.2` — one card system across the observe page and settings, editable
+**Current release: `1.1.4`** (2026-11-28, annotated tag `v1.1.4`): the release pipeline moves to npm
+trusted publishing (OIDC), so published tarballs carry a provenance attestation; `1.1.3` made npm the
+primary install channel (`publishConfig`, a `prepublishOnly` gate, a tag-driven publish workflow); the
+plugin is otherwise unchanged from `1.1.2` — one card system across the observe page and settings, editable
 remotes in the manager UI (label / url / password, the stored password is never echoed back), and
 permission-request diagnostics (`/board` `permissions` + board chip). It also fixes the settings
 section blanking out and the `promptFailureMessage` ReferenceError. Folds in `1.1.1` (progressive

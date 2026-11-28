@@ -327,7 +327,7 @@ bash scripts/install-into-profile.sh http://192.168.4.50:4096 n100
 
 ```json
 {
-  "dependencies": { "dsh-opencode-client": "^1.1.3" },
+  "dependencies": { "dsh-opencode-client": "^1.1.4" },
   "dsh": { "profile": { "bundles": ["@deepseek-ai/dsh-base", "@deepseek-ai/dsh-web-app", "dsh-opencode-client"] } }
 }
 ```
@@ -457,8 +457,9 @@ session 运行生命周期（`lib/session-run.js`）：同一套建会话、交�
 | OpenCode 1.x（v1 API） | 任意 | **拒绝**（`opencode.v1_unsupported`） |
 
 插件采用独立语义化版本，**已发布到 npm**（`dsh plugin add dsh-opencode-client`；本地 checkout 或
-git spec 仍可用，作为开发通道）。**当前版本 `1.1.3`**（annotated tag `v1.1.3`）：npm 成为主安装
-通道（`publishConfig`、`prepublishOnly` 门禁、tag 触发的发布流水线），插件功能与 `1.1.2` 一致——
+git spec 仍可用，作为开发通道）。**当前版本 `1.1.4`**（annotated tag `v1.1.4`）：发布改走 npm
+trusted publishing（OIDC），发布的 tarball 带 provenance 证明；`1.1.3` 已把 npm 设为主安装通道
+（`publishConfig`、`prepublishOnly` 门禁、tag 触发的发布流水线）。插件功能与 `1.1.2` 一致——
 观测台与设置页统一卡片系统（一套 surface token + hover/focus），
 远端可界面内编辑（改名 / 改地址 / 改密码，密码不回传），权限请求可观测（次数 / 答复来源 /
 最近明细，看板「权限 N · 自动 M」），并修复设置区因占位块即时求值整块消失、以及委派 prompt

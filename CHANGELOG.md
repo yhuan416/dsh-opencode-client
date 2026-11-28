@@ -1,3 +1,14 @@
+## 1.1.4 (2026-11-28) — [ci] 发布改走 OIDC（Provenance）
+
+### Changed
+
+- **发布不再依赖长期 token**：包上配好 trusted publisher（GitHub Actions / `yhuan416/dsh-opencode-client` /
+  `publish.yml`）之后，`v*` tag 触发的发布由 npm 用 OIDC 短令牌完成；工作流里的 `NODE_AUTH_TOKEN`
+  只作为「包还没有 trusted publisher」时的兜底。从这一版起 npm 包页面带 **Provenance** 徽标，
+  tarball 与 tag 的对应关系可由签名验证，仓库里不再需要长期写权限的 npm token。
+- 这一版同时是整条 OIDC 链路的首次真机验证：推 tag → 门禁 → `npm publish --provenance` → 注册表；
+  插件行为与 `1.1.3` 完全一致。
+
 ## 1.1.3 (2026-11-28) — [packaging] npm 发布成为主安装通道
 
 ### Changed
