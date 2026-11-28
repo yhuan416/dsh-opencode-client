@@ -3,7 +3,7 @@
 > 面向「想在第二台机器（比如 PC）上装这个插件」的场景。目标：左栏出现 **OpenCode**
 > 卡片看板，并且会话里能用 `opencode_board` 工具。
 >
-> 版本：1.1.x · 分支 `master`（每个 npm 版本对应一个 `v*` tag；只想要现成插件的话，
+> 版本：1.2.x · 分支 `master`（每个 npm 版本对应一个 `v*` tag；只想要现成插件的话，
 > 走 [3a npm 安装](#3a-npm推荐无需-clone)，不需要 clone）
 
 ## 0. 前置条件
@@ -28,7 +28,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://server-a:4096/api/info
 
 ```sh
 git clone https://github.com/yhuan416/dsh-opencode-client
-# 想固定在某个版本上就加 tag（把 v1.1.4 换成你要的）：git clone --branch v1.1.4 --depth 1 <同一地址>
+# 想固定在某个版本上就加 tag（把 v1.2.0 换成你要的）：git clone --branch v1.2.0 --depth 1 <同一地址>
 ```
 
 插件是纯 JS、无构建步骤，clone 下来就能用。
